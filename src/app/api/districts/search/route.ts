@@ -9,7 +9,19 @@ const STATIC_FALLBACKS = [
   { district_code: '36.74.03', name: 'Pamulang Timur, Kec. Pamulang, Kota Tangerang Selatan, Banten' },
   { district_code: '31.73.06', name: 'Palmerah, Kec. Palmerah, Kota Jakarta Barat, DKI Jakarta' },
   { district_code: '31.74.02', name: 'Kuningan Timur, Kec. Setiabudi, Kota Jakarta Selatan, DKI Jakarta' },
-  { district_code: '31.74.07', name: 'Kebayoran Baru, Kec. Kebayoran Baru, Kota Jakarta Selatan, DKI Jakarta' }
+  { district_code: '31.74.07', name: 'Kebayoran Baru, Kec. Kebayoran Baru, Kota Jakarta Selatan, DKI Jakarta' },
+  
+  // Bandung Districts Fallback
+  { district_code: '32.73.01', name: 'Cigondewah Kaler, Kec. Bandung Kulon, Kota Bandung, Jawa Barat' },
+  { district_code: '32.73.02', name: 'Babakan Ciparay, Kec. Babakan Ciparay, Kota Bandung, Jawa Barat' },
+  { district_code: '32.73.03', name: 'Bojongloa Kaler, Kec. Bojongloa Kaler, Kota Bandung, Jawa Barat' },
+  { district_code: '32.73.05', name: 'Astanaanyar, Kec. Astanaanyar, Kota Bandung, Jawa Barat' },
+
+  // Jakarta Timur Districts Fallback
+  { district_code: '31.72.01', name: 'Pasar Rebo, Kec. Pasar Rebo, Kota Jakarta Timur, DKI Jakarta' },
+  { district_code: '31.72.02', name: 'Ciracas, Kec. Ciracas, Kota Jakarta Timur, DKI Jakarta' },
+  { district_code: '31.72.03', name: 'Cipayung, Kec. Cipayung, Kota Jakarta Timur, DKI Jakarta' },
+  { district_code: '31.72.05', name: 'Kramat Jati, Kec. Kramat Jati, Kota Jakarta Timur, DKI Jakarta' }
 ];
 
 export async function GET(request: NextRequest) {
