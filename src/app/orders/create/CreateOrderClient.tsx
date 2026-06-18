@@ -71,7 +71,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [isRatesLoading, setIsRatesLoading] = useState(false);
   const [ratesError, setRatesError] = useState<string | null>(null);
 
-  // ── Step 4 State: Payment & QR Code ──
+  // ── Step 4 State: Payment & Confirmation ──
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentQrUrl, setPaymentQrUrl] = useState<string | null>(null);
   const [paymentTrxId, setPaymentTrxId] = useState<string | null>(null);
@@ -81,6 +81,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
   // ── Step 5 State: Final Confirmation ──
   const [createdAwb, setCreatedAwb] = useState<string | null>(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [orderTaskCode, setOrderTaskCode] = useState<string | null>(null);
 
   // ── Fetch Services Rates ──
   const fetchRates = async () => {
@@ -122,77 +124,10 @@ export default function CreateOrderClient({ user }: { user: User }) {
     }
   }, [step]);
 
-  // ── Initiate Payment (Gopay QR Modal) ──
-  const handleInitiatePayment = async () => {
-    setPaymentModalOpen(true);
-    setPaymentStatus('PENDING');
-    setPaymentProgress(0);
-
-    try {
-      const res = await fetch('/api/payment/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sender,
-          recipient,
-          package: {
-            ...packageInfo,
-            chargeableWeight
-          },
-          selectedService
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setPaymentQrUrl(data.paymentInfo.qrCodeUrl);
-        setPaymentTrxId(data.transactionId);
-      } else {
-        setPaymentStatus('ERROR');
-      }
-    } catch {
-      setPaymentStatus('ERROR');
-    }
-  };
-
-  // Poll Payment Status
-  useEffect(() => {
-    if (!paymentTrxId || paymentStatus !== 'PENDING') return;
-
-    let intervalId: NodeJS.Timeout;
-
-    // Simulation progress bar helper
-    const startTime = Date.now();
-    intervalId = setInterval(async () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(100, Math.floor((elapsed / 8000) * 100));
-      setPaymentProgress(progress);
-
-      try {
-        const res = await fetch(`/api/payment/status/${paymentTrxId}`);
-        const data = await res.json();
-        if (data.status === 'SUCCESS') {
-          setPaymentStatus('SUCCESS');
-          clearInterval(intervalId);
-          // Auto transition to Step 5 after brief success checkmark
-          setTimeout(() => {
-            setPaymentModalOpen(false);
-            createOrder();
-          }, 1500);
-        }
-      } catch (err) {
-        console.error('Error polling payment status', err);
-      }
-    }, 1500);
-
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [paymentTrxId, paymentStatus]);
-
-  // ── Finalize Order & Generate AWB ──
-  const createOrder = async () => {
+  // ── Direct Order Creation (Cash Payment at Counter) ──
+  const handleCreateOrder = async () => {
     setIsCreatingOrder(true);
+    setOrderError(null);
     setStep(5);
 
     try {
@@ -204,22 +139,27 @@ export default function CreateOrderClient({ user }: { user: User }) {
           recipient,
           package: packageInfo,
           selectedService,
-          transactionId: paymentTrxId
         })
       });
 
       const data = await res.json();
       if (data.success) {
-        setCreatedAwb(data.awb);
+        setCreatedAwb(data.awb || data.taskCode);
+        setOrderTaskCode(data.taskCode || null);
       } else {
-        setCreatedAwb('ERROR-GENERATE-AWB');
+        setOrderError(data.message || 'Gagal membuat order.');
+        setCreatedAwb(null);
       }
     } catch {
-      setCreatedAwb('ERROR-GENERATE-AWB');
+      setOrderError('Gagal terhubung ke server Anteraja.');
+      setCreatedAwb(null);
     } finally {
       setIsCreatingOrder(false);
     }
   };
+
+  // Keep legacy GoPay QR handler for future use (commented payment gateway)
+  const handleInitiatePayment = handleCreateOrder;
 
   // ── Reset Form ──
   const handleReset = () => {
@@ -229,6 +169,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setPaymentTrxId(null);
     setPaymentQrUrl(null);
     setPaymentStatus('PENDING');
+    setOrderError(null);
+    setOrderTaskCode(null);
   };
 
   return (
@@ -687,16 +629,29 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <h2 className="text-3xl font-mono font-extrabold text-[#b5000b]">
                           Rp {selectedService?.delivery_price.toLocaleString('id-ID')}
                         </h2>
-                        <p className="text-xs text-gray-400 font-medium">Pembayaran instan langsung diproses ke sistem Anteraja</p>
+                        <p className="text-xs text-gray-400 font-medium">Pembayaran tunai (cash) di counter agen</p>
                       </div>
 
-                      <button
-                        onClick={handleInitiatePayment}
-                        className="w-full h-12 mt-6 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-[#b5000b]/15 transition-all duration-300"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">qr_code_2</span>
-                        Bayar dengan GoPay QR
-                      </button>
+                      <div className="w-full mt-6 space-y-3">
+                        <button
+                          onClick={handleCreateOrder}
+                          disabled={isCreatingOrder}
+                          className="w-full h-12 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-[#b5000b]/15 transition-all duration-300 disabled:opacity-60"
+                        >
+                          {isCreatingOrder ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Memproses...
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-[20px]">send</span>
+                              Konfirmasi & Buat Order
+                            </>
+                          )}
+                        </button>
+                        <p className="text-[10px] text-gray-400 font-semibold">Order akan langsung dikirim ke sistem Anteraja</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -710,20 +665,20 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       <div className="w-12 h-12 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin mx-auto" />
                       <p className="text-sm font-semibold text-gray-500">Menyelesaikan pembuatan order dan menghasilkan AWB...</p>
                     </div>
-                  ) : createdAwb?.startsWith('ERROR') ? (
+                  ) : orderError ? (
                     <div className="space-y-4 max-w-[400px]">
                       <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto shadow-sm">
                         <span className="material-symbols-outlined text-[36px]">error</span>
                       </div>
                       <h3 className="text-xl font-bold text-gray-900">Pembuatan Order Gagal</h3>
-                      <p className="text-sm text-gray-400 font-medium">
-                        Terjadi kesalahan saat menghubungi API pembuatan order Anteraja. Mohon coba kembali.
+                      <p className="text-sm text-gray-500 font-medium">
+                        {orderError}
                       </p>
                       <button
-                        onClick={handleReset}
+                        onClick={() => { setOrderError(null); setStep(4); }}
                         className="h-11 px-6 bg-[#b5000b] hover:bg-[#b5000b]/95 text-white font-bold rounded-xl text-sm transition-all"
                       >
-                        Ulangi Pembuatan Order
+                        Kembali & Coba Lagi
                       </button>
                     </div>
                   ) : (
@@ -740,23 +695,34 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         </p>
                       </div>
 
-                      {/* AWB NUMBER BOX */}
-                      <div className="p-6 bg-gray-50 border border-gray-100 rounded-2xl space-y-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Nomor Resi / AWB</span>
-                        <div className="flex items-center justify-center gap-3">
-                          <span className="text-xl font-mono font-extrabold text-gray-900 tracking-wider">
-                            {createdAwb}
-                          </span>
-                          <button
-                            onClick={() => {
-                              if (createdAwb) navigator.clipboard.writeText(createdAwb);
-                              alert('AWB disalin ke clipboard');
-                            }}
-                            className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:text-[#b5000b] flex items-center justify-center transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                          </button>
+                      {/* AWB / TASK CODE BOX */}
+                      <div className="p-6 bg-gray-50 border border-gray-100 rounded-2xl space-y-3">
+                        <div className="space-y-2">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Kode Order / AWB</span>
+                          <div className="flex items-center justify-center gap-3">
+                            <span className="text-xl font-mono font-extrabold text-gray-900 tracking-wider">
+                              {createdAwb}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (createdAwb) navigator.clipboard.writeText(createdAwb);
+                                alert('Kode order disalin ke clipboard');
+                              }}
+                              className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:text-[#b5000b] flex items-center justify-center transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                            </button>
+                          </div>
                         </div>
+                        {orderTaskCode && orderTaskCode !== createdAwb && (
+                          <div className="pt-2 border-t border-gray-100">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Task Code: </span>
+                            <span className="text-xs font-mono font-bold text-gray-600">{orderTaskCode}</span>
+                          </div>
+                        )}
+                        <p className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-3 py-2 rounded-lg">
+                          💡 AWB final akan di-generate oleh sistem Anteraja setelah pembayaran dikonfirmasi dan paket di-pickup kurir.
+                        </p>
                       </div>
 
                       {/* BOTTOM ACTIONS */}
