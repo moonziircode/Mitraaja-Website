@@ -478,7 +478,16 @@ export default function DashboardClient({ user }: { user: User }) {
                           <td className="px-6 py-3.5 text-xs text-gray-400 font-mono">{idx + 1}</td>
                           <td className="px-4 py-3.5 text-sm font-mono font-semibold text-gray-800">{item.awb}</td>
                           <td className="px-4 py-3.5 text-xs font-medium text-gray-600">{item.shipperName}</td>
-                          <td className="px-4 py-3.5 text-xs font-medium text-gray-600">{item.destinationCity}</td>
+                          <td className="px-4 py-3.5 text-xs font-medium text-gray-600">
+                            {item.receiverName && item.receiverName !== '-' && item.receiverName !== item.destinationCity ? (
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-gray-900">{item.receiverName}</span>
+                                <span className="text-[10px] text-gray-400 mt-0.5">{item.destinationCity}</span>
+                              </div>
+                            ) : (
+                              item.destinationCity
+                            )}
+                          </td>
                           <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{formatTime(item.timestamp)}</td>
                           <td className="px-4 py-3.5">
                             <span

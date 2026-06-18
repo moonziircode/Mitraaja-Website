@@ -27,30 +27,91 @@ export async function POST(request: NextRequest) {
     const agentStaffId = session.nia;
     const token = session.token || 'mock-token';
 
+    let shipperName = '-';
+    let receiverName = '-';
+    let destinationCity = '-';
+    let searchErrorMsg = '';
+
     // ── 2. Step 1 — Search AWB ──────────────────────────────────────
-    let maaTask;
+    let maaTask = null;
     try {
       maaTask = await anterajaClient.searchAWB(awb, agentStaffId, token);
-    } catch (searchError) {
-      const message =
-        searchError instanceof Error ? searchError.message : 'Pencarian AWB gagal';
-
-      return Response.json(
-        {
-          status: 'error',
-          message,
-          data: { awb, shipperName: '-' },
-        },
-        { status: 200 },
-      );
+      if (maaTask) {
+        shipperName = maaTask.shipperName;
+        receiverName = maaTask.receiverName;
+        destinationCity = maaTask.destinationCity;
+      }
+    } catch (searchError: any) {
+      searchErrorMsg = searchError.message || 'Pencarian AWB gagal';
     }
 
+    // Fallback to public tracking API if search failed (e.g. already claimed)
     if (!maaTask) {
+      try {
+        const trackingResponse = await fetch('https://api.anteraja.id/order/tracking', {
+          method: 'POST',
+          headers: {
+            'mv': '1.2',
+            'source': 'aca_android',
+            'Content-Type': 'application/json; charset=UTF-8',
+            'User-Agent': 'okhttp/3.10.0',
+          },
+          body: JSON.stringify([{ codes: awb.trim() }]),
+        });
+
+        if (trackingResponse.ok) {
+          const trackData = await trackingResponse.json();
+          if (trackData.status === 200 && trackData.content && trackData.content.length > 0) {
+            const content = trackData.content[0];
+            const detail = content.detail;
+            if (detail) {
+              shipperName = detail.sender?.name || '-';
+              receiverName = detail.receiver?.name || '-';
+              
+              // Extract destination from history if address is masked
+              const history = content.history || [];
+              let extractedDest = '-';
+              for (const event of history) {
+                const msg = event.message?.id || '';
+                const ssMatch = msg.match(/SS\s+([^-\s]+(?:\s+[^-\s]+)*)/i);
+                if (ssMatch) {
+                  extractedDest = ssMatch[1].trim();
+                  break;
+                }
+              }
+              if (extractedDest === '-') {
+                for (const event of history) {
+                  const msg = event.message?.id || '';
+                  const hubMatch = msg.match(/Hub\s+([^-\s]+(?:\s+[^-\s]+)*)/i);
+                  if (hubMatch) {
+                    extractedDest = hubMatch[1].trim();
+                    break;
+                  }
+                }
+              }
+              
+              destinationCity = extractedDest !== '-' ? extractedDest : (detail.receiver?.address || '-');
+            }
+          }
+        }
+      } catch (fallbackError) {
+        console.error('[POST /api/scan] Fallback tracking failed:', fallbackError);
+      }
+    }
+
+    // If the search failed, return error response but with resolved details
+    if (!maaTask) {
+      const isAlreadyClaimed = searchErrorMsg.includes('sudah pernah di klaim') || searchErrorMsg.includes('already claimed');
       return Response.json(
         {
           status: 'error',
-          message: 'AWB tidak ditemukan dalam sistem.',
-          data: { awb, shipperName: '-' },
+          message: searchErrorMsg || 'AWB tidak ditemukan dalam sistem.',
+          data: {
+            awb,
+            shipperName: maskName(shipperName),
+            receiverName: maskName(receiverName),
+            destinationCity: destinationCity
+          },
         },
         { status: 200 },
       );
@@ -74,7 +135,12 @@ export async function POST(request: NextRequest) {
         {
           status: 'success',
           message: 'Berhasil di-claim!',
-          data: { awb, shipperName: maaTask.shipperName, receiverName: maaTask.receiverName, destinationCity: maaTask.destinationCity },
+          data: {
+            awb,
+            shipperName: maskName(shipperName),
+            receiverName: maskName(receiverName),
+            destinationCity: destinationCity
+          },
         },
         { status: 200 },
       );
@@ -86,7 +152,12 @@ export async function POST(request: NextRequest) {
         {
           status: 'error',
           message,
-          data: { awb, shipperName: maaTask.shipperName },
+          data: {
+            awb,
+            shipperName: maskName(shipperName),
+            receiverName: maskName(receiverName),
+            destinationCity: destinationCity
+          },
         },
         { status: 200 },
       );
@@ -102,4 +173,17 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+function maskName(name: string): string {
+  if (!name || name === '-') return '-';
+  const trimmed = name.trim();
+  if (trimmed.length <= 2) return trimmed;
+  // If already masked, return as-is
+  if (trimmed.includes('***')) return trimmed;
+  
+  const first = trimmed[0];
+  const last = trimmed[trimmed.length - 1];
+  const stars = '*'.repeat(Math.max(3, trimmed.length - 2));
+  return `${first}${stars}${last}`;
 }
