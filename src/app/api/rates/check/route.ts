@@ -47,8 +47,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Filter mock rates realistically
-    const isSameRegency = originCodeFinal.substring(0, 5) === destinationCodeFinal.substring(0, 5);
-    const isSameProvince = originCodeFinal.substring(0, 2) === destinationCodeFinal.substring(0, 2);
+    const isSameRegency = /^\d{2}\.\d{2}/.test(originCodeFinal) && /^\d{2}\.\d{2}/.test(destinationCodeFinal) && originCodeFinal.substring(0, 5) === destinationCodeFinal.substring(0, 5);
+    const isSameProvince = /^\d{2}\./.test(originCodeFinal) && /^\d{2}\./.test(destinationCodeFinal) && originCodeFinal.substring(0, 2) === destinationCodeFinal.substring(0, 2);
 
     const mockRates = [
       {

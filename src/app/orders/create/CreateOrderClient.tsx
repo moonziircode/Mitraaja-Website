@@ -639,7 +639,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
         body: JSON.stringify({
           origin: sender.district,
           destination: recipient.district,
-          originCode: user.districtCode || sender.districtCode,
+          originCode: sender.districtCode || user.districtCode,
           destinationCode: recipient.districtCode,
           weight: chargeableWeight
         })
