@@ -5,9 +5,9 @@ const paymentStatuses: { [key: string]: { status: 'PENDING' | 'SUCCESS'; timesta
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { transactionId: string } }
+  { params }: { params: Promise<{ transactionId: string }> }
 ) {
-  const { transactionId } = params;
+  const { transactionId } = await params;
 
   if (!paymentStatuses[transactionId]) {
     paymentStatuses[transactionId] = { status: 'PENDING', timestamp: Date.now() };
