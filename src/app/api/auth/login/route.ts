@@ -18,9 +18,17 @@ export async function POST(request: NextRequest) {
     session.isLoggedIn = true;
     session.nia = nia;
     session.name = 'Agent Budi Santoso'; // Contoh data profil
+    session.token = 'mock-jwt-token-50004786'; // Simpan token JWT
     await session.save();
 
-    return NextResponse.json({ message: 'Login berhasil' }, { status: 200 });
+    return NextResponse.json({ 
+      message: 'Login berhasil',
+      token: session.token,
+      user: {
+        nia: session.nia,
+        name: session.name
+      }
+    }, { status: 200 });
   } else {
     // Login gagal
     return NextResponse.json({ message: 'NIA atau password salah.' }, { status: 401 });
