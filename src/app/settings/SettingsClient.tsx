@@ -80,7 +80,7 @@ export default function SettingsClient({ user }: { user: User }) {
 
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="max-w-[760px] mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-6">
             
             {/* Scanner Preferences */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">

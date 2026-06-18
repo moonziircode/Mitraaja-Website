@@ -257,7 +257,7 @@ export default function DashboardClient({ user }: { user: User }) {
 
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="max-w-[1000px] mx-auto space-y-6">
+          <div className="max-w-7xl mx-auto space-y-6">
             
             {/* Stats Dashboard */}
             <div className="grid grid-cols-3 gap-4">
