@@ -5,6 +5,7 @@ export interface SessionData {
   isLoggedIn: boolean;
   nia: string;
   name: string;
+  storeName?: string;
   token?: string; // Simpan token JWT dari Anteraja jika ada
 }
 

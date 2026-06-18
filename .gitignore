@@ -44,3 +44,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch/test scripts
+test_real_cas.mjs
+test_gateway.mjs
+
