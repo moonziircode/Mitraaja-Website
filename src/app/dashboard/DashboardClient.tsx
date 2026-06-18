@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import Sidebar from '@/components/Sidebar';
+import { useRouter } from 'next/navigation';
 
 interface User {
   name: string;
@@ -32,6 +33,7 @@ const FILL = { fontVariationSettings: "'FILL' 1" } as const;
 const HISTORY_KEY = 'mitraaja_scan_history';
 
 export default function DashboardClient({ user }: { user: User }) {
+  const router = useRouter();
   // ── Scan State ──
   const [awbValue, setAwbValue] = useState('');
   const [isScanning, setIsScanning] = useState(false);
@@ -96,6 +98,19 @@ export default function DashboardClient({ user }: { user: User }) {
     } catch (e) {
       console.log('Audio disabled', e);
     }
+  };
+
+  // ── Scroll and Focus Scanner ──
+  const handleScrollToScan = () => {
+    const scannerElement = document.getElementById('scanner-card');
+    if (scannerElement) {
+      scannerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 500);
   };
 
   // ── Perform Claim Action ──
@@ -266,6 +281,55 @@ export default function DashboardClient({ user }: { user: User }) {
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
+
+            {/* Workflow Selection Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Card 1: Create Order */}
+              <div className="bg-gradient-to-br from-[#b5000b] to-[#e60010] rounded-2xl p-6 text-white shadow-lg shadow-[#b5000b]/10 hover:shadow-xl hover:shadow-[#b5000b]/20 hover:scale-[1.01] transition-all flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
+                <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-[150px]">local_shipping</span>
+                </div>
+                <div className="space-y-2 relative z-10">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-md">
+                    <span className="material-symbols-outlined text-white text-[22px]">add_circle</span>
+                  </div>
+                  <h3 className="text-lg font-extrabold tracking-tight">Buat Order Baru</h3>
+                  <p className="text-xs text-white/80 font-medium max-w-[280px]">
+                    Proaktif. Hitung ongkir, bayar via GoPay QR, dan buat nomor resi (AWB) baru.
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push('/orders/create')}
+                  className="mt-4 h-10 px-5 bg-white text-[#b5000b] font-bold rounded-xl text-xs hover:bg-white/95 active:scale-[0.98] transition-all self-start flex items-center gap-1.5 shadow-md"
+                >
+                  Buat Order Baru
+                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </button>
+              </div>
+
+              {/* Card 2: Scan & Claim */}
+              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
+                <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                  <span className="material-symbols-outlined text-[150px]">barcode_scanner</span>
+                </div>
+                <div className="space-y-2 relative z-10">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-500">
+                    <span className="material-symbols-outlined text-[22px]">qr_code_scanner</span>
+                  </div>
+                  <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Klaim Paket Terdaftar</h3>
+                  <p className="text-xs text-gray-400 font-semibold max-w-[280px]">
+                    Reaktif. Klaim paket yang datanya sudah ada di sistem (tanpa alur pembayaran).
+                  </p>
+                </div>
+                <button
+                  onClick={handleScrollToScan}
+                  className="mt-4 h-10 px-5 bg-gray-900 text-white font-bold rounded-xl text-xs hover:bg-gray-800 active:scale-[0.98] transition-all self-start flex items-center gap-1.5 shadow-md shadow-gray-900/10"
+                >
+                  Buka Scanner & Klaim
+                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                </button>
+              </div>
+            </div>
             
             {/* Stats Dashboard */}
             <div className="grid grid-cols-3 gap-4">
@@ -307,7 +371,7 @@ export default function DashboardClient({ user }: { user: User }) {
             </div>
 
             {/* Scanner Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div id="scanner-card" className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden scroll-mt-6">
               <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-[#b5000b]/8 flex items-center justify-center">

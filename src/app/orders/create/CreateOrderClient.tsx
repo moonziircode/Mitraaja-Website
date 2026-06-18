@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { ContactInfo, PackageInfo, ServiceInfo } from '@/lib/types';
@@ -124,11 +124,105 @@ export default function CreateOrderClient({ user }: { user: User }) {
     }
   }, [step]);
 
-  // ── Direct Order Creation (Cash Payment at Counter) ──
+  // Ref to hold the polling interval
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, []);
+
+  // ── Polling Payment Status ──
+  const startPollingPayment = (taskCode: string) => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    let progress = 0;
+    const interval = setInterval(async () => {
+      progress = Math.min(progress + 5, 95);
+      setPaymentProgress(progress);
+
+      try {
+        const res = await fetch(`/api/payment/status/${taskCode}`);
+        const data = await res.json();
+
+        if (data.status === 'SUCCESS') {
+          clearInterval(interval);
+          setPaymentProgress(100);
+          setPaymentStatus('SUCCESS');
+          setCreatedAwb(data.awb || taskCode);
+
+          setTimeout(() => {
+            setPaymentModalOpen(false);
+            setStep(5);
+          }, 1500);
+        } else if (data.status === 'ERROR') {
+          clearInterval(interval);
+          setPaymentStatus('ERROR');
+          setOrderError(data.message || 'Pembayaran gagal.');
+          setTimeout(() => {
+            setPaymentModalOpen(false);
+            setStep(5);
+          }, 1500);
+        }
+      } catch (err) {
+        console.error('Polling status error:', err);
+      }
+    }, 3000);
+
+    pollingIntervalRef.current = interval;
+  };
+
+  // ── Initiate GoPay QR Payment ──
+  const handleInitiatePayment = async (taskCode: string, deliveryPrice: number) => {
+    setPaymentTrxId(taskCode);
+    setPaymentQrUrl(null);
+    setPaymentStatus('PENDING');
+    setPaymentProgress(0);
+    setPaymentModalOpen(true);
+
+    try {
+      const res = await fetch('/api/payment/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskCode,
+          deliveryPrice,
+          shipperPhone: sender.phone
+        })
+      });
+
+      const data = await res.json();
+      if (data.success && data.paymentUrl) {
+        setPaymentQrUrl(data.paymentUrl);
+        startPollingPayment(taskCode);
+      } else {
+        setPaymentStatus('ERROR');
+        setOrderError(data.message || 'Gagal memulai pembayaran.');
+        setTimeout(() => {
+          setPaymentModalOpen(false);
+          setStep(5);
+        }, 1500);
+      }
+    } catch (err) {
+      setPaymentStatus('ERROR');
+      setOrderError('Gagal terhubung ke server pembayaran.');
+      setTimeout(() => {
+        setPaymentModalOpen(false);
+        setStep(5);
+      }, 1500);
+    }
+  };
+
+  // ── Create Order in Anteraja ──
   const handleCreateOrder = async () => {
     setIsCreatingOrder(true);
     setOrderError(null);
-    setStep(5);
 
     try {
       const res = await fetch('/api/orders/create', {
@@ -144,22 +238,21 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
       const data = await res.json();
       if (data.success) {
-        setCreatedAwb(data.awb || data.taskCode);
         setOrderTaskCode(data.taskCode || null);
+        await handleInitiatePayment(data.taskCode, selectedService?.delivery_price || 0);
       } else {
+        setStep(5);
         setOrderError(data.message || 'Gagal membuat order.');
         setCreatedAwb(null);
       }
     } catch {
+      setStep(5);
       setOrderError('Gagal terhubung ke server Anteraja.');
       setCreatedAwb(null);
     } finally {
       setIsCreatingOrder(false);
     }
   };
-
-  // Keep legacy GoPay QR handler for future use (commented payment gateway)
-  const handleInitiatePayment = handleCreateOrder;
 
   // ── Reset Form ──
   const handleReset = () => {
@@ -629,7 +722,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <h2 className="text-3xl font-mono font-extrabold text-[#b5000b]">
                           Rp {selectedService?.delivery_price.toLocaleString('id-ID')}
                         </h2>
-                        <p className="text-xs text-gray-400 font-medium">Pembayaran tunai (cash) di counter agen</p>
+                        <p className="text-xs text-gray-400 font-medium">Pembayaran online dengan GoPay QR Code</p>
                       </div>
 
                       <div className="w-full mt-6 space-y-3">
@@ -645,12 +738,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             </>
                           ) : (
                             <>
-                              <span className="material-symbols-outlined text-[20px]">send</span>
-                              Konfirmasi & Buat Order
+                              <span className="material-symbols-outlined text-[20px]">qr_code</span>
+                              Lanjut ke Pembayaran
                             </>
                           )}
                         </button>
-                        <p className="text-[10px] text-gray-400 font-semibold">Order akan langsung dikirim ke sistem Anteraja</p>
+                        <p className="text-[10px] text-gray-400 font-semibold">Order akan dibuat dan QR Code pembayaran akan muncul</p>
                       </div>
                     </div>
                   </div>
@@ -720,8 +813,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             <span className="text-xs font-mono font-bold text-gray-600">{orderTaskCode}</span>
                           </div>
                         )}
-                        <p className="text-[11px] text-amber-600 font-semibold bg-amber-50 px-3 py-2 rounded-lg">
-                          💡 AWB final akan di-generate oleh sistem Anteraja setelah pembayaran dikonfirmasi dan paket di-pickup kurir.
+                        <p className="text-[11px] text-emerald-600 font-semibold bg-emerald-50 px-3 py-2 rounded-lg">
+                          💡 AWB Anda sudah valid dan aktif. Silakan cetak label dan tempelkan pada paket sebelum diserahkan ke kurir.
                         </p>
                       </div>
 
@@ -792,12 +885,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
             </div>
 
             {paymentQrUrl ? (
-              <div className="bg-white p-4 border border-gray-100 rounded-2xl shadow-inner w-60 h-60 mx-auto flex items-center justify-center relative overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={paymentQrUrl} alt="GoPay QR Code" className="w-52 h-52 object-contain" />
+              <div className="bg-white p-2 border border-gray-100 rounded-2xl shadow-inner w-72 h-72 mx-auto flex items-center justify-center relative overflow-hidden">
+                <iframe src={paymentQrUrl} className="w-full h-full border-0 rounded-xl" />
 
                 {paymentStatus === 'SUCCESS' && (
-                  <div className="absolute inset-0 bg-emerald-500/90 text-white flex flex-col items-center justify-center space-y-2 animate-fade-in">
+                  <div className="absolute inset-0 bg-emerald-500/90 text-white flex flex-col items-center justify-center space-y-2 animate-fade-in z-10">
                     <span className="material-symbols-outlined text-[48px]" style={FILL}>
                       check_circle
                     </span>
@@ -806,7 +898,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                 )}
               </div>
             ) : (
-              <div className="w-60 h-60 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
+              <div className="w-72 h-72 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
@@ -824,16 +916,21 @@ export default function CreateOrderClient({ user }: { user: User }) {
                 />
               </div>
               <p className="text-[10px] text-gray-400 text-center font-semibold uppercase tracking-wider">
-                Simulasi otomatis: Status berhasil dalam 8 detik.
+                Mencari konfirmasi pembayaran real-time dari GoPay...
               </p>
             </div>
 
             {/* BUTTON CANCEL */}
             <button
               onClick={() => {
+                if (pollingIntervalRef.current) {
+                  clearInterval(pollingIntervalRef.current);
+                }
                 setPaymentModalOpen(false);
                 setPaymentTrxId(null);
                 setPaymentStatus('PENDING');
+                setStep(5);
+                setOrderError('Pembayaran dibatalkan oleh user.');
               }}
               className="w-full h-11 border border-gray-200 text-gray-500 hover:bg-gray-50 font-bold rounded-xl text-xs transition-colors"
             >
