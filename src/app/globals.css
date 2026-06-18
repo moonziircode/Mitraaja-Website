@@ -54,16 +54,6 @@
   --color-inverse-surface: #2d3133;
   --color-inverse-on-surface: #eff1f3;
 
-  /* ===== Spacing ===== */
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-base: 4px;
-  --spacing-gutter: 16px;
-  --spacing-container-margin: 24px;
 
   /* ===== Border Radius ===== */
   --radius-DEFAULT: 0.25rem;
