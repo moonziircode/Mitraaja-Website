@@ -1,60 +1,74 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
-import districtsStatic from '../../../../lib/districts-static.json';
+import fs from 'fs';
+import path from 'path';
 
 export const preferredRegion = 'sin1';
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q');
+let cachedTree: any = null;
 
-  if (!query || query.length < 3) {
-    return NextResponse.json([]);
-  }
-
-  // If DB connection string is missing, immediately return filtered static fallback
-  if (!process.env.POSTGRES_URL) {
-    console.warn('[GET /api/districts/search] POSTGRES_URL not set, returning static fallback data');
-    const filtered = districtsStatic
-      .filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 15);
-    return NextResponse.json(filtered);
-  }
-
+function getRegionsTree() {
+  if (cachedTree) return cachedTree;
   try {
-    const client = await db.connect();
-    try {
-      // Query joining villages, districts, regencies, and provinces
-      const result = await client.query(
-        `SELECT 
-           d.code as district_code, 
-           v.name || ', Kec. ' || d.name || ', ' || r.name || ', ' || p.name as name
-         FROM villages v
-         JOIN districts d ON v.district_code = d.code
-         JOIN regencies r ON d.regency_code = r.code
-         JOIN provinces p ON r.province_code = p.code
-         WHERE v.name ILIKE $1 OR d.name ILIKE $1
-         LIMIT 15`,
-        [`%${query}%`]
-      );
-      
-      // If DB has no matches (e.g. not fully seeded), search static list
-      if (result.rows.length === 0) {
-        const filtered = districtsStatic
-          .filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
-          .slice(0, 15);
-        return NextResponse.json(filtered);
-      }
-      
-      return NextResponse.json(result.rows);
-    } finally {
-      client.release();
+    const filePath = path.resolve(process.cwd(), 'src/lib/regions-tree.json');
+    const content = fs.readFileSync(filePath, 'utf8');
+    cachedTree = JSON.parse(content);
+    return cachedTree;
+  } catch (err: any) {
+    console.error('Failed to read regions-tree.json in search route:', err.message);
+    return {};
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get('q');
+
+    if (!query || query.length < 3) {
+      return NextResponse.json([]);
     }
+
+    const tree = getRegionsTree();
+    const results: any[] = [];
+    const upperQuery = query.toUpperCase();
+
+    // Iterate through tree to find matching kelurahans or kecamatans
+    outerLoop:
+    for (const provName of Object.keys(tree)) {
+      const provData = tree[provName];
+      for (const cityName of Object.keys(provData.cities)) {
+        const cityData = provData.cities[cityName];
+        for (const kecName of Object.keys(cityData.kecamatans)) {
+          const kecData = cityData.kecamatans[kecName];
+          
+          // Check if kecamatan matches query
+          const kecMatches = kecName.includes(upperQuery);
+          
+          for (const kelName of Object.keys(kecData.kelurahans)) {
+            const postalCode = kecData.kelurahans[kelName];
+            
+            // Check if kelurahan matches OR if the parent kecamatan matched
+            if (kelName.includes(upperQuery) || kecMatches) {
+              results.push({
+                district_code: kecData.code,
+                postal_code: postalCode,
+                name: `Kel. ${kelName}, Kec. ${kecName}, ${cityName}, ${provName}`,
+                // Keep compatibility with original fields
+                district: `Kel. ${kelName}, Kec. ${kecName}, ${cityName}, ${provName}`,
+              });
+              
+              if (results.length >= 25) {
+                break outerLoop;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return NextResponse.json(results);
   } catch (error: any) {
-    console.error('[GET /api/districts/search] DB error, falling back to static data:', error.message);
-    const filtered = districtsStatic
-      .filter(item => item.name.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, 15);
-    return NextResponse.json(filtered);
+    console.error('[GET /api/districts/search] Error:', error.message);
+    return NextResponse.json([], { status: 500 });
   }
 }

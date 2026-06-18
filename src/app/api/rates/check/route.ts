@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback to simulated/mock rates
+    // Filter mock rates realistically
+    const isSameRegency = originCodeFinal.substring(0, 5) === destinationCodeFinal.substring(0, 5);
+    const isSameProvince = originCodeFinal.substring(0, 2) === destinationCodeFinal.substring(0, 2);
+
     const mockRates = [
       {
         product_code: 'REG',
@@ -55,10 +58,13 @@ export async function POST(request: NextRequest) {
         weight: weight,
         delivery_price: 11500 * weight,
         status: 'ACTIVE',
-        pickup_start: null,
-        pickup_end: null
-      },
-      {
+        pickup_start: null as string | null,
+        pickup_end: null as string | null
+      }
+    ];
+
+    if (isSameProvince) {
+      mockRates.push({
         product_code: 'ND',
         product_name: 'Anteraja Next Day',
         duration: '1 Day',
@@ -67,8 +73,11 @@ export async function POST(request: NextRequest) {
         status: 'ACTIVE',
         pickup_start: null,
         pickup_end: null
-      },
-      {
+      });
+    }
+
+    if (isSameRegency) {
+      mockRates.push({
         product_code: 'SD',
         product_name: 'Anteraja Same Day',
         duration: '0 Day',
@@ -77,8 +86,8 @@ export async function POST(request: NextRequest) {
         status: 'ACTIVE',
         pickup_start: '00:00:00',
         pickup_end: '14:00:00'
-      }
-    ];
+      });
+    }
 
     return NextResponse.json({ success: true, content: mockRates });
   } catch (err: any) {

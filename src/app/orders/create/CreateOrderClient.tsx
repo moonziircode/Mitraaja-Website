@@ -25,11 +25,178 @@ interface SavedAddress {
   label?: string;
 }
 
+// ── SearchableSelect Component ──
+function SearchableSelect({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = 'Pilih...'
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+        setQuery(value || '');
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [value]);
+
+  const filtered = options.filter(opt =>
+    opt.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{label}</label>
+      <input
+        type="text"
+        placeholder={placeholder}
+        className="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-150 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+          {filtered.map((opt, idx) => (
+            <li
+              key={idx}
+              className="px-3 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
+              onMouseDown={() => {
+                onChange(opt);
+                setQuery(opt);
+                setOpen(false);
+              }}
+            >
+              {opt}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ── SearchableSelectObject Component ──
+function SearchableSelectObject({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder = 'Pilih...'
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: { name: string; [key: string]: any }[];
+  placeholder?: string;
+}) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(value || '');
+  }, [value]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+        setQuery(value || '');
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [value]);
+
+  const filtered = options.filter(opt =>
+    opt.name.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} className="relative">
+      <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{label}</label>
+      <input
+        type="text"
+        placeholder={placeholder}
+        className="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-150 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+          {filtered.map((opt, idx) => (
+            <li
+              key={idx}
+              className="px-3 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
+              onMouseDown={() => {
+                onChange(opt.name);
+                setQuery(opt.name);
+                setOpen(false);
+              }}
+            >
+              {opt.name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function CreateOrderClient({ user }: { user: User }) {
   const router = useRouter();
 
   // ── Wizard Steps ──
   const [step, setStep] = useState(1);
+
+  // ── Cascading Region States ──
+  const [provincesList, setProvincesList] = useState<{name: string, code: string}[]>([]);
+  
+  // Sender dropdown lists
+  const [senderProvince, setSenderProvince] = useState('');
+  const [senderCity, setSenderCity] = useState('');
+  const [senderKecamatan, setSenderKecamatan] = useState('');
+  const [senderKelurahan, setSenderKelurahan] = useState('');
+  
+  const [senderCitiesList, setSenderCitiesList] = useState<string[]>([]);
+  const [senderKecamatansList, setSenderKecamatansList] = useState<{name: string, code: string}[]>([]);
+  const [senderKelurahansList, setSenderKelurahansList] = useState<{name: string, postalCode: string, districtCode: string}[]>([]);
+
+  // Recipient dropdown lists
+  const [recipientProvince, setRecipientProvince] = useState('');
+  const [recipientCity, setRecipientCity] = useState('');
+  const [recipientKecamatan, setRecipientKecamatan] = useState('');
+  const [recipientKelurahan, setRecipientKelurahan] = useState('');
+
+  const [recipientCitiesList, setRecipientCitiesList] = useState<string[]>([]);
+  const [recipientKecamatansList, setRecipientKecamatansList] = useState<{name: string, code: string}[]>([]);
+  const [recipientKelurahansList, setRecipientKelurahansList] = useState<{name: string, postalCode: string, districtCode: string}[]>([]);
 
   // ── Step 1 State: Sender & Recipient ──
   const [sender, setSender] = useState<ContactInfo>({
@@ -135,6 +302,182 @@ export default function CreateOrderClient({ user }: { user: User }) {
     return () => clearTimeout(delay);
   }, [recipientQuery, recipient.district]);
 
+  // ── Cascading Region Loaders & Sync Handlers ──
+  // Load provinces on mount
+  useEffect(() => {
+    fetch('/api/regions')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setProvincesList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load provinces:', err));
+  }, []);
+
+  // Helper to parse "Kel. X, Kec. Y, Z, W" and sync dropdowns
+  const parseAndSyncSenderDropdowns = (name: string, pCode: string) => {
+    const parts = name.split(',').map(p => p.trim());
+    if (parts.length >= 4) {
+      const kelName = parts[0].replace(/^Kel\.\s+/i, '');
+      const kecName = parts[1].replace(/^Kec\.\s+/i, '');
+      const cityName = parts[2];
+      const provName = parts[3];
+
+      setSenderProvince(provName);
+      setSenderCity(cityName);
+      setSenderKecamatan(kecName);
+      setSenderKelurahan(kelName);
+    }
+  };
+
+  const parseAndSyncRecipientDropdowns = (name: string, pCode: string) => {
+    const parts = name.split(',').map(p => p.trim());
+    if (parts.length >= 4) {
+      const kelName = parts[0].replace(/^Kel\.\s+/i, '');
+      const kecName = parts[1].replace(/^Kec\.\s+/i, '');
+      const cityName = parts[2];
+      const provName = parts[3];
+
+      setRecipientProvince(provName);
+      setRecipientCity(cityName);
+      setRecipientKecamatan(kecName);
+      setRecipientKelurahan(kelName);
+    }
+  };
+
+  // Sender city loader
+  useEffect(() => {
+    if (!senderProvince) {
+      setSenderCitiesList([]);
+      setSenderCity('');
+      return;
+    }
+    fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setSenderCitiesList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load sender cities:', err));
+  }, [senderProvince]);
+
+  // Sender kecamatan loader
+  useEffect(() => {
+    if (!senderProvince || !senderCity) {
+      setSenderKecamatansList([]);
+      setSenderKecamatan('');
+      return;
+    }
+    fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}&city=${encodeURIComponent(senderCity)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setSenderKecamatansList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load sender kecamatans:', err));
+  }, [senderProvince, senderCity]);
+
+  // Sender kelurahan loader
+  useEffect(() => {
+    if (!senderProvince || !senderCity || !senderKecamatan) {
+      setSenderKelurahansList([]);
+      setSenderKelurahan('');
+      return;
+    }
+    fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}&city=${encodeURIComponent(senderCity)}&kecamatan=${encodeURIComponent(senderKecamatan)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setSenderKelurahansList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load sender kelurahans:', err));
+  }, [senderProvince, senderCity, senderKecamatan]);
+
+  // Recipient city loader
+  useEffect(() => {
+    if (!recipientProvince) {
+      setRecipientCitiesList([]);
+      setRecipientCity('');
+      return;
+    }
+    fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setRecipientCitiesList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load recipient cities:', err));
+  }, [recipientProvince]);
+
+  // Recipient kecamatan loader
+  useEffect(() => {
+    if (!recipientProvince || !recipientCity) {
+      setRecipientKecamatansList([]);
+      setRecipientKecamatan('');
+      return;
+    }
+    fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}&city=${encodeURIComponent(recipientCity)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setRecipientKecamatansList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load recipient kecamatans:', err));
+  }, [recipientProvince, recipientCity]);
+
+  // Recipient kelurahan loader
+  useEffect(() => {
+    if (!recipientProvince || !recipientCity || !recipientKecamatan) {
+      setRecipientKelurahansList([]);
+      setRecipientKelurahan('');
+      return;
+    }
+    fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}&city=${encodeURIComponent(recipientCity)}&kecamatan=${encodeURIComponent(recipientKecamatan)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setRecipientKelurahansList(data.data);
+        }
+      })
+      .catch(err => console.error('Failed to load recipient kelurahans:', err));
+  }, [recipientProvince, recipientCity, recipientKecamatan]);
+
+  const handleSelectSenderKelurahan = (kelName: string) => {
+    setSenderKelurahan(kelName);
+    const kel = senderKelurahansList.find(k => k.name === kelName);
+    if (kel) {
+      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan}, ${senderCity}, ${senderProvince}`;
+      setSender(prev => ({
+        ...prev,
+        district: fullDistrictName,
+        districtCode: kel.districtCode,
+        postalCode: kel.postalCode
+      }));
+      setSenderQuery(fullDistrictName);
+    }
+  };
+
+  const handleSelectRecipientKelurahan = (kelName: string) => {
+    setRecipientKelurahan(kelName);
+    const kel = recipientKelurahansList.find(k => k.name === kelName);
+    if (kel) {
+      const fullDistrictName = `Kel. ${kel.name}, Kec. ${recipientKecamatan}, ${recipientCity}, ${recipientProvince}`;
+      setRecipient(prev => ({
+        ...prev,
+        district: fullDistrictName,
+        districtCode: kel.districtCode,
+        postalCode: kel.postalCode
+      }));
+      setRecipientQuery(fullDistrictName);
+    }
+  };
+
   // Address Book actions
   const openAddressBook = (target: 'sender' | 'recipient') => {
     try {
@@ -161,9 +504,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
     if (addressBookTarget === 'sender') {
       setSender(info);
       setSenderQuery(addr.district);
+      parseAndSyncSenderDropdowns(addr.district, addr.postalCode);
     } else if (addressBookTarget === 'recipient') {
       setRecipient(info);
       setRecipientQuery(addr.district);
+      parseAndSyncRecipientDropdowns(addr.district, addr.postalCode);
     }
 
     setAddressBookOpen(false);
@@ -336,6 +681,24 @@ export default function CreateOrderClient({ user }: { user: User }) {
       if (!postCodeRegex.test(recipient.postalCode.trim())) {
         alert('Kode pos penerima harus berupa 5 digit angka (contoh: 13740).');
         return;
+      }
+
+      // Verify sender postcode matches selected kelurahan postcode if selected
+      if (senderKelurahan) {
+        const correctSenderKel = senderKelurahansList.find(k => k.name === senderKelurahan);
+        if (correctSenderKel && sender.postalCode.trim() !== correctSenderKel.postalCode) {
+          alert(`Kode pos pengirim tidak sesuai dengan Kelurahan ${senderKelurahan}! Harusnya: ${correctSenderKel.postalCode}`);
+          return;
+        }
+      }
+
+      // Verify recipient postcode matches selected kelurahan postcode if selected
+      if (recipientKelurahan) {
+        const correctRecipientKel = recipientKelurahansList.find(k => k.name === recipientKelurahan);
+        if (correctRecipientKel && recipient.postalCode.trim() !== correctRecipientKel.postalCode) {
+          alert(`Kode pos penerima tidak sesuai dengan Kelurahan ${recipientKelurahan}! Harusnya: ${correctRecipientKel.postalCode}`);
+          return;
+        }
       }
 
       // Validate phone numbers (must be numeric and between 9 to 14 digits)
@@ -628,58 +991,108 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setSender({ ...sender, phone: e.target.value })}
                           />
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kecamatan Asal</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
-                              placeholder="Ketik minimal 3 karakter..."
-                              value={senderQuery}
-                              onChange={(e) => {
-                                setSenderQuery(e.target.value);
-                                setSenderShowSuggestions(true);
-                                if (sender.districtCode) {
-                                  setSender({ ...sender, district: '', districtCode: '' });
-                                }
-                              }}
-                              onFocus={() => setSenderShowSuggestions(true)}
-                              onBlur={() => {
-                                setTimeout(() => setSenderShowSuggestions(false), 200);
-                              }}
-                            />
-                            {senderLoading && (
-                              <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                              </div>
-                            )}
+                        <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
+                          </div>
+                          
+                          {/* Search Autocomplete */}
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cari Cepat Wilayah (Kelurahan/Kecamatan)</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                                placeholder="Ketik minimal 3 karakter (e.g. Coblong)..."
+                                value={senderQuery}
+                                onChange={(e) => {
+                                  setSenderQuery(e.target.value);
+                                  setSenderShowSuggestions(true);
+                                  if (sender.districtCode) {
+                                    setSender({ ...sender, district: '', districtCode: '' });
+                                  }
+                                }}
+                                onFocus={() => setSenderShowSuggestions(true)}
+                                onBlur={() => {
+                                  setTimeout(() => setSenderShowSuggestions(false), 200);
+                                }}
+                              />
+                              {senderLoading && (
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                </div>
+                              )}
 
-                            {senderShowSuggestions && senderSuggestions.length > 0 && (
-                              <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-gray-50">
-                                {senderSuggestions.map((item, index) => (
-                                  <li
-                                    key={index}
-                                    className="px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-gray-700 cursor-pointer transition-colors"
-                                    onMouseDown={() => {
-                                      setSender({
-                                        ...sender,
-                                        district: item.name,
-                                        districtCode: item.district_code
-                                      });
-                                      setSenderQuery(item.name);
-                                      setSenderShowSuggestions(false);
-                                    }}
-                                  >
-                                    {item.name}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                            {senderShowSuggestions && senderQuery.length >= 3 && !senderLoading && senderSuggestions.length === 0 && (
-                              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
-                                Tidak ada hasil. Silakan gunakan keyword lain seperti <span className="text-red-500 font-bold">"Pamulang"</span> atau <span className="text-red-500 font-bold">"Palmerah"</span>, atau seed database wilayah Anda.
-                              </div>
-                            )}
+                              {senderShowSuggestions && senderSuggestions.length > 0 && (
+                                <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+                                  {senderSuggestions.map((item, index) => (
+                                    <li
+                                      key={index}
+                                      className="px-3.5 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
+                                      onMouseDown={() => {
+                                        setSender({
+                                          ...sender,
+                                          district: item.name,
+                                          districtCode: item.district_code,
+                                          postalCode: item.postal_code || sender.postalCode
+                                        });
+                                        setSenderQuery(item.name);
+                                        setSenderShowSuggestions(false);
+                                        parseAndSyncSenderDropdowns(item.name, item.postal_code || '');
+                                      }}
+                                    >
+                                      {item.name}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {senderShowSuggestions && senderQuery.length >= 3 && !senderLoading && senderSuggestions.length === 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
+                                  Tidak ada hasil. Silakan gunakan keyword lain, atau seed database wilayah Anda.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-gray-300 gap-2.5 select-none py-0.5">
+                            <div className="h-px bg-gray-200 flex-1" />
+                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">atau pilih manual</span>
+                            <div className="h-px bg-gray-200 flex-1" />
+                          </div>
+
+                          {/* Manual Selection Cascading Fields */}
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <SearchableSelectObject
+                              label="Provinsi"
+                              value={senderProvince}
+                              onChange={setSenderProvince}
+                              options={provincesList}
+                              placeholder="Pilih Provinsi..."
+                            />
+                            <SearchableSelect
+                              label="Kota / Kabupaten"
+                              value={senderCity}
+                              onChange={setSenderCity}
+                              options={senderCitiesList}
+                              placeholder="Pilih Kota..."
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <SearchableSelectObject
+                              label="Kecamatan"
+                              value={senderKecamatan}
+                              onChange={setSenderKecamatan}
+                              options={senderKecamatansList}
+                              placeholder="Pilih Kecamatan..."
+                            />
+                            <SearchableSelectObject
+                              label="Kelurahan"
+                              value={senderKelurahan}
+                              onChange={handleSelectSenderKelurahan}
+                              options={senderKelurahansList}
+                              placeholder="Pilih Kelurahan..."
+                            />
                           </div>
                         </div>
                         <div>
@@ -756,58 +1169,108 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setRecipient({ ...recipient, phone: e.target.value })}
                           />
                         </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kecamatan Tujuan</label>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
-                              placeholder="Ketik minimal 3 karakter..."
-                              value={recipientQuery}
-                              onChange={(e) => {
-                                setRecipientQuery(e.target.value);
-                                setRecipientShowSuggestions(true);
-                                if (recipient.districtCode) {
-                                  setRecipient({ ...recipient, district: '', districtCode: '' });
-                                }
-                              }}
-                              onFocus={() => setRecipientShowSuggestions(true)}
-                              onBlur={() => {
-                                setTimeout(() => setRecipientShowSuggestions(false), 200);
-                              }}
-                            />
-                            {recipientLoading && (
-                              <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                              </div>
-                            )}
+                        <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
+                          </div>
+                          
+                          {/* Search Autocomplete */}
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cari Cepat Wilayah (Kelurahan/Kecamatan)</label>
+                            <div className="relative">
+                              <input
+                                type="text"
+                                className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                                placeholder="Ketik minimal 3 karakter (e.g. Kramat Jati)..."
+                                value={recipientQuery}
+                                onChange={(e) => {
+                                  setRecipientQuery(e.target.value);
+                                  setRecipientShowSuggestions(true);
+                                  if (recipient.districtCode) {
+                                    setRecipient({ ...recipient, district: '', districtCode: '' });
+                                  }
+                                }}
+                                onFocus={() => setRecipientShowSuggestions(true)}
+                                onBlur={() => {
+                                  setTimeout(() => setRecipientShowSuggestions(false), 200);
+                                }}
+                              />
+                              {recipientLoading && (
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                                </div>
+                              )}
 
-                            {recipientShowSuggestions && recipientSuggestions.length > 0 && (
-                              <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-gray-50">
-                                {recipientSuggestions.map((item, index) => (
-                                  <li
-                                    key={index}
-                                    className="px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-gray-700 cursor-pointer transition-colors"
-                                    onMouseDown={() => {
-                                      setRecipient({
-                                        ...recipient,
-                                        district: item.name,
-                                        districtCode: item.district_code
-                                      });
-                                      setRecipientQuery(item.name);
-                                      setRecipientShowSuggestions(false);
-                                    }}
-                                  >
-                                    {item.name}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                            {recipientShowSuggestions && recipientQuery.length >= 3 && !recipientLoading && recipientSuggestions.length === 0 && (
-                              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
-                                Tidak ada hasil. Silakan gunakan keyword lain seperti <span className="text-red-500 font-bold">"Pamulang"</span> atau <span className="text-red-500 font-bold">"Palmerah"</span>, atau seed database wilayah Anda.
-                              </div>
-                            )}
+                              {recipientShowSuggestions && recipientSuggestions.length > 0 && (
+                                <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
+                                  {recipientSuggestions.map((item, index) => (
+                                    <li
+                                      key={index}
+                                      className="px-3.5 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
+                                      onMouseDown={() => {
+                                        setRecipient({
+                                          ...recipient,
+                                          district: item.name,
+                                          districtCode: item.district_code,
+                                          postalCode: item.postal_code || recipient.postalCode
+                                        });
+                                        setRecipientQuery(item.name);
+                                        setRecipientShowSuggestions(false);
+                                        parseAndSyncRecipientDropdowns(item.name, item.postal_code || '');
+                                      }}
+                                    >
+                                      {item.name}
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                              {recipientShowSuggestions && recipientQuery.length >= 3 && !recipientLoading && recipientSuggestions.length === 0 && (
+                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
+                                  Tidak ada hasil. Silakan gunakan keyword lain, atau seed database wilayah Anda.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-gray-300 gap-2.5 select-none py-0.5">
+                            <div className="h-px bg-gray-200 flex-1" />
+                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">atau pilih manual</span>
+                            <div className="h-px bg-gray-200 flex-1" />
+                          </div>
+
+                          {/* Manual Selection Cascading Fields */}
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <SearchableSelectObject
+                              label="Provinsi"
+                              value={recipientProvince}
+                              onChange={setRecipientProvince}
+                              options={provincesList}
+                              placeholder="Pilih Provinsi..."
+                            />
+                            <SearchableSelect
+                              label="Kota / Kabupaten"
+                              value={recipientCity}
+                              onChange={setRecipientCity}
+                              options={recipientCitiesList}
+                              placeholder="Pilih Kota..."
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <SearchableSelectObject
+                              label="Kecamatan"
+                              value={recipientKecamatan}
+                              onChange={setRecipientKecamatan}
+                              options={recipientKecamatansList}
+                              placeholder="Pilih Kecamatan..."
+                            />
+                            <SearchableSelectObject
+                              label="Kelurahan"
+                              value={recipientKelurahan}
+                              onChange={handleSelectRecipientKelurahan}
+                              options={recipientKelurahansList}
+                              placeholder="Pilih Kelurahan..."
+                            />
                           </div>
                         </div>
                         <div>
@@ -1266,21 +1729,47 @@ export default function CreateOrderClient({ user }: { user: User }) {
             </div>
 
             {paymentQrUrl ? (
-              <div className="bg-white p-2 border border-gray-100 rounded-2xl shadow-inner w-full max-w-[480px] h-[450px] mx-auto flex items-center justify-center relative overflow-hidden">
-                <iframe src={paymentQrUrl} className="w-full h-full border-0 rounded-xl" />
+              <div className="flex flex-col items-center space-y-5 w-full max-w-[480px] mx-auto">
+                {/* QR Code Card */}
+                <div className="bg-white p-3.5 border border-gray-150 rounded-2xl shadow-lg relative overflow-hidden flex flex-col items-center justify-center w-64 h-64 mx-auto">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(paymentQrUrl)}`}
+                    alt="GoPay QR Code"
+                    className="w-full h-full object-contain"
+                  />
 
-                {paymentStatus === 'SUCCESS' && (
-                  <div className="absolute inset-0 bg-emerald-500/90 text-white flex flex-col items-center justify-center space-y-2 animate-fade-in z-10">
-                    <span className="material-symbols-outlined text-[48px]" style={FILL}>
-                      check_circle
-                    </span>
-                    <span className="text-sm font-bold">Pembayaran Berhasil!</span>
-                  </div>
-                )}
+                  {paymentStatus === 'SUCCESS' && (
+                    <div className="absolute inset-0 bg-emerald-500/95 text-white flex flex-col items-center justify-center space-y-2 animate-fade-in z-10">
+                      <span className="material-symbols-outlined text-[48px]" style={FILL}>
+                        check_circle
+                      </span>
+                      <span className="text-sm font-bold">Pembayaran Berhasil!</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Direct payment link button */}
+                <div className="w-full text-center space-y-2">
+                  <a
+                    href={paymentQrUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full h-11 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-[#b5000b]/15 transition-all text-xs uppercase tracking-wider"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                    Buka Halaman Pembayaran GoPay
+                  </a>
+                  <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
+                    Scan QR code di atas menggunakan GoPay/Gojek Anda, atau klik tombol di atas untuk membayar langsung di tab baru.
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="w-full max-w-[480px] h-[450px] mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin" />
+              <div className="w-full max-w-[480px] h-[320px] mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
+                <div className="flex flex-col items-center space-y-3">
+                  <div className="w-8 h-8 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-xs text-gray-400 font-semibold">Menghasilkan kode pembayaran...</p>
+                </div>
               </div>
             )}
 
