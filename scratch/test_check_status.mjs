@@ -52,8 +52,8 @@ function makeHeaders(token) {
 
 async function main() {
   const { token, agent } = await casLogin('50004786', 'aa12345');
-  const taskCode = 'MAA-2026060033191120';
-  const txNumber = 'TMAA-2026060000179768';
+  const taskCode = 'MAA-2026060033191168';
+  const txNumber = 'TMAA-2026060000179772';
 
   console.log('\n=== Fetching order/v2/task/dropoff/detail ===');
   const resDetail = await fetch(`${API_BASE}/order/v2/task/dropoff/detail?task_code=${taskCode}`, {

@@ -324,6 +324,29 @@ export default function CreateOrderClient({ user }: { user: User }) {
         alert('Mohon lengkapi seluruh data penerima.');
         return;
       }
+
+      // Validate postal codes (must be exactly 5 digits)
+      const postCodeRegex = /^\d{5}$/;
+      if (!postCodeRegex.test(sender.postalCode.trim())) {
+        alert('Kode pos pengirim harus berupa 5 digit angka (contoh: 40233).');
+        return;
+      }
+      if (!postCodeRegex.test(recipient.postalCode.trim())) {
+        alert('Kode pos penerima harus berupa 5 digit angka (contoh: 13740).');
+        return;
+      }
+
+      // Validate phone numbers (must be numeric and between 9 to 14 digits)
+      const phoneRegex = /^\d{9,14}$/;
+      if (!phoneRegex.test(sender.phone.trim())) {
+        alert('Nomor telepon pengirim harus berupa angka antara 9 hingga 14 digit.');
+        return;
+      }
+      if (!phoneRegex.test(recipient.phone.trim())) {
+        alert('Nomor telepon penerima harus berupa angka antara 9 hingga 14 digit.');
+        return;
+      }
+
       saveToAddressBook();
     }
     if (step === 2) {
