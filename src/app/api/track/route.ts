@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const preferredRegion = 'sin1';
+
+
 interface RawEvent {
   message: {
     id: string;
@@ -29,6 +32,7 @@ export async function POST(request: NextRequest) {
         'User-Agent': 'okhttp/3.10.0',
       },
       body: JSON.stringify([{ codes: cleanAwb }]),
+      keepalive: true,
     });
 
     if (!response.ok) {

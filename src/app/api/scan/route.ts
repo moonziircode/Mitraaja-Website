@@ -2,6 +2,9 @@ import { type NextRequest } from 'next/server';
 import { anterajaClient } from '@/lib/anteraja-client';
 import { getSession } from '@/lib/auth';
 
+export const preferredRegion = 'sin1';
+
+
 export async function POST(request: NextRequest) {
   // ── 1. Authenticate via iron-session ────────────────────────────
   const session = await getSession();
@@ -57,6 +60,7 @@ export async function POST(request: NextRequest) {
             'User-Agent': 'okhttp/3.10.0',
           },
           body: JSON.stringify([{ codes: awb.trim() }]),
+          keepalive: true,
         });
 
         if (trackingResponse.ok) {

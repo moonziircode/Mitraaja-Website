@@ -249,6 +249,7 @@ async function realSearchAWB(
   const response = await fetch(url, {
     method: 'GET',
     headers: headers,
+    keepalive: true,
   });
 
   if (response.status === 404) return null;
@@ -311,6 +312,7 @@ async function realClaimAWB(
     method: 'POST',
     headers: headers,
     body: JSON.stringify(payload),
+    keepalive: true,
   });
 
   if (!response.ok) {
