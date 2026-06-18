@@ -12,6 +12,8 @@ export default async function CreateOrderPage() {
   const user = {
     name: session.name,
     nia: session.nia,
+    districtCode: session.districtCode,
+    postalCode: session.postalCode,
   };
 
   return <CreateOrderClient user={user} />;

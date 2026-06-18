@@ -7,6 +7,8 @@ export interface SessionData {
   name: string;
   storeName?: string;
   token?: string; // Simpan token JWT dari Anteraja jika ada
+  districtCode?: string;
+  postalCode?: string;
 }
 
 export const sessionOptions = {

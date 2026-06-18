@@ -8,6 +8,8 @@ import { ContactInfo, PackageInfo, ServiceInfo } from '@/lib/types';
 interface User {
   name: string;
   nia: string;
+  districtCode?: string;
+  postalCode?: string;
 }
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
@@ -292,7 +294,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
         body: JSON.stringify({
           origin: sender.district,
           destination: recipient.district,
-          originCode: sender.districtCode,
+          originCode: user.districtCode || sender.districtCode,
           destinationCode: recipient.districtCode,
           weight: chargeableWeight
         })
@@ -481,7 +483,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
       const data = await res.json();
       if (data.success) {
         setOrderTaskCode(data.taskCode || null);
-        await handleInitiatePayment(data.taskCode, selectedService?.delivery_price || 0);
+        const actualPrice = data.totalDeliveryPrice ?? data.deliveryPrice ?? selectedService?.delivery_price ?? 0;
+        await handleInitiatePayment(data.taskCode, actualPrice);
       } else {
         setStep(5);
         setOrderError(data.message || 'Gagal membuat order.');

@@ -22,6 +22,8 @@ export interface LoginResponse {
     agentStaffId: string;
     name: string;
     storeName: string;
+    districtCode?: string;
+    postalCode?: string;
   };
 }
 
@@ -260,6 +262,8 @@ async function realLogin(
       agentStaffId: resBody.content.agent.agent_staff_id,
       name: resBody.content.agent.name,
       storeName: resBody.content.agent.agent_shop_name,
+      districtCode: resBody.content.agent.agent_shop_district,
+      postalCode: resBody.content.agent.agent_shop_postcode,
     },
   };
 }

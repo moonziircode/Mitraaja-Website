@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
     session.name = result.user.name;
     session.storeName = result.user.storeName;
     session.token = result.token;
+    session.districtCode = result.user.districtCode;
+    session.postalCode = result.user.postalCode;
     await session.save();
 
     return NextResponse.json({
