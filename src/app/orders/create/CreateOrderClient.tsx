@@ -649,6 +649,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
                                 ))}
                               </ul>
                             )}
+                            {senderShowSuggestions && senderQuery.length >= 3 && !senderLoading && senderSuggestions.length === 0 && (
+                              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
+                                Tidak ada hasil. Silakan gunakan keyword lain seperti <span className="text-red-500 font-bold">"Pamulang"</span> atau <span className="text-red-500 font-bold">"Palmerah"</span>, atau seed database wilayah Anda.
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div>
@@ -771,6 +776,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
                                   </li>
                                 ))}
                               </ul>
+                            )}
+                            {recipientShowSuggestions && recipientQuery.length >= 3 && !recipientLoading && recipientSuggestions.length === 0 && (
+                              <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
+                                Tidak ada hasil. Silakan gunakan keyword lain seperti <span className="text-red-500 font-bold">"Pamulang"</span> atau <span className="text-red-500 font-bold">"Palmerah"</span>, atau seed database wilayah Anda.
+                              </div>
                             )}
                           </div>
                         </div>
