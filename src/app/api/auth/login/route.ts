@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
       user: {
         nia: result.user.agentStaffId,
         name: result.user.name,
-        storeName: result.user.storeName
+        storeName: result.user.storeName,
+        districtCode: result.user.districtCode,
+        postalCode: result.user.postalCode
       }
     }, { status: 200 });
   } catch (err: any) {
