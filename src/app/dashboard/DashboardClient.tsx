@@ -98,11 +98,10 @@ export default function DashboardClient({ user }: { user: User }) {
     }
   };
 
-  // ── Form Handler ──
-  const handleScanSubmit = useCallback(
-    async (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      const trimmed = awbValue.trim();
+  // ── Perform Claim Action ──
+  const performClaim = useCallback(
+    async (awbToClaim: string) => {
+      const trimmed = awbToClaim.trim();
       if (!trimmed || isScanning) return;
 
       setIsScanning(true);
@@ -162,7 +161,16 @@ export default function DashboardClient({ user }: { user: User }) {
         setTimeout(() => inputRef.current?.focus(), 100);
       }
     },
-    [awbValue, isScanning]
+    [isScanning]
+  );
+
+  // ── Form Handler ──
+  const handleScanSubmit = useCallback(
+    (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      performClaim(awbValue);
+    },
+    [awbValue, performClaim]
   );
 
   const formatTime = (ts: number): string => {
@@ -327,7 +335,22 @@ export default function DashboardClient({ user }: { user: User }) {
                       className="w-full h-14 pl-12 pr-32 bg-gray-50 border-2 border-gray-100 rounded-xl text-base font-mono font-semibold text-gray-900 uppercase placeholder:text-gray-300 placeholder:normal-case placeholder:font-sans focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                       placeholder="Masukkan atau scan resi AWB..."
                       value={awbValue}
-                      onChange={(e) => setAwbValue(e.target.value.toUpperCase())}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setAwbValue(val);
+                        // Auto-submit if input reaches exactly 14 characters (standard Anteraja AWB length)
+                        if (val.trim().length === 14) {
+                          performClaim(val);
+                        }
+                      }}
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const pasted = e.clipboardData.getData('text').trim().toUpperCase();
+                        if (pasted) {
+                          setAwbValue(pasted);
+                          performClaim(pasted);
+                        }
+                      }}
                       disabled={isScanning}
                       onFocus={() => setIsFocused(true)}
                       onBlur={() => setIsFocused(false)}
