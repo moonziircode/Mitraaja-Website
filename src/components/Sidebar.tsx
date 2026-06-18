@@ -29,6 +29,7 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
 
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: 'grid_view' },
+    { href: '/orders/create', label: 'Buat Order', icon: 'add_circle' },
     { href: '/tracking', label: 'Tracking Resi', icon: 'route' },
     { href: '/settings', label: 'Pengaturan', icon: 'settings' },
   ];
