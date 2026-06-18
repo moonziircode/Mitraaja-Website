@@ -9,7 +9,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { origin, destination, weight } = body as { origin: string; destination: string; weight: number };
+    const { origin, destination, weight, originCode, destinationCode } = body as {
+      origin: string;
+      destination: string;
+      weight: number;
+      originCode?: string;
+      destinationCode?: string;
+    };
 
     if (!origin || !destination || !weight) {
       return NextResponse.json(
@@ -27,13 +33,13 @@ export async function POST(request: NextRequest) {
       return val;
     };
 
-    const originCode = resolveCode(origin);
-    const destinationCode = resolveCode(destination);
+    const originCodeFinal = originCode || resolveCode(origin);
+    const destinationCodeFinal = destinationCode || resolveCode(destination);
 
     // If active session token is present, fetch real rates
     if (session.isLoggedIn && session.token && !session.token.startsWith('mock-token')) {
       try {
-        const rates = await anterajaClient.getRates(originCode, destinationCode, weight, session.token);
+        const rates = await anterajaClient.getRates(originCodeFinal, destinationCodeFinal, weight, session.token);
         return NextResponse.json({ success: true, content: rates });
       } catch (err: any) {
         console.error('Gagal mengambil tarif riil Anteraja, beralih ke simulasi:', err.message);

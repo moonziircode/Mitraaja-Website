@@ -66,8 +66,9 @@ export async function POST(request: NextRequest) {
     // Build the payload for POST /task/dropoff
     // The API uses a mix of camelCase and snake_case field names.
     // We send BOTH naming conventions to ensure compatibility (tested empirically).
-    const senderCode = resolveDistrictCode(sender.district);
-    const recipientCode = resolveDistrictCode(recipient.district);
+    const senderCode = sender.districtCode || resolveDistrictCode(sender.district);
+    const recipientCode = recipient.districtCode || resolveDistrictCode(recipient.district);
+
 
     const orderPayload: Record<string, unknown> = {
       // Agent identity

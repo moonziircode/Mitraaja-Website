@@ -14,11 +14,13 @@
     "iron-session": "^8.0.4",
     "next": "16.2.9",
     "pdf-parse": "^2.4.5",
+    "pg": "^8.21.0",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.5.0",

@@ -12,12 +12,16 @@ interface User {
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
 
-const DISTRICT_SUGGESTIONS = [
-  { label: 'Pamulang, Tangerang Selatan (36.74.03)', code: '36.74.03', name: 'Pamulang' },
-  { label: 'Palmerah, Jakarta Barat (31.73.06)', code: '31.73.06', name: 'Palmerah' },
-  { label: 'Kuningan, Jakarta Selatan (31.74.02)', code: '31.74.02', name: 'Kuningan' },
-  { label: 'Kebayoran Baru, Jakarta Selatan (31.74.07)', code: '31.74.07', name: 'Kebayoran Baru' }
-];
+interface SavedAddress {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  district: string;
+  districtCode: string;
+  postalCode: string;
+  label?: string;
+}
 
 export default function CreateOrderClient({ user }: { user: User }) {
   const router = useRouter();
@@ -27,32 +31,223 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   // ── Step 1 State: Sender & Recipient ──
   const [sender, setSender] = useState<ContactInfo>({
-    name: 'Ahmad Budi',
-    phone: '081234567890',
-    address: 'Jl. Raya Pamulang No. 12',
-    district: 'Pamulang',
-    postalCode: '15417'
+    name: '',
+    phone: '',
+    address: '',
+    district: '',
+    postalCode: '',
+    districtCode: ''
   });
 
   const [recipient, setRecipient] = useState<ContactInfo>({
-    name: 'Siti Aminah',
-    phone: '085712345678',
-    address: 'Jl. Palmerah Barat No. 5',
-    district: 'Palmerah',
-    postalCode: '11480'
+    name: '',
+    phone: '',
+    address: '',
+    district: '',
+    postalCode: '',
+    districtCode: ''
   });
+
+  // Checkbox states for saving to address book
+  const [saveSenderAddress, setSaveSenderAddress] = useState(false);
+  const [saveRecipientAddress, setSaveRecipientAddress] = useState(false);
+
+  // Address Book state
+  const [addressBookOpen, setAddressBookOpen] = useState(false);
+  const [addressBookTarget, setAddressBookTarget] = useState<'sender' | 'recipient' | null>(null);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+
+  // Autocomplete states
+  const [senderQuery, setSenderQuery] = useState('');
+  const [senderSuggestions, setSenderSuggestions] = useState<any[]>([]);
+  const [senderLoading, setSenderLoading] = useState(false);
+  const [senderShowSuggestions, setSenderShowSuggestions] = useState(false);
+
+  const [recipientQuery, setRecipientQuery] = useState('');
+  const [recipientSuggestions, setRecipientSuggestions] = useState<any[]>([]);
+  const [recipientLoading, setRecipientLoading] = useState(false);
+  const [recipientShowSuggestions, setRecipientShowSuggestions] = useState(false);
+
+  // Sync display queries when district is loaded from address book
+  useEffect(() => {
+    if (sender.district) {
+      setSenderQuery(sender.district);
+    } else {
+      setSenderQuery('');
+    }
+  }, [sender.district]);
+
+  useEffect(() => {
+    if (recipient.district) {
+      setRecipientQuery(recipient.district);
+    } else {
+      setRecipientQuery('');
+    }
+  }, [recipient.district]);
+
+  // Debounced search for sender district
+  useEffect(() => {
+    if (senderQuery.length < 3) {
+      setSenderSuggestions([]);
+      return;
+    }
+    if (senderQuery === sender.district) return;
+
+    const delay = setTimeout(async () => {
+      setSenderLoading(true);
+      try {
+        const res = await fetch(`/api/districts/search?q=${encodeURIComponent(senderQuery)}`);
+        const data = await res.json();
+        setSenderSuggestions(data);
+      } catch (err) {
+        console.error('Failed to search sender districts:', err);
+      } finally {
+        setSenderLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(delay);
+  }, [senderQuery, sender.district]);
+
+  // Debounced search for recipient district
+  useEffect(() => {
+    if (recipientQuery.length < 3) {
+      setRecipientSuggestions([]);
+      return;
+    }
+    if (recipientQuery === recipient.district) return;
+
+    const delay = setTimeout(async () => {
+      setRecipientLoading(true);
+      try {
+        const res = await fetch(`/api/districts/search?q=${encodeURIComponent(recipientQuery)}`);
+        const data = await res.json();
+        setRecipientSuggestions(data);
+      } catch (err) {
+        console.error('Failed to search recipient districts:', err);
+      } finally {
+        setRecipientLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(delay);
+  }, [recipientQuery, recipient.district]);
+
+  // Address Book actions
+  const openAddressBook = (target: 'sender' | 'recipient') => {
+    try {
+      const stored = localStorage.getItem('mitraaja_address_book');
+      const list = stored ? JSON.parse(stored) : [];
+      setSavedAddresses(list);
+      setAddressBookTarget(target);
+      setAddressBookOpen(true);
+    } catch (err) {
+      console.error('Failed to load address book:', err);
+    }
+  };
+
+  const selectAddress = (addr: SavedAddress) => {
+    const info = {
+      name: addr.name,
+      phone: addr.phone,
+      address: addr.address,
+      district: addr.district,
+      districtCode: addr.districtCode,
+      postalCode: addr.postalCode
+    };
+
+    if (addressBookTarget === 'sender') {
+      setSender(info);
+      setSenderQuery(addr.district);
+    } else if (addressBookTarget === 'recipient') {
+      setRecipient(info);
+      setRecipientQuery(addr.district);
+    }
+
+    setAddressBookOpen(false);
+    setAddressBookTarget(null);
+  };
+
+  const deleteAddress = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const updated = savedAddresses.filter(addr => addr.id !== id);
+      localStorage.setItem('mitraaja_address_book', JSON.stringify(updated));
+      setSavedAddresses(updated);
+    } catch (err) {
+      console.error('Failed to delete address:', err);
+    }
+  };
+
+  const saveToAddressBook = () => {
+    try {
+      const stored = localStorage.getItem('mitraaja_address_book');
+      const addressBook: SavedAddress[] = stored ? JSON.parse(stored) : [];
+      const newBook = [...addressBook];
+
+      if (saveSenderAddress && sender.name) {
+        const isDup = addressBook.some(
+          existing =>
+            existing.name.toLowerCase() === sender.name.toLowerCase() &&
+            existing.phone === sender.phone &&
+            existing.address.toLowerCase() === sender.address.toLowerCase()
+        );
+        if (!isDup) {
+          newBook.push({
+            id: `snd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: sender.name,
+            phone: sender.phone,
+            address: sender.address,
+            district: sender.district,
+            districtCode: sender.districtCode || '',
+            postalCode: sender.postalCode,
+            label: `Pengirim: ${sender.name}`
+          });
+        }
+      }
+
+      if (saveRecipientAddress && recipient.name) {
+        const isDup = addressBook.some(
+          existing =>
+            existing.name.toLowerCase() === recipient.name.toLowerCase() &&
+            existing.phone === recipient.phone &&
+            existing.address.toLowerCase() === recipient.address.toLowerCase()
+        );
+        if (!isDup) {
+          newBook.push({
+            id: `rcp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: recipient.name,
+            phone: recipient.phone,
+            address: recipient.address,
+            district: recipient.district,
+            districtCode: recipient.districtCode || '',
+            postalCode: recipient.postalCode,
+            label: `Penerima: ${recipient.name}`
+          });
+        }
+      }
+
+      if (newBook.length > addressBook.length) {
+        localStorage.setItem('mitraaja_address_book', JSON.stringify(newBook));
+      }
+      setSaveSenderAddress(false);
+      setSaveRecipientAddress(false);
+    } catch (err) {
+      console.error('Failed to save to address book:', err);
+    }
+  };
 
   // ── Step 2 State: Package Detail ──
   const [packageInfo, setPackageInfo] = useState<PackageInfo>({
-    itemName: 'Buku & Dokumen Keluarga',
-    category: 'Dokumen',
-    weight: 1, // kg
+    itemName: '',
+    category: '',
+    weight: 0, // kg
     dimensions: {
-      length: 20, // cm
-      width: 15,
-      height: 10
+      length: 0, // cm
+      width: 0,
+      height: 0
     },
-    value: 150000 // Rp
+    value: 0 // Rp
   });
 
   // ── Chargeable Weight Calculation ──
@@ -97,6 +292,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
         body: JSON.stringify({
           origin: sender.district,
           destination: recipient.district,
+          originCode: sender.districtCode,
+          destinationCode: recipient.districtCode,
           weight: chargeableWeight
         })
       });
@@ -115,6 +312,28 @@ export default function CreateOrderClient({ user }: { user: User }) {
     } finally {
       setIsRatesLoading(false);
     }
+  };
+
+  const handleNextStep = () => {
+    if (step === 1) {
+      if (!sender.name.trim() || !sender.phone.trim() || !sender.address.trim() || !sender.district.trim() || !sender.postalCode.trim()) {
+        alert('Mohon lengkapi seluruh data pengirim.');
+        return;
+      }
+      if (!recipient.name.trim() || !recipient.phone.trim() || !recipient.address.trim() || !recipient.district.trim() || !recipient.postalCode.trim()) {
+        alert('Mohon lengkapi seluruh data penerima.');
+        return;
+      }
+      saveToAddressBook();
+    }
+    if (step === 2) {
+      if (!packageInfo.itemName.trim() || !packageInfo.category || packageInfo.weight <= 0 ||
+          packageInfo.dimensions.length <= 0 || packageInfo.dimensions.width <= 0 || packageInfo.dimensions.height <= 0) {
+        alert('Mohon lengkapi seluruh detail paket (berat & dimensi harus lebih dari 0).');
+        return;
+      }
+    }
+    setStep(step + 1);
   };
 
   // Trigger rates fetch when transitioning to Step 3
@@ -346,17 +565,28 @@ export default function CreateOrderClient({ user }: { user: User }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* SENDER INFO */}
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 border-b border-gray-50 pb-2">
-                        <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
-                          person_pin_circle
-                        </span>
-                        <h3 className="font-bold text-gray-900 text-[15px]">Data Pengirim</h3>
+                      <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                            person_pin_circle
+                          </span>
+                          <h3 className="font-bold text-gray-900 text-[15px]">Data Pengirim</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openAddressBook('sender')}
+                          className="h-7 px-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-[10px] font-bold text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">contact_phone</span>
+                          Buku Alamat
+                        </button>
                       </div>
                       <div className="space-y-3">
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Pengirim</label>
                           <input
                             type="text"
+                            placeholder="Contoh: Ahmad Budi"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={sender.name}
                             onChange={(e) => setSender({ ...sender, name: e.target.value })}
@@ -366,6 +596,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nomor Telepon</label>
                           <input
                             type="text"
+                            placeholder="Contoh: 081234567890"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={sender.phone}
                             onChange={(e) => setSender({ ...sender, phone: e.target.value })}
@@ -373,20 +604,58 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kecamatan Asal</label>
-                          <select
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
-                            value={sender.district}
-                            onChange={(e) => setSender({ ...sender, district: e.target.value })}
-                          >
-                            {DISTRICT_SUGGESTIONS.map((d) => (
-                              <option key={d.code} value={d.name}>{d.label}</option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                              placeholder="Ketik minimal 3 karakter..."
+                              value={senderQuery}
+                              onChange={(e) => {
+                                setSenderQuery(e.target.value);
+                                setSenderShowSuggestions(true);
+                                if (sender.districtCode) {
+                                  setSender({ ...sender, district: '', districtCode: '' });
+                                }
+                              }}
+                              onFocus={() => setSenderShowSuggestions(true)}
+                              onBlur={() => {
+                                setTimeout(() => setSenderShowSuggestions(false), 200);
+                              }}
+                            />
+                            {senderLoading && (
+                              <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                              </div>
+                            )}
+
+                            {senderShowSuggestions && senderSuggestions.length > 0 && (
+                              <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-gray-50">
+                                {senderSuggestions.map((item, index) => (
+                                  <li
+                                    key={index}
+                                    className="px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-gray-700 cursor-pointer transition-colors"
+                                    onMouseDown={() => {
+                                      setSender({
+                                        ...sender,
+                                        district: item.name,
+                                        districtCode: item.district_code
+                                      });
+                                      setSenderQuery(item.name);
+                                      setSenderShowSuggestions(false);
+                                    }}
+                                  >
+                                    {item.name}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
                           <input
                             type="text"
+                            placeholder="Contoh: 15417"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={sender.postalCode}
                             onChange={(e) => setSender({ ...sender, postalCode: e.target.value })}
@@ -396,27 +665,51 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap</label>
                           <textarea
                             rows={3}
+                            placeholder="Nama Jalan, Blok, RT/RW, No. Rumah"
                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none resize-none"
                             value={sender.address}
                             onChange={(e) => setSender({ ...sender, address: e.target.value })}
                           />
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            id="save-sender-chk"
+                            className="w-4 h-4 text-[#b5000b] border-gray-200 rounded focus:ring-[#b5000b]/20"
+                            checked={saveSenderAddress}
+                            onChange={(e) => setSaveSenderAddress(e.target.checked)}
+                          />
+                          <label htmlFor="save-sender-chk" className="text-[11px] font-bold text-gray-400 cursor-pointer select-none">
+                            Simpan ke Buku Alamat
+                          </label>
                         </div>
                       </div>
                     </div>
 
                     {/* RECIPIENT INFO */}
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 border-b border-gray-50 pb-2">
-                        <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
-                          location_on
-                        </span>
-                        <h3 className="font-bold text-gray-900 text-[15px]">Data Penerima</h3>
+                      <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                            location_on
+                          </span>
+                          <h3 className="font-bold text-gray-900 text-[15px]">Data Penerima</h3>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openAddressBook('recipient')}
+                          className="h-7 px-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-[10px] font-bold text-gray-500 hover:text-gray-700 flex items-center gap-1 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[12px]">contact_phone</span>
+                          Buku Alamat
+                        </button>
                       </div>
                       <div className="space-y-3">
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Penerima</label>
                           <input
                             type="text"
+                            placeholder="Contoh: Siti Aminah"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={recipient.name}
                             onChange={(e) => setRecipient({ ...recipient, name: e.target.value })}
@@ -426,6 +719,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nomor Telepon</label>
                           <input
                             type="text"
+                            placeholder="Contoh: 085712345678"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={recipient.phone}
                             onChange={(e) => setRecipient({ ...recipient, phone: e.target.value })}
@@ -433,20 +727,58 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kecamatan Tujuan</label>
-                          <select
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
-                            value={recipient.district}
-                            onChange={(e) => setRecipient({ ...recipient, district: e.target.value })}
-                          >
-                            {DISTRICT_SUGGESTIONS.map((d) => (
-                              <option key={d.code} value={d.name}>{d.label}</option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                              placeholder="Ketik minimal 3 karakter..."
+                              value={recipientQuery}
+                              onChange={(e) => {
+                                setRecipientQuery(e.target.value);
+                                setRecipientShowSuggestions(true);
+                                if (recipient.districtCode) {
+                                  setRecipient({ ...recipient, district: '', districtCode: '' });
+                                }
+                              }}
+                              onFocus={() => setRecipientShowSuggestions(true)}
+                              onBlur={() => {
+                                setTimeout(() => setRecipientShowSuggestions(false), 200);
+                              }}
+                            />
+                            {recipientLoading && (
+                              <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+                                <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                              </div>
+                            )}
+
+                            {recipientShowSuggestions && recipientSuggestions.length > 0 && (
+                              <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-60 overflow-y-auto divide-y divide-gray-50">
+                                {recipientSuggestions.map((item, index) => (
+                                  <li
+                                    key={index}
+                                    className="px-4 py-2.5 hover:bg-gray-50 text-xs font-semibold text-gray-700 cursor-pointer transition-colors"
+                                    onMouseDown={() => {
+                                      setRecipient({
+                                        ...recipient,
+                                        district: item.name,
+                                        districtCode: item.district_code
+                                      });
+                                      setRecipientQuery(item.name);
+                                      setRecipientShowSuggestions(false);
+                                    }}
+                                  >
+                                    {item.name}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
                           <input
                             type="text"
+                            placeholder="Contoh: 11480"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={recipient.postalCode}
                             onChange={(e) => setRecipient({ ...recipient, postalCode: e.target.value })}
@@ -456,10 +788,23 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap</label>
                           <textarea
                             rows={3}
+                            placeholder="Nama Jalan, Blok, RT/RW, No. Rumah"
                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none resize-none"
                             value={recipient.address}
                             onChange={(e) => setRecipient({ ...recipient, address: e.target.value })}
                           />
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <input
+                            type="checkbox"
+                            id="save-recipient-chk"
+                            className="w-4 h-4 text-[#b5000b] border-gray-200 rounded focus:ring-[#b5000b]/20"
+                            checked={saveRecipientAddress}
+                            onChange={(e) => setSaveRecipientAddress(e.target.checked)}
+                          />
+                          <label htmlFor="save-recipient-chk" className="text-[11px] font-bold text-gray-400 cursor-pointer select-none">
+                            Simpan ke Buku Alamat
+                          </label>
                         </div>
                       </div>
                     </div>
@@ -858,7 +1203,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
                   {step < 4 ? (
                     <button
-                      onClick={() => setStep(step + 1)}
+                      onClick={handleNextStep}
                       disabled={step === 3 && !selectedService}
                       className="h-10 px-4 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-[#b5000b]/10 transition-colors disabled:opacity-40"
                     >
@@ -878,14 +1223,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
       {/* GOPAY QR PAYMENT DIALOG MODAL */}
       {paymentModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white w-full max-w-[400px] rounded-3xl border border-gray-100 p-6 md:p-8 space-y-6 shadow-2xl relative animate-scale-up">
+          <div className="bg-white w-full max-w-xl rounded-3xl border border-gray-100 p-6 md:p-8 space-y-6 shadow-2xl relative animate-scale-up">
             <div className="text-center space-y-1">
               <h3 className="font-extrabold text-gray-900 text-lg">Scan QR untuk Bayar</h3>
               <p className="text-xs text-gray-400 font-semibold">Silakan scan kode QR di bawah dengan aplikasi GoPay</p>
             </div>
 
             {paymentQrUrl ? (
-              <div className="bg-white p-2 border border-gray-100 rounded-2xl shadow-inner w-72 h-72 mx-auto flex items-center justify-center relative overflow-hidden">
+              <div className="bg-white p-2 border border-gray-100 rounded-2xl shadow-inner w-full max-w-[480px] h-[450px] mx-auto flex items-center justify-center relative overflow-hidden">
                 <iframe src={paymentQrUrl} className="w-full h-full border-0 rounded-xl" />
 
                 {paymentStatus === 'SUCCESS' && (
@@ -898,7 +1243,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                 )}
               </div>
             ) : (
-              <div className="w-72 h-72 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
+              <div className="w-full max-w-[480px] h-[450px] mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
@@ -936,6 +1281,65 @@ export default function CreateOrderClient({ user }: { user: User }) {
             >
               Batalkan Pembayaran
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ADDRESS BOOK SELECTOR MODAL */}
+      {addressBookOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl border border-gray-100 p-6 space-y-6 shadow-2xl relative animate-scale-up">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="font-extrabold text-gray-900 text-base">
+                Pilih Alamat ({addressBookTarget === 'sender' ? 'Pengirim' : 'Penerima'})
+              </h3>
+              <button
+                onClick={() => setAddressBookOpen(false)}
+                className="w-8 h-8 rounded-full bg-gray-50 text-gray-500 hover:bg-gray-100 transition-colors flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {savedAddresses.length > 0 ? (
+              <ul className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                {savedAddresses.map((addr) => (
+                  <li
+                    key={addr.id}
+                    onClick={() => selectAddress(addr)}
+                    className="p-3.5 border border-gray-100 hover:border-[#b5000b]/20 hover:bg-red-50/10 rounded-2xl cursor-pointer transition-all flex items-start justify-between group"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-gray-900 text-sm">{addr.name}</span>
+                        <span className="text-[10px] bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">
+                          {addr.phone}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400 font-semibold leading-relaxed">
+                        {addr.address}, Kec. {addr.district}, {addr.postalCode}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => deleteAddress(addr.id, e)}
+                      className="w-7 h-7 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="py-8 text-center space-y-2">
+                <span className="material-symbols-outlined text-gray-300 text-[48px]">
+                  contact_phone
+                </span>
+                <p className="text-xs text-gray-400 font-bold">Buku alamat kosong</p>
+                <p className="text-[10px] text-gray-400 font-semibold max-w-[240px] mx-auto">
+                  Aktifkan "Simpan ke Buku Alamat" saat mengisi formulir untuk menyimpan alamat baru.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

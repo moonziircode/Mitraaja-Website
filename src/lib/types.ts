@@ -4,6 +4,7 @@ export interface ContactInfo {
   address: string;
   district: string;
   postalCode: string;
+  districtCode?: string;
 }
 
 export interface PackageInfo {
