@@ -25,6 +25,18 @@ export interface LoginResponse {
   };
 }
 
+export interface ServiceRate {
+  product_code: string;
+  product_name: string;
+  duration: string;
+  weight: number;
+  delivery_price: number;
+  pickup_start: string | null;
+  pickup_end: string | null;
+  notes: string | null;
+  status: string;
+}
+
 // ─── Config ─────────────────────────────────────────────────────────────────
 
 const ANTERAJA_API_BASE_URL = process.env.ANTERAJA_API_BASE_URL;
@@ -84,6 +96,38 @@ async function mockClaimAWB(awb: string): Promise<{ message: string }> {
   }
 
   return { message: 'Claimed Successfully' };
+}
+
+async function mockGetRates(
+  origin: string,
+  destination: string,
+  weight: number,
+): Promise<ServiceRate[]> {
+  await delay(200);
+  return [
+    {
+      product_code: 'REG',
+      product_name: 'Anteraja Regular',
+      duration: '1-2 Day',
+      weight,
+      delivery_price: 11500 * weight,
+      pickup_start: null,
+      pickup_end: null,
+      notes: null,
+      status: 'ACTIVE',
+    },
+    {
+      product_code: 'ND',
+      product_name: 'Anteraja Next Day',
+      duration: '1 Day',
+      weight,
+      delivery_price: 15300 * weight,
+      pickup_start: null,
+      pickup_end: null,
+      notes: null,
+      status: 'ACTIVE',
+    },
+  ];
 }
 
 // ─── Real API implementations ───────────────────────────────────────────────
@@ -329,6 +373,52 @@ async function realClaimAWB(
   return { message: body.info || 'Claimed Successfully' };
 }
 
+async function realGetRates(
+  origin: string,
+  destination: string,
+  weight: number,
+  token: string,
+): Promise<ServiceRate[]> {
+  const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
+  const url = `${apiBase}/rates?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&weight=${weight}`;
+
+  const headers = {
+    'token': token,
+    'appid': 'JV_APP',
+    'msgid': Date.now().toString(),
+    'imei': 'dev_device_uuid_12345',
+    'deviceUuid': 'dev_device_uuid_12345',
+    'hardwareSerialNo': 'dev_serial',
+    'manufacture': 'Apple',
+    'model': 'Macbook',
+    'os': 'macOS',
+    'osVersion': '14.0',
+    'appVersion': '2.2.4',
+    'mv': '1.1',
+    'source': 'MAA',
+    'Accept': 'application/json',
+  };
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: headers,
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    const errorMessage = errorBody?.info || `Gagal mengambil tarif (Status: ${response.status})`;
+    throw new Error(errorMessage);
+  }
+
+  const body = await response.json();
+  if (body.status !== 0) {
+    throw new Error(body.info || 'Gagal mengambil tarif.');
+  }
+
+  return body.content || [];
+}
+
 // ─── Public client ──────────────────────────────────────────────────────────
 
 export const anterajaClient = {
@@ -362,6 +452,19 @@ export const anterajaClient = {
   ): Promise<{ message: string }> {
     if (IS_MOCK_MODE) return mockClaimAWB(awb);
     return realClaimAWB(awb, payload, token);
+  },
+
+  /**
+   * Get service rates for origin, destination, and weight.
+   */
+  async getRates(
+    origin: string,
+    destination: string,
+    weight: number,
+    token: string,
+  ): Promise<ServiceRate[]> {
+    if (IS_MOCK_MODE) return mockGetRates(origin, destination, weight);
+    return realGetRates(origin, destination, weight, token);
   },
 };
 
