@@ -638,8 +638,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           origin: sender.district,
+          originCode: user.districtCode, // Always use agent's district code for accurate dropoff pricing
           destination: recipient.district,
-          originCode: sender.districtCode || user.districtCode,
           destinationCode: recipient.districtCode,
           weight: chargeableWeight
         })
@@ -846,7 +846,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
       const data = await res.json();
       if (data.success) {
         setOrderTaskCode(data.taskCode || null);
-        const actualPrice = selectedService?.delivery_price ?? data.totalDeliveryPrice ?? data.deliveryPrice ?? 0;
+        const actualPrice = data.totalDeliveryPrice ?? data.deliveryPrice ?? selectedService?.delivery_price ?? 0;
         await handleInitiatePayment(data.taskCode, actualPrice);
       } else {
         setStep(5);
