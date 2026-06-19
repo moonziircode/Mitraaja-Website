@@ -116,14 +116,14 @@ function SearchableSelectObject({
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setQuery(value || '');
+    setQuery(value ? value.name : '');
   }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (ref.current && !ref.current.contains(event.target as Node)) {
         setOpen(false);
-        setQuery(value || '');
+        setQuery(value ? value.name : '');
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
