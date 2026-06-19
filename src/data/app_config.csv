@@ -1,0 +1,14 @@
+paraname,paravalue,remark
+DEADLINE,20190109,Last date
+NEW_OS_VER,TH_V1.0.2_110321T,Latest OS version
+NEW_DB_VER,20190807,Latest servicedb version
+STARTTIME,20190109,Start time upgrade
+NEW_VER,V9.9.2,latest version
+SYNC_UPDATE_ID,0,"Synchronous update ID, terminal program use"
+SYNC_TAG,0,"Terminal synchronization tag, terminal program use"
+EXPORT_DATE,2019-08-07 10:33:29,"ServiceDB generation time, export program generation"
+DB_VERSION,20190807,ServiceDB version ID
+CHECK_SKIP_INPUT_TEL,"966,7886,588,780,589,120,590,976,783,9556,786,603,604,784,605,606,962,034,607,609,973,080,150,606,522,289,610,611,848,972,974,889,612,613,602,152,888,026,828,882,483,615,616,236,198,040,708,426,896,033,035,477,221,767,036,789,601,037,038,039,586,617,485,978,823,153,899,706,7850,170,177,457,586,863,486,619,620,486,331,765,964,484,155,487,455,456,509,882,465,167,156,157,837,490,158,159,161,287,290,294,306,296,297,163,164,620,078,217,218,197,1620,821,820,880,545,544,884,836,237,348,349,356,361,362,363,365,368,369,764,249,245,246,250,764,866,057,811,251,252,253,254",Block the collection of payment part of the number of the beginning of the waybill receipt phone number input box
+HHT5_NEW_VER,V7.5.485,HHT5 latest version
+DB_CHARSET,IN,ServiceDB character set
+EXPORT_VER,5.0,ServiceDB export tool version

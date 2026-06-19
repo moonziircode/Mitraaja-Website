@@ -24,15 +24,19 @@ function makeMaaHeaders(token: string) {
   };
 }
 
-// Resolve district name to Anteraja district code
+// Resolve district name or kelurahan code to Anteraja kecamatan code
 function resolveDistrictCode(district: string): string {
   const lower = district.toLowerCase().trim();
   if (lower.includes('pamulang')) return '36.74.03';
   if (lower.includes('palmerah')) return '31.73.06';
   if (lower.includes('kuningan')) return '31.74.02';
   if (lower.includes('kebayoran')) return '31.74.07';
-  // If it's already a code like 31.73.06, return as-is
-  if (/^\d{2}\.\d{2}\.\d{2}$/.test(district)) return district;
+  
+  // If it's a Kelurahan code like 11.01.01.2001, trim to 11.01.01 (Kecamatan)
+  if (/^\d{2}\.\d{2}\.\d{2}(\.\d+)?$/.test(district)) {
+    return district.split('.').slice(0, 3).join('.');
+  }
+  
   return district;
 }
 
@@ -66,8 +70,8 @@ export async function POST(request: NextRequest) {
     // Build the payload for POST /task/dropoff
     // The API uses a mix of camelCase and snake_case field names.
     // We send BOTH naming conventions to ensure compatibility (tested empirically).
-    const senderCode = sender.districtCode || resolveDistrictCode(sender.district);
-    const recipientCode = recipient.districtCode || resolveDistrictCode(recipient.district);
+    const senderCode = resolveDistrictCode(sender.districtCode || sender.district);
+    const recipientCode = resolveDistrictCode(recipient.districtCode || recipient.district);
 
 
     const orderPayload: Record<string, unknown> = {

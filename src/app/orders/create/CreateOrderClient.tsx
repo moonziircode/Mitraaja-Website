@@ -106,9 +106,9 @@ function SearchableSelectObject({
   placeholder = 'Pilih...'
 }: {
   label: string;
-  value: string;
-  onChange: (val: string) => void;
-  options: { name: string; [key: string]: any }[];
+  value: any;
+  onChange: (opt: any) => void;
+  options: { name: string; code: string; [key: string]: any }[];
   placeholder?: string;
 }) {
   const [query, setQuery] = useState('');
@@ -155,7 +155,7 @@ function SearchableSelectObject({
               key={idx}
               className="px-3 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
               onMouseDown={() => {
-                onChange(opt.name);
+                onChange(opt);
                 setQuery(opt.name);
                 setOpen(false);
               }}
@@ -179,24 +179,24 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [provincesList, setProvincesList] = useState<{name: string, code: string}[]>([]);
   
   // Sender dropdown lists
-  const [senderProvince, setSenderProvince] = useState('');
-  const [senderCity, setSenderCity] = useState('');
-  const [senderKecamatan, setSenderKecamatan] = useState('');
-  const [senderKelurahan, setSenderKelurahan] = useState('');
+  const [senderProvince, setSenderProvince] = useState<any>(null);
+  const [senderCity, setSenderCity] = useState<any>(null);
+  const [senderKecamatan, setSenderKecamatan] = useState<any>(null);
+  const [senderKelurahan, setSenderKelurahan] = useState<any>(null);
   
-  const [senderCitiesList, setSenderCitiesList] = useState<string[]>([]);
+  const [senderCitiesList, setSenderCitiesList] = useState<any[]>([]);
   const [senderKecamatansList, setSenderKecamatansList] = useState<{name: string, code: string}[]>([]);
-  const [senderKelurahansList, setSenderKelurahansList] = useState<{name: string, postalCode: string, districtCode: string}[]>([]);
+  const [senderKelurahansList, setSenderKelurahansList] = useState<{name: string, code: string}[]>([]);
 
   // Recipient dropdown lists
-  const [recipientProvince, setRecipientProvince] = useState('');
-  const [recipientCity, setRecipientCity] = useState('');
-  const [recipientKecamatan, setRecipientKecamatan] = useState('');
-  const [recipientKelurahan, setRecipientKelurahan] = useState('');
+  const [recipientProvince, setRecipientProvince] = useState<any>(null);
+  const [recipientCity, setRecipientCity] = useState<any>(null);
+  const [recipientKecamatan, setRecipientKecamatan] = useState<any>(null);
+  const [recipientKelurahan, setRecipientKelurahan] = useState<any>(null);
 
-  const [recipientCitiesList, setRecipientCitiesList] = useState<string[]>([]);
+  const [recipientCitiesList, setRecipientCitiesList] = useState<any[]>([]);
   const [recipientKecamatansList, setRecipientKecamatansList] = useState<{name: string, code: string}[]>([]);
-  const [recipientKelurahansList, setRecipientKelurahansList] = useState<{name: string, postalCode: string, districtCode: string}[]>([]);
+  const [recipientKelurahansList, setRecipientKelurahansList] = useState<{name: string, code: string}[]>([]);
 
   // ── Step 1 State: Sender & Recipient ──
   const [sender, setSender] = useState<ContactInfo>({
@@ -254,58 +254,10 @@ export default function CreateOrderClient({ user }: { user: User }) {
     }
   }, [recipient.district]);
 
-  // Debounced search for sender district
-  useEffect(() => {
-    if (senderQuery.length < 3) {
-      setSenderSuggestions([]);
-      return;
-    }
-    if (senderQuery === sender.district) return;
-
-    const delay = setTimeout(async () => {
-      setSenderLoading(true);
-      try {
-        const res = await fetch(`/api/districts/search?q=${encodeURIComponent(senderQuery)}`);
-        const data = await res.json();
-        setSenderSuggestions(data);
-      } catch (err) {
-        console.error('Failed to search sender districts:', err);
-      } finally {
-        setSenderLoading(false);
-      }
-    }, 400);
-
-    return () => clearTimeout(delay);
-  }, [senderQuery, sender.district]);
-
-  // Debounced search for recipient district
-  useEffect(() => {
-    if (recipientQuery.length < 3) {
-      setRecipientSuggestions([]);
-      return;
-    }
-    if (recipientQuery === recipient.district) return;
-
-    const delay = setTimeout(async () => {
-      setRecipientLoading(true);
-      try {
-        const res = await fetch(`/api/districts/search?q=${encodeURIComponent(recipientQuery)}`);
-        const data = await res.json();
-        setRecipientSuggestions(data);
-      } catch (err) {
-        console.error('Failed to search recipient districts:', err);
-      } finally {
-        setRecipientLoading(false);
-      }
-    }, 400);
-
-    return () => clearTimeout(delay);
-  }, [recipientQuery, recipient.district]);
-
   // ── Cascading Region Loaders & Sync Handlers ──
   // Load provinces on mount
   useEffect(() => {
-    fetch('/api/regions')
+    fetch('/api/all-regions?type=2')
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -350,10 +302,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
   useEffect(() => {
     if (!senderProvince) {
       setSenderCitiesList([]);
-      setSenderCity('');
+      setSenderCity(null);
+      setSenderKecamatan(null);
+      setSenderKelurahan(null);
       return;
     }
-    fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}`)
+    fetch(`/api/all-regions?parent=${senderProvince.code}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -365,12 +319,13 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   // Sender kecamatan loader
   useEffect(() => {
-    if (!senderProvince || !senderCity) {
+    if (!senderCity) {
       setSenderKecamatansList([]);
-      setSenderKecamatan('');
+      setSenderKecamatan(null);
+      setSenderKelurahan(null);
       return;
     }
-    fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}&city=${encodeURIComponent(senderCity)}`)
+    fetch(`/api/all-regions?parent=${senderCity.code}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -378,16 +333,16 @@ export default function CreateOrderClient({ user }: { user: User }) {
         }
       })
       .catch(err => console.error('Failed to load sender kecamatans:', err));
-  }, [senderProvince, senderCity]);
+  }, [senderCity]);
 
   // Sender kelurahan loader
   useEffect(() => {
-    if (!senderProvince || !senderCity || !senderKecamatan) {
+    if (!senderKecamatan) {
       setSenderKelurahansList([]);
-      setSenderKelurahan('');
+      setSenderKelurahan(null);
       return;
     }
-    fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}&city=${encodeURIComponent(senderCity)}&kecamatan=${encodeURIComponent(senderKecamatan)}`)
+    fetch(`/api/all-regions?parent=${senderKecamatan.code}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -395,16 +350,18 @@ export default function CreateOrderClient({ user }: { user: User }) {
         }
       })
       .catch(err => console.error('Failed to load sender kelurahans:', err));
-  }, [senderProvince, senderCity, senderKecamatan]);
+  }, [senderKecamatan]);
 
   // Recipient city loader
   useEffect(() => {
     if (!recipientProvince) {
       setRecipientCitiesList([]);
-      setRecipientCity('');
+      setRecipientCity(null);
+      setRecipientKecamatan(null);
+      setRecipientKelurahan(null);
       return;
     }
-    fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}`)
+    fetch(`/api/all-regions?parent=${recipientProvince.code}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -416,12 +373,13 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   // Recipient kecamatan loader
   useEffect(() => {
-    if (!recipientProvince || !recipientCity) {
+    if (!recipientCity) {
       setRecipientKecamatansList([]);
-      setRecipientKecamatan('');
+      setRecipientKecamatan(null);
+      setRecipientKelurahan(null);
       return;
     }
-    fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}&city=${encodeURIComponent(recipientCity)}`)
+    fetch(`/api/all-regions?parent=${recipientCity.code}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -429,16 +387,16 @@ export default function CreateOrderClient({ user }: { user: User }) {
         }
       })
       .catch(err => console.error('Failed to load recipient kecamatans:', err));
-  }, [recipientProvince, recipientCity]);
+  }, [recipientCity]);
 
   // Recipient kelurahan loader
   useEffect(() => {
-    if (!recipientProvince || !recipientCity || !recipientKecamatan) {
+    if (!recipientKecamatan) {
       setRecipientKelurahansList([]);
-      setRecipientKelurahan('');
+      setRecipientKelurahan(null);
       return;
     }
-    fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}&city=${encodeURIComponent(recipientCity)}&kecamatan=${encodeURIComponent(recipientKecamatan)}`)
+    fetch(`/api/all-regions?parent=${recipientKecamatan.code}`)
       .then(res => res.json())
       .then(data => {
         if (data.success) {
@@ -446,33 +404,29 @@ export default function CreateOrderClient({ user }: { user: User }) {
         }
       })
       .catch(err => console.error('Failed to load recipient kelurahans:', err));
-  }, [recipientProvince, recipientCity, recipientKecamatan]);
+  }, [recipientKecamatan]);
 
-  const handleSelectSenderKelurahan = (kelName: string) => {
-    setSenderKelurahan(kelName);
-    const kel = senderKelurahansList.find(k => k.name === kelName);
-    if (kel) {
-      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan}, ${senderCity}, ${senderProvince}`;
+  const handleSelectSenderKelurahan = (kel: any) => {
+    setSenderKelurahan(kel);
+    if (kel && senderProvince && senderCity && senderKecamatan) {
+      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan.name}, ${senderCity.name}, ${senderProvince.name}`;
       setSender(prev => ({
         ...prev,
         district: fullDistrictName,
-        districtCode: kel.districtCode,
-        postalCode: kel.postalCode
+        districtCode: kel.code
       }));
       setSenderQuery(fullDistrictName);
     }
   };
 
-  const handleSelectRecipientKelurahan = (kelName: string) => {
-    setRecipientKelurahan(kelName);
-    const kel = recipientKelurahansList.find(k => k.name === kelName);
-    if (kel) {
-      const fullDistrictName = `Kel. ${kel.name}, Kec. ${recipientKecamatan}, ${recipientCity}, ${recipientProvince}`;
+  const handleSelectRecipientKelurahan = (kel: any) => {
+    setRecipientKelurahan(kel);
+    if (kel && recipientProvince && recipientCity && recipientKecamatan) {
+      const fullDistrictName = `Kel. ${kel.name}, Kec. ${recipientKecamatan.name}, ${recipientCity.name}, ${recipientProvince.name}`;
       setRecipient(prev => ({
         ...prev,
         district: fullDistrictName,
-        districtCode: kel.districtCode,
-        postalCode: kel.postalCode
+        districtCode: kel.code
       }));
       setRecipientQuery(fullDistrictName);
     }
@@ -996,70 +950,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
                           </div>
                           
-                          {/* Search Autocomplete */}
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cari Cepat Wilayah (Kelurahan/Kecamatan)</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
-                                placeholder="Ketik minimal 3 karakter (e.g. Coblong)..."
-                                value={senderQuery}
-                                onChange={(e) => {
-                                  setSenderQuery(e.target.value);
-                                  setSenderShowSuggestions(true);
-                                  if (sender.districtCode) {
-                                    setSender({ ...sender, district: '', districtCode: '' });
-                                  }
-                                }}
-                                onFocus={() => setSenderShowSuggestions(true)}
-                                onBlur={() => {
-                                  setTimeout(() => setSenderShowSuggestions(false), 200);
-                                }}
-                              />
-                              {senderLoading && (
-                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                </div>
-                              )}
-
-                              {senderShowSuggestions && senderSuggestions.length > 0 && (
-                                <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
-                                  {senderSuggestions.map((item, index) => (
-                                    <li
-                                      key={index}
-                                      className="px-3.5 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
-                                      onMouseDown={() => {
-                                        setSender({
-                                          ...sender,
-                                          district: item.name,
-                                          districtCode: item.district_code,
-                                          postalCode: item.postal_code || sender.postalCode
-                                        });
-                                        setSenderQuery(item.name);
-                                        setSenderShowSuggestions(false);
-                                        parseAndSyncSenderDropdowns(item.name, item.postal_code || '');
-                                      }}
-                                    >
-                                      {item.name}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                              {senderShowSuggestions && senderQuery.length >= 3 && !senderLoading && senderSuggestions.length === 0 && (
-                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
-                                  Tidak ada hasil. Silakan gunakan keyword lain, atau seed database wilayah Anda.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between text-gray-300 gap-2.5 select-none py-0.5">
-                            <div className="h-px bg-gray-200 flex-1" />
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">atau pilih manual</span>
-                            <div className="h-px bg-gray-200 flex-1" />
-                          </div>
-
                           {/* Manual Selection Cascading Fields */}
                           <div className="grid grid-cols-2 gap-3.5">
                             <SearchableSelectObject
@@ -1069,7 +959,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                               options={provincesList}
                               placeholder="Pilih Provinsi..."
                             />
-                            <SearchableSelect
+                            <SearchableSelectObject
                               label="Kota / Kabupaten"
                               value={senderCity}
                               onChange={setSenderCity}
@@ -1174,65 +1064,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
                           </div>
                           
-                          {/* Search Autocomplete */}
-                          <div>
-                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cari Cepat Wilayah (Kelurahan/Kecamatan)</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
-                                placeholder="Ketik minimal 3 karakter (e.g. Kramat Jati)..."
-                                value={recipientQuery}
-                                onChange={(e) => {
-                                  setRecipientQuery(e.target.value);
-                                  setRecipientShowSuggestions(true);
-                                  if (recipient.districtCode) {
-                                    setRecipient({ ...recipient, district: '', districtCode: '' });
-                                  }
-                                }}
-                                onFocus={() => setRecipientShowSuggestions(true)}
-                                onBlur={() => {
-                                  setTimeout(() => setRecipientShowSuggestions(false), 200);
-                                }}
-                              />
-                              {recipientLoading && (
-                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
-                                  <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                                </div>
-                              )}
-
-                              {recipientShowSuggestions && recipientSuggestions.length > 0 && (
-                                <ul className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-gray-50">
-                                  {recipientSuggestions.map((item, index) => (
-                                    <li
-                                      key={index}
-                                      className="px-3.5 py-2 hover:bg-gray-50 text-[11px] font-semibold text-gray-700 cursor-pointer transition-colors"
-                                      onMouseDown={() => {
-                                        setRecipient({
-                                          ...recipient,
-                                          district: item.name,
-                                          districtCode: item.district_code,
-                                          postalCode: item.postal_code || recipient.postalCode
-                                        });
-                                        setRecipientQuery(item.name);
-                                        setRecipientShowSuggestions(false);
-                                        parseAndSyncRecipientDropdowns(item.name, item.postal_code || '');
-                                      }}
-                                    >
-                                      {item.name}
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                              {recipientShowSuggestions && recipientQuery.length >= 3 && !recipientLoading && recipientSuggestions.length === 0 && (
-                                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-xl z-50 p-3 text-center text-[10px] text-gray-400 font-semibold leading-relaxed">
-                                  Tidak ada hasil. Silakan gunakan keyword lain, atau seed database wilayah Anda.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between text-gray-300 gap-2.5 select-none py-0.5">
                             <div className="h-px bg-gray-200 flex-1" />
                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">atau pilih manual</span>
                             <div className="h-px bg-gray-200 flex-1" />
@@ -1247,7 +1078,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                               options={provincesList}
                               placeholder="Pilih Provinsi..."
                             />
-                            <SearchableSelect
+                            <SearchableSelectObject
                               label="Kota / Kabupaten"
                               value={recipientCity}
                               onChange={setRecipientCity}

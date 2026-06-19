@@ -29,7 +29,10 @@ export async function POST(request: NextRequest) {
       const lower = val.toLowerCase().trim();
       if (lower.includes('pamulang')) return '36.74.03';
       if (lower.includes('palmerah')) return '31.73.06';
-      if (/^\d{2}\.\d{2}\.\d{2}$/.test(val)) return val;
+      // If code is like 11.01.01.2001 (Kelurahan), trim to 11.01.01 (Kecamatan)
+      if (/^\d{2}\.\d{2}\.\d{2}(\.\d+)?$/.test(val)) {
+        return val.split('.').slice(0, 3).join('.');
+      }
       return val;
     };
 

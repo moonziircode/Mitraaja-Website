@@ -1,74 +1,85 @@
 import { NextRequest, NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { firestore } from '@/lib/firebaseAdmin';
 
 export const preferredRegion = 'sin1';
 
-let cachedTree: any = null;
-
-function getRegionsTree() {
-  if (cachedTree) return cachedTree;
-  try {
-    const filePath = path.resolve(process.cwd(), 'src/lib/regions-tree.json');
-    const content = fs.readFileSync(filePath, 'utf8');
-    cachedTree = JSON.parse(content);
-    return cachedTree;
-  } catch (err: any) {
-    console.error('Failed to read regions-tree.json in search route:', err.message);
-    return {};
-  }
-}
-
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q');
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q');
 
-    if (!query || query.length < 3) {
+  if (!query || query.length < 3) {
+    return NextResponse.json([]);
+  }
+
+  if (!firestore) {
+    console.error('Firestore not initialized');
+    return NextResponse.json({ message: 'Database error' }, { status: 500 });
+  }
+
+  const db = firestore;
+
+  try {
+    const regionsRef = db.collection('regions');
+    // Firestore tidak mendukung pencarian parsial (LIKE) secara native.
+    // Kita gunakan trik dengan >= dan <= untuk memfilter berdasarkan awalan.
+    // Karena data dist_all bervariasi huruf besar/kecil, pastikan seed data menggunakan lowercase atau konsisten.
+    // Untuk ini, asumsikan query dikonversi huruf kapital karena `dist_all` biasanya "Kel. X, Kec. Y"
+    // Namun Firestore case-sensitive, jadi ini adalah limitasi sederhana. 
+    // Untuk lebih baik, asumsikan awalan (prefix).
+    const upperQuery = query.toUpperCase();
+
+    // Query untuk awalan (case-sensitive) - kita coba UPPERCASE dulu
+    const snapshot = await regionsRef
+      .where('dist_all', '>=', upperQuery)
+      .where('dist_all', '<=', upperQuery + '\uf8ff')
+      .limit(10)
+      .get();
+
+    // Jika kosong, mungkin huruf awal Kapital?
+    let finalDocs = snapshot.docs;
+    
+    // Sebagai alternatif, kita ambil semua limit(10) tanpa filter strict jika tidak bisa full-text search,
+    // tapi karena prompt mengharuskan trik >= dan <=, kita ikuti.
+    // Jika tidak ditemukan dengan UPPERCASE, mari coba Title Case atau huruf pertama kapital
+    if (finalDocs.length === 0) {
+       const titleCaseQuery = query.charAt(0).toUpperCase() + query.slice(1).toLowerCase();
+       const snap2 = await regionsRef
+        .where('dist_all', '>=', titleCaseQuery)
+        .where('dist_all', '<=', titleCaseQuery + '\uf8ff')
+        .limit(10)
+        .get();
+       finalDocs = snap2.docs;
+    }
+
+    if (finalDocs.length === 0) {
+       // Coba prefix lowercase
+       const lowerCaseQuery = query.toLowerCase();
+       const snap3 = await regionsRef
+        .where('dist_all', '>=', lowerCaseQuery)
+        .where('dist_all', '<=', lowerCaseQuery + '\uf8ff')
+        .limit(10)
+        .get();
+       finalDocs = snap3.docs;
+    }
+
+    if (finalDocs.length === 0) {
       return NextResponse.json([]);
     }
 
-    const tree = getRegionsTree();
-    const results: any[] = [];
-    const upperQuery = query.toUpperCase();
-
-    // Iterate through tree to find matching kelurahans or kecamatans
-    outerLoop:
-    for (const provName of Object.keys(tree)) {
-      const provData = tree[provName];
-      for (const cityName of Object.keys(provData.cities)) {
-        const cityData = provData.cities[cityName];
-        for (const kecName of Object.keys(cityData.kecamatans)) {
-          const kecData = cityData.kecamatans[kecName];
-          
-          // Check if kecamatan matches query
-          const kecMatches = kecName.includes(upperQuery);
-          
-          for (const kelName of Object.keys(kecData.kelurahans)) {
-            const postalCode = kecData.kelurahans[kelName];
-            
-            // Check if kelurahan matches OR if the parent kecamatan matched
-            if (kelName.includes(upperQuery) || kecMatches) {
-              results.push({
-                district_code: kecData.code,
-                postal_code: postalCode,
-                name: `Kel. ${kelName}, Kec. ${kecName}, ${cityName}, ${provName}`,
-                // Keep compatibility with original fields
-                district: `Kel. ${kelName}, Kec. ${kecName}, ${cityName}, ${provName}`,
-              });
-              
-              if (results.length >= 25) {
-                break outerLoop;
-              }
-            }
-          }
-        }
-      }
-    }
-
+    const results = finalDocs.map((doc: any) => {
+      const data = doc.data();
+      return {
+        district_code: data.dist_code,
+        postal_code: data.postal_code,
+        name: data.dist_all,
+        district: data.dist_all,
+        code: data.dist_code // for prompt compatibility
+      };
+    });
+    
     return NextResponse.json(results);
-  } catch (error: any) {
-    console.error('[GET /api/districts/search] Error:', error.message);
-    return NextResponse.json([], { status: 500 });
+  } catch (error) {
+    console.error('Firestore search error:', error);
+    return NextResponse.json({ message: 'Gagal mencari data wilayah' }, { status: 500 });
   }
 }
