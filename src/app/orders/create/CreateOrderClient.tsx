@@ -846,7 +846,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
       const data = await res.json();
       if (data.success) {
         setOrderTaskCode(data.taskCode || null);
-        const actualPrice = data.totalDeliveryPrice ?? data.deliveryPrice ?? selectedService?.delivery_price ?? 0;
+        const actualPrice = selectedService?.delivery_price ?? data.totalDeliveryPrice ?? data.deliveryPrice ?? 0;
         await handleInitiatePayment(data.taskCode, actualPrice);
       } else {
         setStep(5);
@@ -1730,12 +1730,13 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
             {paymentQrUrl ? (
               <div className="flex flex-col items-center space-y-5 w-full max-w-[480px] mx-auto">
-                {/* QR Code Card */}
-                <div className="bg-white p-3.5 border border-gray-150 rounded-2xl shadow-lg relative overflow-hidden flex flex-col items-center justify-center w-64 h-64 mx-auto">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(paymentQrUrl)}`}
-                    alt="GoPay QR Code"
-                    className="w-full h-full object-contain"
+                {/* Payment Iframe */}
+                <div className="bg-white border border-gray-150 rounded-2xl shadow-lg relative overflow-hidden flex flex-col items-center w-full h-[450px] mx-auto">
+                  <iframe 
+                    src={paymentQrUrl}
+                    className="w-full h-full border-0"
+                    title="Anteraja Payment"
+                    allow="payment"
                   />
 
                   {paymentStatus === 'SUCCESS' && (
@@ -1746,22 +1747,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       <span className="text-sm font-bold">Pembayaran Berhasil!</span>
                     </div>
                   )}
-                </div>
-
-                {/* Direct payment link button */}
-                <div className="w-full text-center space-y-2">
-                  <a
-                    href={paymentQrUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full h-11 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-[#b5000b]/15 transition-all text-xs uppercase tracking-wider"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                    Buka Halaman Pembayaran GoPay
-                  </a>
-                  <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
-                    Scan QR code di atas menggunakan GoPay/Gojek Anda, atau klik tombol di atas untuk membayar langsung di tab baru.
-                  </p>
                 </div>
               </div>
             ) : (
