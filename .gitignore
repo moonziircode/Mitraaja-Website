@@ -49,3 +49,4 @@ next-env.d.ts
 test_real_cas.mjs
 test_gateway.mjs
 
+scratch/

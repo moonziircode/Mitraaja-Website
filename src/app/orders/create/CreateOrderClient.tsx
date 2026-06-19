@@ -637,23 +637,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
         return;
       }
 
-      // Verify sender postcode matches selected kelurahan postcode if selected
-      if (senderKelurahan) {
-        const correctSenderKel = senderKelurahansList.find(k => k.name === senderKelurahan);
-        if (correctSenderKel && sender.postalCode.trim() !== correctSenderKel.postalCode) {
-          alert(`Kode pos pengirim tidak sesuai dengan Kelurahan ${senderKelurahan}! Harusnya: ${correctSenderKel.postalCode}`);
-          return;
-        }
-      }
-
-      // Verify recipient postcode matches selected kelurahan postcode if selected
-      if (recipientKelurahan) {
-        const correctRecipientKel = recipientKelurahansList.find(k => k.name === recipientKelurahan);
-        if (correctRecipientKel && recipient.postalCode.trim() !== correctRecipientKel.postalCode) {
-          alert(`Kode pos penerima tidak sesuai dengan Kelurahan ${recipientKelurahan}! Harusnya: ${correctRecipientKel.postalCode}`);
-          return;
-        }
-      }
 
       // Validate phone numbers (must be numeric and between 9 to 14 digits)
       const phoneRegex = /^\d{9,14}$/;
@@ -1062,11 +1045,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
                           <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
-                          </div>
-                          
-                            <div className="h-px bg-gray-200 flex-1" />
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">atau pilih manual</span>
-                            <div className="h-px bg-gray-200 flex-1" />
                           </div>
 
                           {/* Manual Selection Cascading Fields */}
