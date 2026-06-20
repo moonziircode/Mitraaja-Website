@@ -44,6 +44,17 @@ export default function DashboardClient({ user }: { user: User }) {
 
   // ── UI State ──
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+
+  // ── Draft Check ──
+  useEffect(() => {
+    try {
+      const draft = localStorage.getItem('mitraaja_draft_order');
+      if (draft) setHasDraft(true);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // ── Load History from localStorage ──
   useEffect(() => {
@@ -281,53 +292,104 @@ export default function DashboardClient({ user }: { user: User }) {
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
-
-            {/* Workflow Selection Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Card 1: Create Order */}
-              <div className="bg-gradient-to-br from-[#b5000b] to-[#e60010] rounded-2xl p-6 text-white shadow-lg shadow-[#b5000b]/10 hover:shadow-xl hover:shadow-[#b5000b]/20 hover:scale-[1.01] transition-all flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                  <span className="material-symbols-outlined text-[150px]">local_shipping</span>
-                </div>
-                <div className="space-y-2 relative z-10">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-md">
-                    <span className="material-symbols-outlined text-white text-[22px]">add_circle</span>
+          
+            {/* Draft Alert */}
+            {hasDraft && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-fade-in-up">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[20px]" style={FILL}>assignment_returned</span>
                   </div>
-                  <h3 className="text-lg font-extrabold tracking-tight">Buat Order Baru</h3>
-                  <p className="text-xs text-white/80 font-medium max-w-[280px]">
-                    Proaktif. Hitung ongkir, bayar via GoPay QR, dan buat nomor resi (AWB) baru.
-                  </p>
+                  <div>
+                    <h4 className="font-bold text-amber-900 text-sm">Ada Draft Order Tertunda</h4>
+                    <p className="text-[11px] text-amber-700 font-medium">Anda memiliki order yang belum selesai dibuat.</p>
+                  </div>
                 </div>
                 <button
                   onClick={() => router.push('/orders/create')}
-                  className="mt-4 h-10 px-5 bg-white text-[#b5000b] font-bold rounded-xl text-xs hover:bg-white/95 active:scale-[0.98] transition-all self-start flex items-center gap-1.5 shadow-md"
+                  className="h-9 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-colors shadow-sm"
                 >
-                  Buat Order Baru
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  Lanjutkan
                 </button>
+              </div>
+            )}
+
+            {/* Quick Actions Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Card 1: Create Order */}
+              <div 
+                onClick={() => router.push('/orders/create')}
+                className="bg-gradient-to-br from-[#b5000b] to-[#e60010] rounded-2xl p-5 text-white shadow-md shadow-[#b5000b]/10 hover:shadow-lg hover:shadow-[#b5000b]/20 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+              >
+                <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-[100px]">local_shipping</span>
+                </div>
+                <div className="relative z-10 space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <span className="material-symbols-outlined text-white text-[20px]">add_circle</span>
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm tracking-tight">Buat Order</h3>
+                    <p className="text-[10px] text-white/80 font-medium mt-0.5 leading-tight">Hitung ongkir & cetak resi</p>
+                  </div>
+                </div>
               </div>
 
               {/* Card 2: Scan & Claim */}
-              <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 translate-x-4 translate-y-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
-                  <span className="material-symbols-outlined text-[150px]">barcode_scanner</span>
+              <div 
+                onClick={handleScrollToScan}
+                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+              >
+                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                  <span className="material-symbols-outlined text-[100px]">barcode_scanner</span>
                 </div>
-                <div className="space-y-2 relative z-10">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100 text-gray-500">
-                    <span className="material-symbols-outlined text-[22px]">qr_code_scanner</span>
+                <div className="relative z-10 space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-600">
+                    <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                   </div>
-                  <h3 className="text-lg font-extrabold text-gray-900 tracking-tight">Klaim Paket Terdaftar</h3>
-                  <p className="text-xs text-gray-400 font-semibold max-w-[280px]">
-                    Reaktif. Klaim paket yang datanya sudah ada di sistem (tanpa alur pembayaran).
-                  </p>
+                  <div>
+                    <h3 className="font-extrabold text-gray-900 text-sm tracking-tight">Klaim Paket</h3>
+                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5 leading-tight">Klaim via scan AWB</p>
+                  </div>
                 </div>
-                <button
-                  onClick={handleScrollToScan}
-                  className="mt-4 h-10 px-5 bg-gray-900 text-white font-bold rounded-xl text-xs hover:bg-gray-800 active:scale-[0.98] transition-all self-start flex items-center gap-1.5 shadow-md shadow-gray-900/10"
-                >
-                  Buka Scanner & Klaim
-                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                </button>
+              </div>
+
+              {/* Card 3: Cek Ongkir */}
+              <div 
+                onClick={() => alert('Cek Ongkir Cepat akan segera hadir!')}
+                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+              >
+                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                  <span className="material-symbols-outlined text-[100px]">calculate</span>
+                </div>
+                <div className="relative z-10 space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                    <span className="material-symbols-outlined text-[20px]">calculate</span>
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-gray-900 text-sm tracking-tight">Cek Ongkir</h3>
+                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5 leading-tight">Kalkulator tarif cepat</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Lacak Resi */}
+              <div 
+                onClick={() => router.push('/tracking')}
+                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+              >
+                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                  <span className="material-symbols-outlined text-[100px]">location_on</span>
+                </div>
+                <div className="relative z-10 space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                    <span className="material-symbols-outlined text-[20px]">location_on</span>
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-gray-900 text-sm tracking-tight">Lacak Resi</h3>
+                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5 leading-tight">Pantau status paket</p>
+                  </div>
+                </div>
               </div>
             </div>
             

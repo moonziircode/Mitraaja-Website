@@ -20,19 +20,21 @@ export async function GET(request: NextRequest) {
     
     // Firestore prefix search
     const snapshot = await firestore.collection('all_regions_v2')
-      .where('type', '==', 4) // Only search kelurahans for address input
       .orderBy('dist_all_lowercase')
       .startAt(normalizedQuery)
       .endAt(normalizedQuery + '\uf8ff')
-      .limit(10)
+      .limit(30)
       .get();
 
     if (snapshot.empty) {
       return NextResponse.json([]);
     }
 
-    const results = snapshot.docs.map(doc => {
-      const data = doc.data();
+    const results = snapshot.docs
+      .map(doc => doc.data())
+      .filter(data => data.type === 4) // Filter kelurahans in memory to avoid composite index
+      .slice(0, 10)
+      .map(data => {
       let pc = data.postal_code || '';
       if (pc.includes(',')) pc = pc.split(',')[0].trim();
       return {

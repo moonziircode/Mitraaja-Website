@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { ContactInfo, PackageInfo, ServiceInfo } from '@/lib/types';
+import SearchableDistrictSelect from '@/components/SearchableDistrictSelect';
 
 interface User {
   name: string;
@@ -186,29 +187,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
   // ── Wizard Steps ──
   const [step, setStep] = useState(1);
 
-  // ── Cascading Region States ──
-  const [provincesList, setProvincesList] = useState<{name: string, code: string}[]>([]);
-  
-  // Sender dropdown lists
-  const [senderProvince, setSenderProvince] = useState<any>(null);
-  const [senderCity, setSenderCity] = useState<any>(null);
-  const [senderKecamatan, setSenderKecamatan] = useState<any>(null);
-  const [senderKelurahan, setSenderKelurahan] = useState<any>(null);
-  
-  const [senderCitiesList, setSenderCitiesList] = useState<any[]>([]);
-  const [senderKecamatansList, setSenderKecamatansList] = useState<{name: string, code: string}[]>([]);
-  const [senderKelurahansList, setSenderKelurahansList] = useState<{name: string, code: string}[]>([]);
-
-  // Recipient dropdown lists
-  const [recipientProvince, setRecipientProvince] = useState<any>(null);
-  const [recipientCity, setRecipientCity] = useState<any>(null);
-  const [recipientKecamatan, setRecipientKecamatan] = useState<any>(null);
-  const [recipientKelurahan, setRecipientKelurahan] = useState<any>(null);
-
-  const [recipientCitiesList, setRecipientCitiesList] = useState<any[]>([]);
-  const [recipientKecamatansList, setRecipientKecamatansList] = useState<{name: string, code: string}[]>([]);
-  const [recipientKelurahansList, setRecipientKelurahansList] = useState<{name: string, code: string}[]>([]);
-
   // ── Step 1 State: Sender & Recipient ──
   const [sender, setSender] = useState<ContactInfo>({
     name: '',
@@ -237,233 +215,30 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [addressBookTarget, setAddressBookTarget] = useState<'sender' | 'recipient' | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
-  // Autocomplete states
-  const [senderQuery, setSenderQuery] = useState('');
-  const [senderSuggestions, setSenderSuggestions] = useState<any[]>([]);
-  const [senderLoading, setSenderLoading] = useState(false);
-  const [senderShowSuggestions, setSenderShowSuggestions] = useState(false);
-
-  const [recipientQuery, setRecipientQuery] = useState('');
-  const [recipientSuggestions, setRecipientSuggestions] = useState<any[]>([]);
-  const [recipientLoading, setRecipientLoading] = useState(false);
-  const [recipientShowSuggestions, setRecipientShowSuggestions] = useState(false);
-
-  // Sync display queries when district is loaded from address book
-  useEffect(() => {
-    if (sender.district) {
-      setSenderQuery(sender.district);
-    } else {
-      setSenderQuery('');
+  const formatPhone = (val: string) => {
+    let digits = val.replace(/\D/g, '');
+    if (digits.startsWith('62')) {
+      digits = '0' + digits.substring(2);
     }
-  }, [sender.district]);
-
-  useEffect(() => {
-    if (recipient.district) {
-      setRecipientQuery(recipient.district);
-    } else {
-      setRecipientQuery('');
-    }
-  }, [recipient.district]);
-
-  // ── Cascading Region Loaders & Sync Handlers ──
-  // Load provinces on mount
-  useEffect(() => {
-    fetch('/api/all-regions?type=2')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setProvincesList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load provinces:', err));
-  }, []);
-
-  // Helper to parse "Kel. X, Kec. Y, Z, W" and sync dropdowns
-  const parseAndSyncSenderDropdowns = (name: string, pCode: string) => {
-    const parts = name.split(',').map(p => p.trim());
-    if (parts.length >= 4) {
-      const kelName = parts[0].replace(/^Kel\.\s+/i, '');
-      const kecName = parts[1].replace(/^Kec\.\s+/i, '');
-      const cityName = parts[2];
-      const provName = parts[3];
-
-      setSenderProvince(provName);
-      setSenderCity(cityName);
-      setSenderKecamatan(kecName);
-      setSenderKelurahan(kelName);
-    }
+    return digits;
   };
 
-  const parseAndSyncRecipientDropdowns = (name: string, pCode: string) => {
-    const parts = name.split(',').map(p => p.trim());
-    if (parts.length >= 4) {
-      const kelName = parts[0].replace(/^Kel\.\s+/i, '');
-      const kecName = parts[1].replace(/^Kec\.\s+/i, '');
-      const cityName = parts[2];
-      const provName = parts[3];
-
-      setRecipientProvince(provName);
-      setRecipientCity(cityName);
-      setRecipientKecamatan(kecName);
-      setRecipientKelurahan(kelName);
-    }
+  const handleSelectSenderDistrict = (opt: any) => {
+    setSender(prev => ({
+      ...prev,
+      district: opt.name,
+      districtCode: opt.district_code,
+      postalCode: opt.postal_code || ''
+    }));
   };
 
-  // Filter provinces for Sender if Jabodetabek
-  const senderProvinces = user.isJabodetabek 
-    ? provincesList.filter(p => ['31', '32', '36'].includes(p.code))
-    : [];
-
-  // Sender city loader
-  useEffect(() => {
-    if (!senderProvince) {
-      setSenderCitiesList([]);
-      setSenderCity(null);
-      setSenderKecamatan(null);
-      setSenderKelurahan(null);
-      return;
-    }
-    fetch(`/api/all-regions?parent=${senderProvince.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          // If Jabodetabek, filter cities to only Jabodetabek cities
-          if (user.isJabodetabek) {
-            const jaboCodes = [
-              '31.01', '31.71', '31.72', '31.73', '31.74', '31.75',
-              '32.01', '32.71', '32.76', '32.16', '32.75',
-              '36.03', '36.71', '36.74'
-            ];
-            setSenderCitiesList(data.data.filter((c: any) => jaboCodes.includes(c.code)));
-          } else {
-            setSenderCitiesList(data.data);
-          }
-        }
-      })
-      .catch(err => console.error('Failed to load sender cities:', err));
-  }, [senderProvince]);
-
-  // Sender kecamatan loader
-  useEffect(() => {
-    // If not Jabodetabek, lock to user.cityCode. Otherwise lock to selected senderCity.
-    const cityCodeToUse = user.isJabodetabek ? senderCity?.code : user.cityCode;
-    
-    if (cityCodeToUse) {
-      fetch(`/api/all-regions?parent=${cityCodeToUse}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setSenderKecamatansList(data.data);
-          }
-        })
-        .catch(err => console.error('Failed to load sender kecamatans:', err));
-    } else {
-      setSenderKecamatansList([]);
-      setSenderKecamatan(null);
-      setSenderKelurahan(null);
-    }
-  }, [user.isJabodetabek ? senderCity : user.cityCode]);
-
-  // Sender kelurahan loader
-  useEffect(() => {
-    if (!senderKecamatan) {
-      setSenderKelurahansList([]);
-      setSenderKelurahan(null);
-      return;
-    }
-    fetch(`/api/all-regions?parent=${senderKecamatan.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setSenderKelurahansList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load sender kelurahans:', err));
-  }, [senderKecamatan]);
-
-  // Recipient city loader
-  useEffect(() => {
-    if (!recipientProvince) {
-      setRecipientCitiesList([]);
-      setRecipientCity(null);
-      setRecipientKecamatan(null);
-      setRecipientKelurahan(null);
-      return;
-    }
-    fetch(`/api/all-regions?parent=${recipientProvince.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setRecipientCitiesList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load recipient cities:', err));
-  }, [recipientProvince]);
-
-  // Recipient kecamatan loader
-  useEffect(() => {
-    if (!recipientCity) {
-      setRecipientKecamatansList([]);
-      setRecipientKecamatan(null);
-      setRecipientKelurahan(null);
-      return;
-    }
-    fetch(`/api/all-regions?parent=${recipientCity.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setRecipientKecamatansList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load recipient kecamatans:', err));
-  }, [recipientCity]);
-
-  // Recipient kelurahan loader
-  useEffect(() => {
-    if (!recipientKecamatan) {
-      setRecipientKelurahansList([]);
-      setRecipientKelurahan(null);
-      return;
-    }
-    fetch(`/api/all-regions?parent=${recipientKecamatan.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setRecipientKelurahansList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load recipient kelurahans:', err));
-  }, [recipientKecamatan]);
-
-  const handleSelectSenderKelurahan = (kel: any) => {
-    setSenderKelurahan(kel);
-    
-    const provName = user.isJabodetabek ? senderProvince?.name : user.provinceName;
-    const cName = user.isJabodetabek ? senderCity?.name : user.cityName;
-    
-    if (kel && senderKecamatan && cName && provName) {
-      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan.name}, ${cName}, ${provName}`;
-      setSender(prev => ({
-        ...prev,
-        district: fullDistrictName,
-        districtCode: kel.code,
-        postalCode: kel.postalCode || ''
-      }));
-      setSenderQuery(fullDistrictName);
-    }
-  };
-
-  const handleSelectRecipientKelurahan = (kel: any) => {
-    setRecipientKelurahan(kel);
-    if (kel && recipientProvince && recipientCity && recipientKecamatan) {
-      const fullDistrictName = `Kel. ${kel.name}, Kec. ${recipientKecamatan.name}, ${recipientCity.name}, ${recipientProvince.name}`;
-      setRecipient(prev => ({
-        ...prev,
-        district: fullDistrictName,
-        districtCode: kel.code
-      }));
-      setRecipientQuery(fullDistrictName);
-    }
+  const handleSelectRecipientDistrict = (opt: any) => {
+    setRecipient(prev => ({
+      ...prev,
+      district: opt.name,
+      districtCode: opt.district_code,
+      postalCode: opt.postal_code || ''
+    }));
   };
 
   // Address Book actions
@@ -504,27 +279,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
         }
       }
       setSender(info);
-      setSenderQuery(addr.district);
-      
-      const parts = addr.district.split(',').map(p => p.trim());
-      if (parts.length >= 4) {
-        const kelName = parts[0].replace(/^Kel\.\s+/i, '');
-        const kecName = parts[1].replace(/^Kec\.\s+/i, '');
-        
-        if (user.isJabodetabek) {
-          const cityName = parts[2];
-          const provName = parts[3];
-          setSenderProvince({ name: provName });
-          setSenderCity({ name: cityName });
-        }
-        
-        setSenderKecamatan({ name: kecName });
-        setSenderKelurahan({ name: kelName, code: addr.districtCode, postalCode: addr.postalCode });
-      }
     } else if (addressBookTarget === 'recipient') {
       setRecipient(info);
-      setRecipientQuery(addr.district);
-      parseAndSyncRecipientDropdowns(addr.district, addr.postalCode);
     }
 
     setAddressBookOpen(false);
@@ -631,9 +387,41 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   // ── Step 4 State: Payment & Confirmation ──
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  // ── Draft System ──
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    try {
+      const draftStr = localStorage.getItem('mitraaja_draft_order');
+      if (draftStr) {
+        const draft = JSON.parse(draftStr);
+        if (window.confirm('Anda memiliki draft order yang belum selesai. Lanjutkan draft ini?')) {
+          if (draft.sender) setSender(draft.sender);
+          if (draft.recipient) setRecipient(draft.recipient);
+          if (draft.packageInfo) setPackageInfo(draft.packageInfo);
+          if (draft.step) setStep(draft.step);
+        } else {
+          localStorage.removeItem('mitraaja_draft_order');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load draft:', err);
+    }
+    isInitialMount.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    const timer = setTimeout(() => {
+      const draft = { sender, recipient, packageInfo, step };
+      localStorage.setItem('mitraaja_draft_order', JSON.stringify(draft));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [sender, recipient, packageInfo, step]);
   const [paymentQrUrl, setPaymentQrUrl] = useState<string | null>(null);
   const [paymentTrxId, setPaymentTrxId] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<'PENDING' | 'SUCCESS' | 'ERROR'>('PENDING');
+  const [paymentStatus, setPaymentStatus] = useState<'PENDING' | 'SUCCESS' | 'ERROR' | 'TIMEOUT'>('PENDING');
   const [paymentProgress, setPaymentProgress] = useState(0);
 
   // ── Step 5 State: Final Confirmation ──
@@ -688,6 +476,15 @@ export default function CreateOrderClient({ user }: { user: User }) {
         return;
       }
 
+      // Duplicate Detection
+      if (
+        sender.name.toLowerCase().trim() === recipient.name.toLowerCase().trim() &&
+        sender.phone.trim() === recipient.phone.trim()
+      ) {
+        alert('Data pengirim dan penerima tidak boleh sama.');
+        return;
+      }
+
       // Validate postal codes (must be exactly 5 digits)
       const postCodeRegex = /^\d{5}$/;
       if (!postCodeRegex.test(sender.postalCode.trim())) {
@@ -717,6 +514,24 @@ export default function CreateOrderClient({ user }: { user: User }) {
       if (!packageInfo.itemName.trim() || !packageInfo.category || packageInfo.weight <= 0 ||
           packageInfo.dimensions.length <= 0 || packageInfo.dimensions.width <= 0 || packageInfo.dimensions.height <= 0) {
         alert('Mohon lengkapi seluruh detail paket (berat & dimensi harus lebih dari 0).');
+        return;
+      }
+
+      // Max weight validation
+      if (packageInfo.weight > 15) {
+        alert('Berat aktual melebihi batas maksimal 15 kg untuk layanan Reguler/Next Day.');
+        return;
+      }
+      
+      const volumetricWeightCalc = (packageInfo.dimensions.length * packageInfo.dimensions.width * packageInfo.dimensions.height) / 6000;
+      if (volumetricWeightCalc > 30) {
+        alert('Berat volumetrik melebihi batas maksimal 30 kg.');
+        return;
+      }
+
+      const chargeableWeightCalc = Math.max(packageInfo.weight, volumetricWeightCalc);
+      if (chargeableWeightCalc > 300) {
+        alert('Berat tertagih melebihi batas maksimal 300 kg');
         return;
       }
     }
@@ -749,9 +564,19 @@ export default function CreateOrderClient({ user }: { user: User }) {
     }
 
     let progress = 0;
+    let attempts = 0;
+    const maxAttempts = 60; // 3 minutes timeout (60 * 3s)
+
     const interval = setInterval(async () => {
-      progress = Math.min(progress + 5, 95);
+      attempts++;
+      progress = Math.min(progress + 2, 95); // Slower progress
       setPaymentProgress(progress);
+
+      if (attempts >= maxAttempts) {
+        clearInterval(interval);
+        setPaymentStatus('TIMEOUT');
+        return;
+      }
 
       try {
         const res = await fetch(`/api/payment/status/${taskCode}`);
@@ -771,10 +596,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
           clearInterval(interval);
           setPaymentStatus('ERROR');
           setOrderError(data.message || 'Pembayaran gagal.');
-          setTimeout(() => {
-            setPaymentModalOpen(false);
-            setStep(5);
-          }, 1500);
         }
       } catch (err) {
         console.error('Polling status error:', err);
@@ -791,6 +612,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setPaymentStatus('PENDING');
     setPaymentProgress(0);
     setPaymentModalOpen(true);
+    setOrderError(null);
 
     try {
       const res = await fetch('/api/payment/initiate', {
@@ -810,18 +632,10 @@ export default function CreateOrderClient({ user }: { user: User }) {
       } else {
         setPaymentStatus('ERROR');
         setOrderError(data.message || 'Gagal memulai pembayaran.');
-        setTimeout(() => {
-          setPaymentModalOpen(false);
-          setStep(5);
-        }, 1500);
       }
     } catch (err) {
       setPaymentStatus('ERROR');
       setOrderError('Gagal terhubung ke server pembayaran.');
-      setTimeout(() => {
-        setPaymentModalOpen(false);
-        setStep(5);
-      }, 1500);
     }
   };
 
@@ -846,6 +660,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
       if (data.success) {
         setOrderTaskCode(data.taskCode || null);
         const actualPrice = data.totalDeliveryPrice ?? data.deliveryPrice ?? selectedService?.delivery_price ?? 0;
+        localStorage.removeItem('mitraaja_draft_order'); // Clear draft on success
         await handleInitiatePayment(data.taskCode, actualPrice);
       } else {
         setStep(5);
@@ -871,6 +686,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setPaymentStatus('PENDING');
     setOrderError(null);
     setOrderTaskCode(null);
+    
+    // Clear states
+    setSender({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '' });
+    setRecipient({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '' });
+    setPackageInfo({ itemName: '', category: '', weight: 0, dimensions: { length: 0, width: 0, height: 0 }, value: 0 });
+    localStorage.removeItem('mitraaja_draft_order');
   };
 
   return (
@@ -987,7 +808,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             placeholder="Contoh: 081234567890"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={sender.phone}
-                            onChange={(e) => setSender({ ...sender, phone: e.target.value })}
+                            onChange={(e) => setSender({ ...sender, phone: formatPhone(e.target.value) })}
                           />
                         </div>
                         <div>
@@ -1005,57 +826,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
                           </div>
                           
-                          {/* Province & City: Locked for Non-Jabodetabek, Selectable for Jabodetabek */}
-                          {user.isJabodetabek ? (
-                            <div className="grid grid-cols-2 gap-3.5">
-                              <SearchableSelectObject
-                                label="Provinsi"
-                                value={senderProvince}
-                                onChange={setSenderProvince}
-                                options={senderProvinces}
-                                placeholder="Pilih Provinsi..."
-                              />
-                              <SearchableSelectObject
-                                label="Kota / Kabupaten"
-                                value={senderCity}
-                                onChange={setSenderCity}
-                                options={senderCitiesList}
-                                placeholder="Pilih Kota..."
-                              />
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-3.5">
-                              <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Provinsi</label>
-                                <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
-                                  {user.provinceName || 'Sesuai Agen'}
-                                </div>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kota / Kabupaten</label>
-                                <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
-                                  {user.cityName || 'Sesuai Agen'}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-3.5">
-                            <SearchableSelectObject
-                              label="Kecamatan"
-                              value={senderKecamatan}
-                              onChange={setSenderKecamatan}
-                              options={senderKecamatansList}
-                              placeholder="Pilih Kecamatan..."
-                            />
-                            <SearchableSelectObject
-                              label="Kelurahan"
-                              value={senderKelurahan}
-                              onChange={handleSelectSenderKelurahan}
-                              options={senderKelurahansList}
-                              placeholder="Pilih Kelurahan..."
-                            />
-                          </div>
+                          <SearchableDistrictSelect
+                            label="Kecamatan / Kelurahan Pengirim"
+                            value={sender.district}
+                            onChange={handleSelectSenderDistrict}
+                            placeholder="Ketik minimal 3 huruf (Cth: Kebayoran Baru)"
+                            filterJabodetabek={user.isJabodetabek}
+                            filterCity={!user.isJabodetabek ? user.cityName : undefined}
+                          />
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
@@ -1128,7 +906,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             placeholder="Contoh: 085712345678"
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={recipient.phone}
-                            onChange={(e) => setRecipient({ ...recipient, phone: e.target.value })}
+                            onChange={(e) => setRecipient({ ...recipient, phone: formatPhone(e.target.value) })}
                           />
                         </div>
                         <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
@@ -1136,40 +914,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
                           </div>
 
-                          {/* Manual Selection Cascading Fields */}
-                          <div className="grid grid-cols-2 gap-3.5">
-                            <SearchableSelectObject
-                              label="Provinsi"
-                              value={recipientProvince}
-                              onChange={setRecipientProvince}
-                              options={provincesList}
-                              placeholder="Pilih Provinsi..."
-                            />
-                            <SearchableSelectObject
-                              label="Kota / Kabupaten"
-                              value={recipientCity}
-                              onChange={setRecipientCity}
-                              options={recipientCitiesList}
-                              placeholder="Pilih Kota..."
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3.5">
-                            <SearchableSelectObject
-                              label="Kecamatan"
-                              value={recipientKecamatan}
-                              onChange={setRecipientKecamatan}
-                              options={recipientKecamatansList}
-                              placeholder="Pilih Kecamatan..."
-                            />
-                            <SearchableSelectObject
-                              label="Kelurahan"
-                              value={recipientKelurahan}
-                              onChange={handleSelectRecipientKelurahan}
-                              options={recipientKelurahansList}
-                              placeholder="Pilih Kelurahan..."
-                            />
-                          </div>
+                          <SearchableDistrictSelect
+                            label="Kecamatan / Kelurahan Penerima"
+                            value={recipient.district}
+                            onChange={handleSelectRecipientDistrict}
+                            placeholder="Ketik minimal 3 huruf (Cth: Pasar Minggu)"
+                          />
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
@@ -1369,17 +1119,47 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       <div className="grid grid-cols-1 gap-3.5">
                         {services.map((srv) => {
                           const isSelected = selectedService?.product_code === srv.product_code;
+                          const minPrice = Math.min(...services.map(s => s.delivery_price));
+                          const isCheapest = srv.delivery_price === minPrice;
+                          
+                          // Determine fastest by code priority: SDS > NDS
+                          const hasSds = services.some(s => s.product_code === 'SDS');
+                          const hasNds = services.some(s => s.product_code === 'NDS');
+                          const fastestCode = hasSds ? 'SDS' : (hasNds ? 'NDS' : null);
+                          const isFastest = srv.product_code === fastestCode;
+
                           return (
                             <div
                               key={srv.product_code}
                               onClick={() => setSelectedService(srv)}
-                              className={`p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-center justify-between ${
+                              className={`relative p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-center justify-between overflow-hidden ${
                                 isSelected
                                   ? 'border-[#b5000b] bg-[#b5000b]/5 ring-2 ring-[#b5000b]/10 shadow-sm'
                                   : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50/50'
                               }`}
                             >
-                              <div className="flex items-center gap-4">
+                              {/* Recommendation Badges */}
+                              {(isCheapest || isFastest) && (
+                                <div className="absolute top-0 right-0 flex">
+                                  {isCheapest && (
+                                    <div className="bg-emerald-500 text-white text-[9px] font-bold px-2 py-1 uppercase tracking-wider rounded-bl-lg">
+                                      Paling Murah
+                                    </div>
+                                  )}
+                                  {isFastest && !isCheapest && (
+                                    <div className="bg-amber-500 text-white text-[9px] font-bold px-2 py-1 uppercase tracking-wider rounded-bl-lg">
+                                      Paling Cepat
+                                    </div>
+                                  )}
+                                  {isFastest && isCheapest && (
+                                    <div className="bg-blue-500 text-white text-[9px] font-bold px-2 py-1 uppercase tracking-wider rounded-bl-lg ml-px">
+                                      Paling Cepat
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex items-center gap-4 mt-2">
                                 <div
                                   className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                                     isSelected ? 'bg-[#b5000b] text-white' : 'bg-gray-100 text-gray-500'
@@ -1390,11 +1170,13 @@ export default function CreateOrderClient({ user }: { user: User }) {
                                   </span>
                                 </div>
                                 <div>
-                                  <h4 className="font-bold text-gray-900 text-sm">{srv.product_name}</h4>
+                                  <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                                    {srv.product_name}
+                                  </h4>
                                   <p className="text-xs text-gray-400 font-semibold mt-0.5">Estimasi: {srv.duration}</p>
                                 </div>
                               </div>
-                              <div className="text-right">
+                              <div className="text-right mt-2">
                                 <span className="text-base font-mono font-extrabold text-gray-900">
                                   Rp {srv.delivery_price.toLocaleString('id-ID')}
                                 </span>
@@ -1448,11 +1230,23 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <span>Barang: {packageInfo.itemName}</span>
                           <span className="font-semibold text-xs bg-gray-200/60 px-2 py-0.5 rounded-lg text-gray-600">{packageInfo.category}</span>
                         </p>
-                        <p className="text-gray-800">
-                          <strong>Berat Dikenakan:</strong> {chargeableWeight} kg
-                        </p>
-                        <p className="text-gray-800">
-                          <strong>Layanan Terpilih:</strong> {selectedService?.product_name}
+                        <div className="bg-white border border-gray-100 rounded-lg p-3 text-xs space-y-1 mt-2 shadow-sm">
+                          <div className="flex justify-between text-gray-500">
+                            <span>Berat Aktual</span>
+                            <span>{packageInfo.weight} kg</span>
+                          </div>
+                          <div className="flex justify-between text-gray-500">
+                            <span>Berat Volumetrik</span>
+                            <span>{volumetricWeight} kg</span>
+                          </div>
+                          <div className="flex justify-between font-bold text-gray-800 mt-1 pt-1 border-t border-gray-50">
+                            <span>Berat Dikenakan (Chargeable)</span>
+                            <span className="text-[#b5000b]">{chargeableWeight} kg</span>
+                          </div>
+                        </div>
+                        <p className="text-gray-800 mt-3 flex justify-between items-center">
+                          <strong>Layanan Terpilih:</strong> 
+                          <span className="font-bold text-sm">{selectedService?.product_name}</span>
                         </p>
                       </div>
                     </div>
@@ -1645,6 +1439,32 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       <span className="text-sm font-bold">Pembayaran Berhasil!</span>
                     </div>
                   )}
+
+                  {(paymentStatus === 'ERROR' || paymentStatus === 'TIMEOUT') && (
+                    <div className="absolute inset-0 bg-rose-500/95 text-white flex flex-col items-center justify-center space-y-4 animate-fade-in z-10 p-6 text-center">
+                      <span className="material-symbols-outlined text-[48px]" style={FILL}>
+                        {paymentStatus === 'TIMEOUT' ? 'timer_off' : 'error'}
+                      </span>
+                      <div>
+                        <span className="text-lg font-bold block mb-1">
+                          {paymentStatus === 'TIMEOUT' ? 'Waktu Pembayaran Habis' : 'Pembayaran Gagal'}
+                        </span>
+                        <p className="text-xs text-white/80 font-medium max-w-[280px]">
+                          {orderError || 'Silakan coba buat kode QR baru untuk melanjutkan pembayaran.'}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (paymentTrxId && selectedService) {
+                            handleInitiatePayment(paymentTrxId, selectedService.delivery_price);
+                          }
+                        }}
+                        className="h-10 px-6 bg-white text-rose-600 font-bold rounded-xl text-sm shadow-md hover:scale-105 active:scale-95 transition-all mt-2"
+                      >
+                        Coba Lagi
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1657,21 +1477,23 @@ export default function CreateOrderClient({ user }: { user: User }) {
             )}
 
             {/* STATUS AND SIMULATOR PROGRESS */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-bold text-gray-400">
-                <span>STATUS GOPAY: {paymentStatus}</span>
-                <span>{paymentProgress}%</span>
+            {paymentStatus === 'PENDING' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                  <span>STATUS GOPAY: PENDING</span>
+                  <span>{paymentProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                  <div
+                    className="bg-[#b5000b] h-full transition-all duration-300 ease-out"
+                    style={{ width: `${paymentProgress}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 text-center font-semibold uppercase tracking-wider">
+                  Menunggu pembayaran selesai...
+                </p>
               </div>
-              <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-[#b5000b] h-full transition-all duration-300 ease-out"
-                  style={{ width: `${paymentProgress}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-gray-400 text-center font-semibold uppercase tracking-wider">
-                Mencari konfirmasi pembayaran real-time dari GoPay...
-              </p>
-            </div>
+            )}
 
             {/* BUTTON CANCEL */}
             <button
@@ -1687,7 +1509,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
               }}
               className="w-full h-11 border border-gray-200 text-gray-500 hover:bg-gray-50 font-bold rounded-xl text-xs transition-colors"
             >
-              Batalkan Pembayaran
+              Tutup & Batalkan Pembayaran
             </button>
           </div>
         </div>

@@ -50,11 +50,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Filter mock rates realistically
+    if (weight > 300) {
+      return NextResponse.json(
+        { success: false, info: 'Berat tertagih melebihi batas maksimal 300 kg' },
+        { status: 400 }
+      );
+    }
+
     const isSameRegency = /^\d{2}\.\d{2}/.test(originCodeFinal) && /^\d{2}\.\d{2}/.test(destinationCodeFinal) && originCodeFinal.substring(0, 5) === destinationCodeFinal.substring(0, 5);
     const isSameProvince = /^\d{2}\./.test(originCodeFinal) && /^\d{2}\./.test(destinationCodeFinal) && originCodeFinal.substring(0, 2) === destinationCodeFinal.substring(0, 2);
 
-    const mockRates = [
-      {
+    const mockRates = [];
+
+    if (weight <= 50) {
+      mockRates.push({
         product_code: 'REG',
         product_name: 'Anteraja Regular',
         duration: '1-2 Day',
@@ -63,10 +72,10 @@ export async function POST(request: NextRequest) {
         status: 'ACTIVE',
         pickup_start: null as string | null,
         pickup_end: null as string | null
-      }
-    ];
+      });
+    }
 
-    if (isSameProvince) {
+    if (isSameProvince && weight <= 50) {
       mockRates.push({
         product_code: 'ND',
         product_name: 'Anteraja Next Day',
@@ -79,7 +88,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (isSameRegency) {
+    if (isSameRegency && weight <= 10) {
       mockRates.push({
         product_code: 'SD',
         product_name: 'Anteraja Same Day',
@@ -90,6 +99,13 @@ export async function POST(request: NextRequest) {
         pickup_start: '00:00:00',
         pickup_end: '14:00:00'
       });
+    }
+
+    if (mockRates.length === 0) {
+      return NextResponse.json(
+        { success: false, info: 'Tidak ada layanan yang tersedia untuk rute dan berat tersebut.' },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ success: true, content: mockRates });
