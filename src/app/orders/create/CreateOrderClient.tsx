@@ -11,6 +11,10 @@ interface User {
   districtCode?: string;
   postalCode?: string;
   districtName?: string;
+  cityCode?: string;
+  cityName?: string;
+  provinceCode?: string;
+  provinceName?: string;
 }
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
