@@ -131,7 +131,7 @@ export default function SearchableDistrictSelect({
       <>
         {parts.map((part, i) => 
           part.toLowerCase() === highlight.toLowerCase() 
-            ? <span key={i} className="bg-yellow-200 text-[#b5000b] font-bold">{part}</span> 
+            ? <span key={i} className="bg-yellow-200 text-primary font-bold">{part}</span> 
             : <span key={i}>{part}</span>
         )}
       </>
@@ -145,7 +145,7 @@ export default function SearchableDistrictSelect({
         <input
           type="text"
           placeholder={placeholder}
-          className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+          className="w-full h-11 pl-10 pr-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
           value={query}
           onChange={handleInputChange}
           onFocus={() => {
@@ -196,7 +196,7 @@ export default function SearchableDistrictSelect({
               {results.map(opt => (
                 <li
                   key={opt.code}
-                  className="px-4 py-2.5 hover:bg-[#b5000b]/5 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                  className="px-4 py-2.5 hover:bg-primary/5 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
                   onMouseDown={() => handleSelect(opt)}
                 >
                   <p className="text-xs font-semibold text-gray-800 leading-tight">

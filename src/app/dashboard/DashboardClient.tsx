@@ -280,7 +280,7 @@ export default function DashboardClient({ user }: { user: User }) {
             </div>
             <button
               onClick={handleNewSession}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:text-[#b5000b] hover:bg-[#b5000b]/5 border border-gray-100 transition-colors"
+              className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:text-primary hover:bg-background border border-gray-100 transition-colors"
               title="Sesi Baru"
             >
               <span className="material-symbols-outlined text-[16px]">refresh</span>
@@ -319,14 +319,14 @@ export default function DashboardClient({ user }: { user: User }) {
               {/* Card 1: Create Order */}
               <div 
                 onClick={() => router.push('/orders/create')}
-                className="bg-gradient-to-br from-[#b5000b] to-[#e60010] rounded-2xl p-5 text-white shadow-md shadow-[#b5000b]/10 hover:shadow-lg hover:shadow-[#b5000b]/20 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                className="bg-gradient-to-r from-primary to-primary-light rounded-2xl p-5 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
               >
                 <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
                   <span className="material-symbols-outlined text-[100px]">local_shipping</span>
                 </div>
                 <div className="relative z-10 space-y-3">
                   <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <span className="material-symbols-outlined text-white text-[20px]">add_circle</span>
+                    <span className="material-symbols-outlined text-white text-[20px]">add</span>
                   </div>
                   <div>
                     <h3 className="font-extrabold text-sm tracking-tight">Buat Order</h3>
@@ -344,7 +344,7 @@ export default function DashboardClient({ user }: { user: User }) {
                   <span className="material-symbols-outlined text-[100px]">barcode_scanner</span>
                 </div>
                 <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-600">
+                  <div className="w-10 h-10 rounded-xl bg-background border border-primary-light/20 flex items-center justify-center text-primary">
                     <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
                   </div>
                   <div>
@@ -363,7 +363,7 @@ export default function DashboardClient({ user }: { user: User }) {
                   <span className="material-symbols-outlined text-[100px]">calculate</span>
                 </div>
                 <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                  <div className="w-10 h-10 rounded-xl bg-background border border-primary-light/20 flex items-center justify-center text-primary">
                     <span className="material-symbols-outlined text-[20px]">calculate</span>
                   </div>
                   <div>
@@ -382,7 +382,7 @@ export default function DashboardClient({ user }: { user: User }) {
                   <span className="material-symbols-outlined text-[100px]">location_on</span>
                 </div>
                 <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+                  <div className="w-10 h-10 rounded-xl bg-background border border-primary-light/20 flex items-center justify-center text-primary">
                     <span className="material-symbols-outlined text-[20px]">location_on</span>
                   </div>
                   <div>
@@ -436,8 +436,8 @@ export default function DashboardClient({ user }: { user: User }) {
             <div id="scanner-card" className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden scroll-mt-6">
               <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-[#b5000b]/8 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>qr_code_scanner</span>
+                  <div className="w-9 h-9 rounded-xl bg-background flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>qr_code_scanner</span>
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 text-[15px]">Scan & Claim Paket</h3>
@@ -458,7 +458,7 @@ export default function DashboardClient({ user }: { user: User }) {
                     <input
                       ref={inputRef}
                       autoFocus
-                      className="w-full h-14 pl-12 pr-32 bg-gray-50 border-2 border-gray-100 rounded-xl text-base font-mono font-semibold text-gray-900 uppercase placeholder:text-gray-300 placeholder:normal-case placeholder:font-sans focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                      className="w-full h-14 pl-12 pr-32 bg-gray-50 border-2 border-gray-100 rounded-xl text-base font-mono font-semibold text-gray-900 uppercase placeholder:text-gray-300 placeholder:normal-case placeholder:font-sans focus:border-primary-light/50 focus:ring-4 focus:ring-background focus:bg-white transition-all outline-none"
                       placeholder="Masukkan atau scan resi AWB..."
                       value={awbValue}
                       onChange={(e) => {
@@ -486,7 +486,7 @@ export default function DashboardClient({ user }: { user: User }) {
                     <button
                       type="submit"
                       disabled={!awbValue.trim() || isScanning}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-5 bg-[#b5000b] text-white rounded-lg font-semibold text-sm hover:bg-[#9a0009] active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-5 bg-gradient-to-r from-primary to-primary-light text-white rounded-lg font-semibold text-sm hover:from-primary-light hover:to-primary active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2"
                     >
                       {isScanning ? (
                         <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

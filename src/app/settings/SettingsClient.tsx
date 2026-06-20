@@ -85,8 +85,8 @@ export default function SettingsClient({ user }: { user: User }) {
             {/* Scanner Preferences */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>settings_input_hdmi</span>
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>settings_input_hdmi</span>
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 text-sm">Konfigurasi Barcode Scanner</h3>
@@ -111,7 +111,7 @@ export default function SettingsClient({ user }: { user: User }) {
                       type="checkbox"
                       checked={beepOnSuccess}
                       onChange={(e) => setBeepOnSuccess(e.target.checked)}
-                      className="w-9 h-5 rounded-full bg-gray-200 border-none cursor-pointer focus:ring-0 focus:ring-offset-0 checked:bg-[#b5000b] transition-all accent-[#b5000b]"
+                      className="w-9 h-5 rounded-full bg-gray-200 border-none cursor-pointer focus:ring-0 focus:ring-offset-0 checked:bg-primary transition-all accent-primary"
                     />
                   </div>
                 </div>
@@ -134,7 +134,7 @@ export default function SettingsClient({ user }: { user: User }) {
                       type="checkbox"
                       checked={beepOnFailure}
                       onChange={(e) => setBeepOnFailure(e.target.checked)}
-                      className="w-9 h-5 rounded-full bg-gray-200 border-none cursor-pointer focus:ring-0 focus:ring-offset-0 checked:bg-[#b5000b] transition-all accent-[#b5000b]"
+                      className="w-9 h-5 rounded-full bg-gray-200 border-none cursor-pointer focus:ring-0 focus:ring-offset-0 checked:bg-primary transition-all accent-primary"
                     />
                   </div>
                 </div>
@@ -150,7 +150,7 @@ export default function SettingsClient({ user }: { user: User }) {
                     type="checkbox"
                     checked={autoClearInput}
                     onChange={(e) => setAutoClearInput(e.target.checked)}
-                    className="w-9 h-5 rounded-full bg-gray-200 border-none cursor-pointer focus:ring-0 focus:ring-offset-0 checked:bg-[#b5000b] transition-all accent-[#b5000b]"
+                    className="w-9 h-5 rounded-full bg-gray-200 border-none cursor-pointer focus:ring-0 focus:ring-offset-0 checked:bg-primary transition-all accent-primary"
                   />
                 </div>
               </div>

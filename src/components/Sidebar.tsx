@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface SidebarProps {
   user?: {
@@ -28,9 +29,12 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
   };
 
   const menuItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: 'grid_view' },
-    { href: '/orders/create', label: 'Buat Order', icon: 'add_circle' },
-    { href: '/tracking', label: 'Tracking Resi', icon: 'route' },
+    { href: '/dashboard', label: 'Dashboard', icon: 'home' },
+    { href: '/orders/create', label: 'Buat Order', icon: 'add_box' },
+    { href: '/rates/check', label: 'Cek Ongkir', icon: 'calculate' },
+    { href: '/tracking', label: 'Tracking', icon: 'location_on' },
+    { href: '/claim', label: 'Claim Parcel', icon: 'receipt_long' },
+    { href: '/orders', label: 'Riwayat Order', icon: 'list_alt' },
     { href: '/settings', label: 'Pengaturan', icon: 'settings' },
   ];
 
@@ -42,42 +46,38 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
     .toUpperCase();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-auto">
+    <aside className="fixed inset-y-0 left-0 z-50 w-72 bg-surface border-r border-gray-100 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-auto">
       {/* Brand */}
-      <div className="px-6 py-6 border-b border-gray-50">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 bg-[#b5000b] rounded-xl flex items-center justify-center shadow-md shadow-[#b5000b]/15 shrink-0">
-            <span className="material-symbols-outlined text-white text-[22px]" style={FILL}>
-              local_shipping
-            </span>
-          </div>
-          <div>
-            <h1 className="font-bold text-gray-900 text-[17px] tracking-tight leading-tight">Mitraaja</h1>
-            <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-[0.12em]">Gateway Portal</span>
-          </div>
-        </div>
+      <div className="px-6 py-6 flex justify-center border-b border-gray-50">
+        <Link href="/dashboard" className="flex items-center justify-center hover:opacity-90 transition-opacity">
+          <Image
+            src="/logo-anteraja.png"
+            alt="Anteraja Logo"
+            width={148}
+            height={60}
+            className="h-11 w-auto object-contain"
+            priority
+          />
+        </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
-        <p className="px-3 pb-2 pt-1 text-[10px] font-bold text-gray-400 uppercase tracking-[0.1em]">
-          MENU UTAMA
-        </p>
+      <nav className="flex-1 px-4 py-5 space-y-2 overflow-y-auto">
         {menuItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+              className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all ${
                 isActive
-                  ? 'bg-[#b5000b]/8 text-[#b5000b]'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  ? 'bg-background text-primary'
+                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
               }`}
             >
               <span
-                className={`material-symbols-outlined text-[20px] ${
-                  isActive ? 'text-[#b5000b]' : 'text-gray-400'
+                className={`material-symbols-outlined text-[24px] ${
+                  isActive ? 'text-primary' : 'text-text-secondary'
                 }`}
                 style={isActive ? FILL : undefined}
               >
@@ -89,20 +89,20 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
         })}
       </nav>
 
-      {/* User Profile */}
+      {/* User Profile - Not fully matching mockup but good enough */}
       <div className="px-4 py-5 border-t border-gray-50">
         <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/70">
-          <div className="w-10 h-10 rounded-full bg-[#b5000b]/10 text-[#b5000b] flex items-center justify-center font-bold text-sm tracking-tight shrink-0">
+          <div className="w-10 h-10 rounded-full bg-background text-primary flex items-center justify-center font-bold text-sm tracking-tight shrink-0">
             {userInitials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
-            <p className="text-[11px] text-gray-400 truncate">NIA: {user.nia}</p>
+            <p className="text-sm font-semibold text-text-primary truncate">{user.name}</p>
+            <p className="text-[11px] text-text-secondary truncate">NIA: {user.nia}</p>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="mt-3 w-full h-9 flex items-center justify-center gap-2 rounded-lg text-xs font-semibold text-gray-500 hover:text-[#b5000b] hover:bg-[#b5000b]/5 border border-gray-100 transition-colors"
+          className="mt-3 w-full h-9 flex items-center justify-center gap-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-primary hover:bg-background border border-gray-100 transition-colors"
         >
           <span className="material-symbols-outlined text-[17px]">logout</span>
           Akhiri Sesi

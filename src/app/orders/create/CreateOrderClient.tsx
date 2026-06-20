@@ -80,7 +80,7 @@ function SearchableSelect({
       <input
         type="text"
         placeholder={placeholder}
-        className="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+        className="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -152,7 +152,7 @@ function SearchableSelectObject({
       <input
         type="text"
         placeholder={placeholder}
-        className="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+        className="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -733,7 +733,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <div
                           className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
                             step >= item.s
-                              ? 'bg-[#b5000b] text-white'
+                              ? 'bg-primary text-white'
                               : 'bg-gray-100 text-gray-400 border border-gray-200'
                           }`}
                         >
@@ -754,7 +754,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       {idx < 3 && (
                         <div className="flex-1 h-0.5 mx-4 bg-gray-100 relative overflow-hidden">
                           <div
-                            className="absolute inset-y-0 left-0 bg-[#b5000b] transition-all duration-500 ease-out"
+                            className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
                             style={{ width: step > item.s ? '100%' : '0%' }}
                           />
                         </div>
@@ -776,7 +776,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-gray-50 pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                          <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>
                             person_pin_circle
                           </span>
                           <h3 className="font-bold text-gray-900 text-[15px]">Data Pengirim</h3>
@@ -796,7 +796,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="text"
                             placeholder="Contoh: Ahmad Budi"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={sender.name}
                             onChange={(e) => setSender({ ...sender, name: e.target.value })}
                           />
@@ -806,7 +806,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="text"
                             placeholder="Contoh: 081234567890"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={sender.phone}
                             onChange={(e) => setSender({ ...sender, phone: formatPhone(e.target.value) })}
                           />
@@ -816,7 +816,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <textarea
                             placeholder="Contoh: Jl. Jend. Sudirman No. 1, RT 01/RW 02..."
                             rows={3}
-                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none resize-none"
+                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
                             value={sender.address}
                             onChange={(e) => setSender({ ...sender, address: e.target.value })}
                           />
@@ -840,7 +840,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="text"
                             placeholder="Contoh: 15417"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={sender.postalCode}
                             onChange={(e) => setSender({ ...sender, postalCode: e.target.value })}
                           />
@@ -850,7 +850,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <textarea
                             rows={3}
                             placeholder="Nama Jalan, Blok, RT/RW, No. Rumah"
-                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none resize-none"
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
                             value={sender.address}
                             onChange={(e) => setSender({ ...sender, address: e.target.value })}
                           />
@@ -859,7 +859,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="checkbox"
                             id="save-sender-chk"
-                            className="w-4 h-4 text-[#b5000b] border-gray-200 rounded focus:ring-[#b5000b]/20"
+                            className="w-4 h-4 text-primary border-gray-200 rounded focus:ring-primary/20"
                             checked={saveSenderAddress}
                             onChange={(e) => setSaveSenderAddress(e.target.checked)}
                           />
@@ -874,7 +874,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between border-b border-gray-50 pb-2">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                          <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>
                             location_on
                           </span>
                           <h3 className="font-bold text-gray-900 text-[15px]">Data Penerima</h3>
@@ -894,7 +894,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="text"
                             placeholder="Contoh: Siti Aminah"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={recipient.name}
                             onChange={(e) => setRecipient({ ...recipient, name: e.target.value })}
                           />
@@ -904,7 +904,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="text"
                             placeholder="Contoh: 085712345678"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={recipient.phone}
                             onChange={(e) => setRecipient({ ...recipient, phone: formatPhone(e.target.value) })}
                           />
@@ -926,7 +926,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="text"
                             placeholder="Contoh: 11480"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={recipient.postalCode}
                             onChange={(e) => setRecipient({ ...recipient, postalCode: e.target.value })}
                           />
@@ -936,7 +936,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <textarea
                             rows={3}
                             placeholder="Nama Jalan, Blok, RT/RW, No. Rumah"
-                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none resize-none"
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
                             value={recipient.address}
                             onChange={(e) => setRecipient({ ...recipient, address: e.target.value })}
                           />
@@ -945,7 +945,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="checkbox"
                             id="save-recipient-chk"
-                            className="w-4 h-4 text-[#b5000b] border-gray-200 rounded focus:ring-[#b5000b]/20"
+                            className="w-4 h-4 text-primary border-gray-200 rounded focus:ring-primary/20"
                             checked={saveRecipientAddress}
                             onChange={(e) => setSaveRecipientAddress(e.target.checked)}
                           />
@@ -963,7 +963,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
               {step === 2 && (
                 <div className="p-6 md:p-8 space-y-6">
                   <div className="flex items-center gap-2 border-b border-gray-50 pb-2 mb-4">
-                    <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                    <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>
                       package_2
                     </span>
                     <h3 className="font-bold text-gray-900 text-[15px]">Detail Paket & Barang</h3>
@@ -975,7 +975,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Barang</label>
                         <input
                           type="text"
-                          className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                          className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                           value={packageInfo.itemName}
                           onChange={(e) => setPackageInfo({ ...packageInfo, itemName: e.target.value })}
                         />
@@ -985,7 +985,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kategori</label>
                           <select
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={packageInfo.category}
                             onChange={(e) => setPackageInfo({ ...packageInfo, category: e.target.value })}
                           >
@@ -1000,7 +1000,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nilai Barang (Rp)</label>
                           <input
                             type="number"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={packageInfo.value}
                             onChange={(e) => setPackageInfo({ ...packageInfo, value: Number(e.target.value) })}
                           />
@@ -1013,7 +1013,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="number"
                             step="0.1"
-                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white outline-none"
+                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
                             value={packageInfo.weight}
                             onChange={(e) => setPackageInfo({ ...packageInfo, weight: Number(e.target.value) })}
                           />
@@ -1022,7 +1022,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">P (cm)</label>
                           <input
                             type="number"
-                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white outline-none"
+                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
                             value={packageInfo.dimensions.length}
                             onChange={(e) => setPackageInfo({
                               ...packageInfo,
@@ -1034,7 +1034,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">L (cm)</label>
                           <input
                             type="number"
-                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white outline-none"
+                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
                             value={packageInfo.dimensions.width}
                             onChange={(e) => setPackageInfo({
                               ...packageInfo,
@@ -1046,7 +1046,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">T (cm)</label>
                           <input
                             type="number"
-                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white outline-none"
+                            className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
                             value={packageInfo.dimensions.height}
                             onChange={(e) => setPackageInfo({
                               ...packageInfo,
@@ -1072,10 +1072,10 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       </div>
                       <div className="flex items-center justify-between pt-1">
                         <div>
-                          <span className="text-sm font-extrabold text-[#b5000b]">Berat Dikenakan (Chargeable)</span>
+                          <span className="text-sm font-extrabold text-primary">Berat Dikenakan (Chargeable)</span>
                           <p className="text-[10px] text-gray-400 font-semibold">Diambil nilai tertinggi</p>
                         </div>
-                        <span className="text-xl font-mono font-extrabold text-[#b5000b] bg-[#b5000b]/5 px-3 py-1 rounded-xl">
+                        <span className="text-xl font-mono font-extrabold text-primary bg-primary/5 px-3 py-1 rounded-xl">
                           {chargeableWeight} kg
                         </span>
                       </div>
@@ -1088,7 +1088,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
               {step === 3 && (
                 <div className="p-6 md:p-8 space-y-6">
                   <div className="flex items-center gap-2 border-b border-gray-50 pb-2 mb-4">
-                    <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                    <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>
                       local_shipping
                     </span>
                     <h3 className="font-bold text-gray-900 text-[15px]">Pilih Layanan Pengiriman</h3>
@@ -1096,7 +1096,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
                   {isRatesLoading ? (
                     <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                      <div className="w-9 h-9 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin" />
+                      <div className="w-9 h-9 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       <p className="text-sm font-bold text-gray-400">Menghubungi API Anteraja untuk kalkulasi ongkir...</p>
                     </div>
                   ) : ratesError ? (
@@ -1134,7 +1134,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                               onClick={() => setSelectedService(srv)}
                               className={`relative p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-center justify-between overflow-hidden ${
                                 isSelected
-                                  ? 'border-[#b5000b] bg-[#b5000b]/5 ring-2 ring-[#b5000b]/10 shadow-sm'
+                                  ? 'border-primary bg-primary/5 ring-2 ring-primary/10 shadow-sm'
                                   : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50/50'
                               }`}
                             >
@@ -1162,7 +1162,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                               <div className="flex items-center gap-4 mt-2">
                                 <div
                                   className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                                    isSelected ? 'bg-[#b5000b] text-white' : 'bg-gray-100 text-gray-500'
+                                    isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
                                   }`}
                                 >
                                   <span className="material-symbols-outlined text-[20px]" style={FILL}>
@@ -1199,7 +1199,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
               {step === 4 && (
                 <div className="p-6 md:p-8 space-y-6">
                   <div className="flex items-center gap-2 border-b border-gray-50 pb-2 mb-4">
-                    <span className="material-symbols-outlined text-[#b5000b] text-[20px]" style={FILL}>
+                    <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>
                       payments
                     </span>
                     <h3 className="font-bold text-gray-900 text-[15px]">Ringkasan Order & Pembayaran</h3>
@@ -1241,7 +1241,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           </div>
                           <div className="flex justify-between font-bold text-gray-800 mt-1 pt-1 border-t border-gray-50">
                             <span>Berat Dikenakan (Chargeable)</span>
-                            <span className="text-[#b5000b]">{chargeableWeight} kg</span>
+                            <span className="text-primary">{chargeableWeight} kg</span>
                           </div>
                         </div>
                         <p className="text-gray-800 mt-3 flex justify-between items-center">
@@ -1255,7 +1255,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                     <div className="border border-gray-100 p-6 rounded-2xl flex flex-col justify-between items-center text-center bg-gray-50/20">
                       <div className="space-y-2">
                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">TOTAL TAGIHAN</span>
-                        <h2 className="text-3xl font-mono font-extrabold text-[#b5000b]">
+                        <h2 className="text-3xl font-mono font-extrabold text-primary">
                           Rp {selectedService?.delivery_price.toLocaleString('id-ID')}
                         </h2>
                         <p className="text-xs text-gray-400 font-medium">Pembayaran online dengan GoPay QR Code</p>
@@ -1265,7 +1265,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <button
                           onClick={handleCreateOrder}
                           disabled={isCreatingOrder}
-                          className="w-full h-12 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-[#b5000b]/15 transition-all duration-300 disabled:opacity-60"
+                          className="w-full h-12 bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md shadow-primary/20 transition-all duration-300 disabled:opacity-60"
                         >
                           {isCreatingOrder ? (
                             <>
@@ -1291,7 +1291,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                 <div className="p-8 md:p-12 text-center space-y-6 flex flex-col items-center justify-center min-h-[420px]">
                   {isCreatingOrder ? (
                     <div className="space-y-4">
-                      <div className="w-12 h-12 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin mx-auto" />
+                      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                       <p className="text-sm font-semibold text-gray-500">Menyelesaikan pembuatan order dan menghasilkan AWB...</p>
                     </div>
                   ) : orderError ? (
@@ -1305,7 +1305,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                       </p>
                       <button
                         onClick={() => { setOrderError(null); setStep(4); }}
-                        className="h-11 px-6 bg-[#b5000b] hover:bg-[#b5000b]/95 text-white font-bold rounded-xl text-sm transition-all"
+                        className="h-11 px-6 bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-white font-bold rounded-xl text-sm transition-all"
                       >
                         Kembali & Coba Lagi
                       </button>
@@ -1337,7 +1337,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                                 if (createdAwb) navigator.clipboard.writeText(createdAwb);
                                 alert('Kode order disalin ke clipboard');
                               }}
-                              className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:text-[#b5000b] flex items-center justify-center transition-colors"
+                              className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-500 hover:text-primary flex items-center justify-center transition-colors"
                             >
                               <span className="material-symbols-outlined text-[16px]">content_copy</span>
                             </button>
@@ -1370,7 +1370,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         </button>
                         <button
                           onClick={() => router.push('/dashboard')}
-                          className="h-11 px-5 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl text-sm transition-all"
+                          className="h-11 px-5 bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-white font-bold rounded-xl text-sm transition-all"
                         >
                           Ke Dashboard
                         </button>
@@ -1396,7 +1396,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                     <button
                       onClick={handleNextStep}
                       disabled={step === 3 && !selectedService}
-                      className="h-10 px-4 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-[#b5000b]/10 transition-colors disabled:opacity-40"
+                      className="h-10 px-4 bg-primary hover:bg-primary-light text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-primary/10 transition-colors disabled:opacity-40"
                     >
                       Lanjutkan
                       <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -1470,7 +1470,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
             ) : (
               <div className="w-full max-w-[480px] h-[320px] mx-auto bg-gray-50 rounded-2xl flex items-center justify-center">
                 <div className="flex flex-col items-center space-y-3">
-                  <div className="w-8 h-8 border-4 border-[#b5000b] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                   <p className="text-xs text-gray-400 font-semibold">Menghasilkan kode pembayaran...</p>
                 </div>
               </div>
@@ -1485,7 +1485,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                 </div>
                 <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-[#b5000b] h-full transition-all duration-300 ease-out"
+                    className="bg-primary h-full transition-all duration-300 ease-out"
                     style={{ width: `${paymentProgress}%` }}
                   />
                 </div>
@@ -1537,7 +1537,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                   <li
                     key={addr.id}
                     onClick={() => selectAddress(addr)}
-                    className="p-3.5 border border-gray-100 hover:border-[#b5000b]/20 hover:bg-red-50/10 rounded-2xl cursor-pointer transition-all flex items-start justify-between group"
+                    className="p-3.5 border border-gray-100 hover:border-primary/20 hover:bg-red-50/10 rounded-2xl cursor-pointer transition-all flex items-start justify-between group"
                   >
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">

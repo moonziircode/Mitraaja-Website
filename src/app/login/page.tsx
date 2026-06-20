@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,10 +48,15 @@ export default function LoginPage() {
       <main className="w-full max-w-md animate-fade-in">
         <div className="glass-panel rounded-2xl shadow-lg p-8 overflow-hidden relative">
           <div className="flex flex-col items-center mb-8 text-center">
-            <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm border border-gray-200">
-              <span className="material-symbols-outlined text-4xl text-[#b5000b]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                local_shipping
-              </span>
+            <div className="h-16 flex items-center justify-center mb-4">
+              <Image
+                src="/logo-anteraja.png"
+                alt="Anteraja Logo"
+                width={148}
+                height={60}
+                className="h-12 w-auto object-contain"
+                priority
+              />
             </div>
             <h1 className="text-2xl font-semibold text-[#191c1e] mb-1 tracking-tight">Login Agent Gateway</h1>
             <p className="text-sm text-gray-500">Masuk untuk mengelola paket dan klaim AWB</p>
@@ -113,7 +119,7 @@ export default function LoginPage() {
 
             <div className="pt-2 space-y-4">
               <button
-                className="w-full bg-[#b5000b] text-white font-semibold text-base py-3 rounded-lg shadow-sm hover:shadow-md hover:bg-[#890006] transition-all duration-200 flex justify-center items-center relative overflow-hidden group disabled:bg-gray-400"
+                className="w-full bg-primary text-white font-semibold text-base py-3 rounded-lg shadow-sm hover:shadow-md hover:bg-primary-light transition-all duration-200 flex justify-center items-center relative overflow-hidden group disabled:bg-gray-400"
                 id="submitBtn"
                 type="submit"
                 disabled={isLoading}
@@ -124,7 +130,7 @@ export default function LoginPage() {
                 <span className={`material-symbols-outlined absolute right-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-4 transition-all duration-300 ${isLoading ? 'hidden' : ''}`}>
                   arrow_forward
                 </span>
-                <div className={`absolute inset-0 flex items-center justify-center bg-[#b5000b] ${!isLoading ? 'hidden' : ''}`}>
+                <div className={`absolute inset-0 flex items-center justify-center bg-primary ${!isLoading ? 'hidden' : ''}`}>
                   <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
@@ -132,7 +138,7 @@ export default function LoginPage() {
                 </div>
               </button>
               <div className="text-center">
-                <a className="text-xs text-[#b5000b] hover:text-[#890006] transition-colors inline-flex items-center gap-1" href="#" onClick={(e) => { e.preventDefault(); alert('Silakan hubungi administrator pusat untuk bantuan masuk.'); }}>
+                <a className="text-xs text-primary hover:text-primary-light transition-colors inline-flex items-center gap-1" href="#" onClick={(e) => { e.preventDefault(); alert('Silakan hubungi administrator pusat untuk bantuan masuk.'); }}>
                   <span className="material-symbols-outlined text-sm">help_center</span>
                   Lupa password atau kendala login?
                 </a>

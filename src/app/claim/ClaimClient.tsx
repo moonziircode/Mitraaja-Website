@@ -149,7 +149,7 @@ export default function ClaimClient({ user }: { user: User }) {
               {/* Input Panel */}
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#b5000b]/10 flex items-center justify-center text-[#b5000b]">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                     <span className="material-symbols-outlined text-[20px]" style={FILL}>format_list_bulleted</span>
                   </div>
                   <div>
@@ -159,7 +159,7 @@ export default function ClaimClient({ user }: { user: User }) {
                 </div>
 
                 <textarea
-                  className="w-full flex-1 min-h-[240px] p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:bg-white focus:border-[#b5000b]/30 focus:ring-4 focus:ring-[#b5000b]/5 outline-none resize-none transition-all placeholder:font-sans"
+                  className="w-full flex-1 min-h-[240px] p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/5 outline-none resize-none transition-all placeholder:font-sans"
                   placeholder="Contoh:&#10;10008888000123&#10;10008888000124&#10;AWB-12345"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
@@ -197,7 +197,7 @@ export default function ClaimClient({ user }: { user: User }) {
                     <button
                       onClick={handleClaimAll}
                       disabled={isProcessing || stats.pending === 0}
-                      className="h-10 px-5 bg-[#b5000b] hover:bg-[#b5000b]/90 text-white font-bold rounded-xl text-xs disabled:opacity-50 transition-colors flex items-center gap-2 shadow-md shadow-[#b5000b]/10"
+                      className="h-10 px-5 bg-primary hover:bg-primary-light text-white font-bold rounded-xl text-xs disabled:opacity-50 transition-colors flex items-center gap-2 shadow-md shadow-primary/10"
                     >
                       {isProcessing ? (
                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
