@@ -55,10 +55,21 @@ export async function POST(request: NextRequest) {
         color = 'gray_light';
       }
 
+      let formattedTime = timestamp;
+      try {
+        const d = new Date(timestamp);
+        if (!isNaN(d.getTime())) {
+          formattedTime = d.toLocaleString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          }).replace(/\./g, ':');
+        }
+      } catch (e) {}
+
       return {
         opcode: parseInt(code, 10) || 0,
         status,
-        time: timestamp,
+        time: formattedTime,
         detail: messageId,
         icon,
         color,
@@ -102,9 +113,10 @@ export async function POST(request: NextRequest) {
 
       const trackingResult = data.content;
       // Map MaaHistoryTracking to frontend format
-      const mappedHistory = (trackingResult.history || []).map((ev: any) => 
-        mapEvent(ev.tracking_code, ev.timestamp, ev.message?.id || 'Update')
-      );
+      const mappedHistory = (trackingResult.history || []).map((ev: any) => {
+        const msg = typeof ev.message === 'object' ? (ev.message?.id || 'Update') : (ev.message || 'Update');
+        return mapEvent(ev.tracking_code, ev.timestamp, msg);
+      });
 
       return NextResponse.json({
         awb: trackingResult.waybill || cleanAwb,

@@ -46,26 +46,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the request body for Anteraja payment initiation API
-    // We send both snake_case and camelCase field variants for compatibility.
+    // The Android app sends null for prices and cash received, and Gson omits them.
+    // So we should omit them completely to avoid backend validation errors.
     const paymentBody = {
-      promo_code: null,
-      promoCode: null,
       task: [
         {
           task_code: taskCode,
-          taskCode: taskCode,
-          base_price: Number(deliveryPrice),
-          basePrice: Number(deliveryPrice),
-          total_price: Number(deliveryPrice),
-          totalPrice: Number(deliveryPrice),
-          promo_amount: 0.0,
-          promoAmount: 0.0
+          taskCode: taskCode
         }
       ],
-      cash_received: null,
-      cashReceived: null,
-      cash_received_by: null,
-      cashReceivedBy: null,
       payment_code: '006', // GoPay QR pm_code
       paymentCode: '006',
       payment_phone: shipperPhone || '081234567890',
