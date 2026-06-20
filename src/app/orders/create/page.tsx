@@ -33,12 +33,12 @@ export default async function CreateOrderPage() {
         if (!agentPostalCode) agentPostalCode = record.postal_code?.split(',')[0] || '';
         
         // Find City (dist_type=3) and Province (dist_type=2)
-        const agentCity = records.find((r: any) => r.dist_code === record.parent_dist_code);
+        const agentCity: any = records.find((r: any) => r.dist_code === record.parent_dist_code);
         if (agentCity) {
           agentCityCode = agentCity.dist_code;
           agentCityName = agentCity.dist_name;
           
-          const agentProv = records.find((r: any) => r.dist_code === agentCity.parent_dist_code);
+          const agentProv: any = records.find((r: any) => r.dist_code === agentCity.parent_dist_code);
           if (agentProv) {
             agentProvinceCode = agentProv.dist_code;
             agentProvinceName = agentProv.dist_name;
@@ -50,6 +50,14 @@ export default async function CreateOrderPage() {
     console.error('Failed to load agent district name:', error);
   }
 
+  const JABODETABEK_CITY_CODES = [
+    '31.01', '31.71', '31.72', '31.73', '31.74', '31.75', // DKI Jakarta
+    '32.01', '32.71', '32.76', '32.16', '32.75',          // Kab Bogor, Kota Bogor, Depok, Kab Bekasi, Kota Bekasi
+    '36.03', '36.71', '36.74'                             // Kab Tangerang, Kota Tangerang, Tangsel
+  ];
+
+  const isJabodetabek = JABODETABEK_CITY_CODES.includes(agentCityCode);
+
   const user = {
     name: session.name,
     nia: session.nia,
@@ -60,6 +68,7 @@ export default async function CreateOrderPage() {
     cityName: agentCityName,
     provinceCode: agentProvinceCode,
     provinceName: agentProvinceName,
+    isJabodetabek: isJabodetabek,
   };
 
   return <CreateOrderClient user={user} />;
