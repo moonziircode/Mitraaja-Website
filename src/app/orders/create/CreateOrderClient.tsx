@@ -15,7 +15,13 @@ interface User {
   cityName?: string;
   provinceCode?: string;
   provinceName?: string;
+  isJabodetabek?: boolean;
 }
+
+const JABODETABEK_CITIES = [
+  'Jakarta Pusat', 'Jakarta Utara', 'Jakarta Barat', 'Jakarta Selatan', 'Jakarta Timur', 'Kepulauan Seribu',
+  'Bogor', 'Depok', 'Tangerang', 'Tangerang Selatan', 'Bekasi'
+];
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
 
@@ -303,10 +309,47 @@ export default function CreateOrderClient({ user }: { user: User }) {
     }
   };
 
-  // Sender kecamatan loader (locked to agent's city)
+  // Filter provinces for Sender if Jabodetabek
+  const senderProvinces = user.isJabodetabek 
+    ? provincesList.filter(p => ['31', '32', '36'].includes(p.code))
+    : [];
+
+  // Sender city loader
   useEffect(() => {
-    if (user.cityCode) {
-      fetch(`/api/all-regions?parent=${user.cityCode}`)
+    if (!senderProvince) {
+      setSenderCitiesList([]);
+      setSenderCity(null);
+      setSenderKecamatan(null);
+      setSenderKelurahan(null);
+      return;
+    }
+    fetch(`/api/all-regions?parent=${senderProvince.code}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // If Jabodetabek, filter cities to only Jabodetabek cities
+          if (user.isJabodetabek) {
+            const jaboCodes = [
+              '31.01', '31.71', '31.72', '31.73', '31.74', '31.75',
+              '32.01', '32.71', '32.76', '32.16', '32.75',
+              '36.03', '36.71', '36.74'
+            ];
+            setSenderCitiesList(data.data.filter((c: any) => jaboCodes.includes(c.code)));
+          } else {
+            setSenderCitiesList(data.data);
+          }
+        }
+      })
+      .catch(err => console.error('Failed to load sender cities:', err));
+  }, [senderProvince]);
+
+  // Sender kecamatan loader
+  useEffect(() => {
+    // If not Jabodetabek, lock to user.cityCode. Otherwise lock to selected senderCity.
+    const cityCodeToUse = user.isJabodetabek ? senderCity?.code : user.cityCode;
+    
+    if (cityCodeToUse) {
+      fetch(`/api/all-regions?parent=${cityCodeToUse}`)
         .then(res => res.json())
         .then(data => {
           if (data.success) {
@@ -314,8 +357,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
           }
         })
         .catch(err => console.error('Failed to load sender kecamatans:', err));
+    } else {
+      setSenderKecamatansList([]);
+      setSenderKecamatan(null);
+      setSenderKelurahan(null);
     }
-  }, [user.cityCode]);
+  }, [user.isJabodetabek ? senderCity : user.cityCode]);
 
   // Sender kelurahan loader
   useEffect(() => {
@@ -390,8 +437,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   const handleSelectSenderKelurahan = (kel: any) => {
     setSenderKelurahan(kel);
-    if (kel && senderKecamatan && user.cityName && user.provinceName) {
-      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan.name}, ${user.cityName}, ${user.provinceName}`;
+    
+    const provName = user.isJabodetabek ? senderProvince?.name : user.provinceName;
+    const cName = user.isJabodetabek ? senderCity?.name : user.cityName;
+    
+    if (kel && senderKecamatan && cName && provName) {
+      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan.name}, ${cName}, ${provName}`;
       setSender(prev => ({
         ...prev,
         district: fullDistrictName,
@@ -439,10 +490,18 @@ export default function CreateOrderClient({ user }: { user: User }) {
     };
 
     if (addressBookTarget === 'sender') {
-      // Check if the address belongs to the agent's city
-      if (user.cityName && !addr.district.toLowerCase().includes(user.cityName.toLowerCase())) {
-        alert(`Buku alamat ini berada di luar wilayah operasi Anda (${user.cityName}). Pengirim harus berada di kota yang sama.`);
-        return;
+      // Check if the address is allowed
+      if (user.isJabodetabek) {
+        const isInJabodetabek = JABODETABEK_CITIES.some(city => addr.district.toLowerCase().includes(city.toLowerCase()));
+        if (!isInJabodetabek) {
+          alert(`Buku alamat ini berada di luar wilayah Jabodetabek. Agen Jabodetabek hanya dapat mengirim dari wilayah Jabodetabek.`);
+          return;
+        }
+      } else {
+        if (user.cityName && !addr.district.toLowerCase().includes(user.cityName.toLowerCase())) {
+          alert(`Buku alamat ini berada di luar wilayah operasi Anda (${user.cityName}). Pengirim harus berada di kota yang sama.`);
+          return;
+        }
       }
       setSender(info);
       setSenderQuery(addr.district);
@@ -451,6 +510,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
       if (parts.length >= 4) {
         const kelName = parts[0].replace(/^Kel\.\s+/i, '');
         const kecName = parts[1].replace(/^Kec\.\s+/i, '');
+        
+        if (user.isJabodetabek) {
+          const cityName = parts[2];
+          const provName = parts[3];
+          setSenderProvince({ name: provName });
+          setSenderCity({ name: cityName });
+        }
+        
         setSenderKecamatan({ name: kecName });
         setSenderKelurahan({ name: kelName, code: addr.districtCode, postalCode: addr.postalCode });
       }
@@ -923,26 +990,55 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setSender({ ...sender, phone: e.target.value })}
                           />
                         </div>
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap (Jalan, No, RT/RW)</label>
+                          <textarea
+                            placeholder="Contoh: Jl. Jend. Sudirman No. 1, RT 01/RW 02..."
+                            rows={3}
+                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none resize-none"
+                            value={sender.address}
+                            onChange={(e) => setSender({ ...sender, address: e.target.value })}
+                          />
+                        </div>
                         <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
                           <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
                             <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
                           </div>
                           
-                          {/* Locked Province & City */}
-                          <div className="grid grid-cols-2 gap-3.5">
-                            <div>
-                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Provinsi</label>
-                              <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
-                                {user.provinceName || 'Sesuai Agen'}
+                          {/* Province & City: Locked for Non-Jabodetabek, Selectable for Jabodetabek */}
+                          {user.isJabodetabek ? (
+                            <div className="grid grid-cols-2 gap-3.5">
+                              <SearchableSelectObject
+                                label="Provinsi"
+                                value={senderProvince}
+                                onChange={setSenderProvince}
+                                options={senderProvinces}
+                                placeholder="Pilih Provinsi..."
+                              />
+                              <SearchableSelectObject
+                                label="Kota / Kabupaten"
+                                value={senderCity}
+                                onChange={setSenderCity}
+                                options={senderCitiesList}
+                                placeholder="Pilih Kota..."
+                              />
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-3.5">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Provinsi</label>
+                                <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
+                                  {user.provinceName || 'Sesuai Agen'}
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kota / Kabupaten</label>
+                                <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
+                                  {user.cityName || 'Sesuai Agen'}
+                                </div>
                               </div>
                             </div>
-                            <div>
-                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kota / Kabupaten</label>
-                              <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
-                                {user.cityName || 'Sesuai Agen'}
-                              </div>
-                            </div>
-                          </div>
+                          )}
 
                           <div className="grid grid-cols-2 gap-3.5">
                             <SearchableSelectObject
