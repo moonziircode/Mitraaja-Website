@@ -23,7 +23,7 @@ export default async function CreateOrderPage() {
         columns: true,
         skip_empty_lines: true,
       });
-      const record = records.find((r: any) => r.dist_code === session.districtCode);
+      const record: any = records.find((r: any) => r.dist_code === session.districtCode);
       if (record) {
         agentDistrictName = record.dist_all || record.dist_name;
         if (!agentPostalCode) agentPostalCode = record.postal_code?.split(',')[0] || '';
