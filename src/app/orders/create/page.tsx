@@ -14,6 +14,10 @@ export default async function CreateOrderPage() {
 
   let agentDistrictName = '';
   let agentPostalCode = session.postalCode || '';
+  let agentCityCode = '';
+  let agentCityName = '';
+  let agentProvinceCode = '';
+  let agentProvinceName = '';
 
   try {
     if (session.districtCode) {
@@ -31,13 +35,13 @@ export default async function CreateOrderPage() {
         // Find City (dist_type=3) and Province (dist_type=2)
         const agentCity = records.find((r: any) => r.dist_code === record.parent_dist_code);
         if (agentCity) {
-          session.cityCode = agentCity.dist_code;
-          session.cityName = agentCity.dist_name;
+          agentCityCode = agentCity.dist_code;
+          agentCityName = agentCity.dist_name;
           
           const agentProv = records.find((r: any) => r.dist_code === agentCity.parent_dist_code);
           if (agentProv) {
-            session.provinceCode = agentProv.dist_code;
-            session.provinceName = agentProv.dist_name;
+            agentProvinceCode = agentProv.dist_code;
+            agentProvinceName = agentProv.dist_name;
           }
         }
       }
@@ -52,10 +56,10 @@ export default async function CreateOrderPage() {
     districtCode: session.districtCode,
     postalCode: agentPostalCode,
     districtName: agentDistrictName,
-    cityCode: (session as any).cityCode,
-    cityName: (session as any).cityName,
-    provinceCode: (session as any).provinceCode,
-    provinceName: (session as any).provinceName,
+    cityCode: agentCityCode,
+    cityName: agentCityName,
+    provinceCode: agentProvinceCode,
+    provinceName: agentProvinceName,
   };
 
   return <CreateOrderClient user={user} />;
