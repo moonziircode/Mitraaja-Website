@@ -204,9 +204,9 @@ export default function CreateOrderClient({ user }: { user: User }) {
     name: '',
     phone: '',
     address: '',
-    district: user.districtName || '',
-    postalCode: user.postalCode || '',
-    districtCode: user.districtCode || ''
+    district: '',
+    postalCode: '',
+    districtCode: ''
   });
 
   const [recipient, setRecipient] = useState<ContactInfo>({
@@ -299,42 +299,19 @@ export default function CreateOrderClient({ user }: { user: User }) {
     }
   };
 
-  // Sender city loader
+  // Sender kecamatan loader (locked to agent's city)
   useEffect(() => {
-    if (!senderProvince) {
-      setSenderCitiesList([]);
-      setSenderCity(null);
-      setSenderKecamatan(null);
-      setSenderKelurahan(null);
-      return;
+    if (user.cityCode) {
+      fetch(`/api/all-regions?parent=${user.cityCode}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setSenderKecamatansList(data.data);
+          }
+        })
+        .catch(err => console.error('Failed to load sender kecamatans:', err));
     }
-    fetch(`/api/all-regions?parent=${senderProvince.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setSenderCitiesList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load sender cities:', err));
-  }, [senderProvince]);
-
-  // Sender kecamatan loader
-  useEffect(() => {
-    if (!senderCity) {
-      setSenderKecamatansList([]);
-      setSenderKecamatan(null);
-      setSenderKelurahan(null);
-      return;
-    }
-    fetch(`/api/all-regions?parent=${senderCity.code}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setSenderKecamatansList(data.data);
-        }
-      })
-      .catch(err => console.error('Failed to load sender kecamatans:', err));
-  }, [senderCity]);
+  }, [user.cityCode]);
 
   // Sender kelurahan loader
   useEffect(() => {
@@ -409,12 +386,13 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   const handleSelectSenderKelurahan = (kel: any) => {
     setSenderKelurahan(kel);
-    if (kel && senderProvince && senderCity && senderKecamatan) {
-      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan.name}, ${senderCity.name}, ${senderProvince.name}`;
+    if (kel && senderKecamatan && user.cityName && user.provinceName) {
+      const fullDistrictName = `Kel. ${kel.name}, Kec. ${senderKecamatan.name}, ${user.cityName}, ${user.provinceName}`;
       setSender(prev => ({
         ...prev,
         district: fullDistrictName,
-        districtCode: kel.code
+        districtCode: kel.code,
+        postalCode: kel.postalCode || ''
       }));
       setSenderQuery(fullDistrictName);
     }
@@ -457,14 +435,21 @@ export default function CreateOrderClient({ user }: { user: User }) {
     };
 
     if (addressBookTarget === 'sender') {
-      setSender(prev => ({
-        ...prev,
-        name: info.name,
-        phone: info.phone,
-        address: info.address
-        // Do not overwrite district, districtCode, and postalCode for sender
-      }));
-      // parseAndSyncSenderDropdowns is removed as we don't use dropdowns for sender anymore
+      // Check if the address belongs to the agent's city
+      if (user.cityName && !addr.district.toLowerCase().includes(user.cityName.toLowerCase())) {
+        alert(`Buku alamat ini berada di luar wilayah operasi Anda (${user.cityName}). Pengirim harus berada di kota yang sama.`);
+        return;
+      }
+      setSender(info);
+      setSenderQuery(addr.district);
+      
+      const parts = addr.district.split(',').map(p => p.trim());
+      if (parts.length >= 4) {
+        const kelName = parts[0].replace(/^Kel\.\s+/i, '');
+        const kecName = parts[1].replace(/^Kec\.\s+/i, '');
+        setSenderKecamatan({ name: kecName });
+        setSenderKelurahan({ name: kelName, code: addr.districtCode, postalCode: addr.postalCode });
+      }
     } else if (addressBookTarget === 'recipient') {
       setRecipient(info);
       setRecipientQuery(addr.district);
@@ -934,23 +919,52 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setSender({ ...sender, phone: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-4 p-4 bg-[#b5000b]/5 border border-[#b5000b]/20 rounded-2xl">
-                          <div className="flex items-center justify-between border-b border-[#b5000b]/10 pb-1.5 mb-1">
-                            <span className="text-[10px] font-bold text-[#b5000b] uppercase tracking-wider block">Wilayah Pengiriman (Lokasi Agen)</span>
+                        <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
+                          <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
                           </div>
                           
-                          <div className="text-sm font-semibold text-gray-800">
-                            {user.districtName || 'Wilayah Agen Tidak Ditemukan'}
+                          {/* Locked Province & City */}
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Provinsi</label>
+                              <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
+                                {user.provinceName || 'Sesuai Agen'}
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Kota / Kabupaten</label>
+                              <div className="w-full h-10 px-3 bg-gray-100 border border-gray-200 rounded-xl text-xs font-semibold text-gray-500 flex items-center cursor-not-allowed">
+                                {user.cityName || 'Sesuai Agen'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3.5">
+                            <SearchableSelectObject
+                              label="Kecamatan"
+                              value={senderKecamatan}
+                              onChange={setSenderKecamatan}
+                              options={senderKecamatansList}
+                              placeholder="Pilih Kecamatan..."
+                            />
+                            <SearchableSelectObject
+                              label="Kelurahan"
+                              value={senderKelurahan}
+                              onChange={handleSelectSenderKelurahan}
+                              options={senderKelurahansList}
+                              placeholder="Pilih Kelurahan..."
+                            />
                           </div>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
                           <input
                             type="text"
-                            placeholder="Sesuai lokasi agen..."
-                            readOnly
-                            className="w-full h-11 px-3.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-500 outline-none cursor-not-allowed"
+                            placeholder="Contoh: 15417"
+                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
                             value={sender.postalCode}
+                            onChange={(e) => setSender({ ...sender, postalCode: e.target.value })}
                           />
                         </div>
                         <div>
