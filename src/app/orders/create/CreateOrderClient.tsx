@@ -10,6 +10,7 @@ interface User {
   nia: string;
   districtCode?: string;
   postalCode?: string;
+  districtName?: string;
 }
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
@@ -203,9 +204,9 @@ export default function CreateOrderClient({ user }: { user: User }) {
     name: '',
     phone: '',
     address: '',
-    district: '',
-    postalCode: '',
-    districtCode: ''
+    district: user.districtName || '',
+    postalCode: user.postalCode || '',
+    districtCode: user.districtCode || ''
   });
 
   const [recipient, setRecipient] = useState<ContactInfo>({
@@ -456,9 +457,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
     };
 
     if (addressBookTarget === 'sender') {
-      setSender(info);
-      setSenderQuery(addr.district);
-      parseAndSyncSenderDropdowns(addr.district, addr.postalCode);
+      setSender(prev => ({
+        ...prev,
+        name: info.name,
+        phone: info.phone,
+        address: info.address
+        // Do not overwrite district, districtCode, and postalCode for sender
+      }));
+      // parseAndSyncSenderDropdowns is removed as we don't use dropdowns for sender anymore
     } else if (addressBookTarget === 'recipient') {
       setRecipient(info);
       setRecipientQuery(addr.district);
@@ -928,54 +934,23 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setSender({ ...sender, phone: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
-                          <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
+                        <div className="space-y-4 p-4 bg-[#b5000b]/5 border border-[#b5000b]/20 rounded-2xl">
+                          <div className="flex items-center justify-between border-b border-[#b5000b]/10 pb-1.5 mb-1">
+                            <span className="text-[10px] font-bold text-[#b5000b] uppercase tracking-wider block">Wilayah Pengiriman (Lokasi Agen)</span>
                           </div>
                           
-                          {/* Manual Selection Cascading Fields */}
-                          <div className="grid grid-cols-2 gap-3.5">
-                            <SearchableSelectObject
-                              label="Provinsi"
-                              value={senderProvince}
-                              onChange={setSenderProvince}
-                              options={provincesList}
-                              placeholder="Pilih Provinsi..."
-                            />
-                            <SearchableSelectObject
-                              label="Kota / Kabupaten"
-                              value={senderCity}
-                              onChange={setSenderCity}
-                              options={senderCitiesList}
-                              placeholder="Pilih Kota..."
-                            />
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-3.5">
-                            <SearchableSelectObject
-                              label="Kecamatan"
-                              value={senderKecamatan}
-                              onChange={setSenderKecamatan}
-                              options={senderKecamatansList}
-                              placeholder="Pilih Kecamatan..."
-                            />
-                            <SearchableSelectObject
-                              label="Kelurahan"
-                              value={senderKelurahan}
-                              onChange={handleSelectSenderKelurahan}
-                              options={senderKelurahansList}
-                              placeholder="Pilih Kelurahan..."
-                            />
+                          <div className="text-sm font-semibold text-gray-800">
+                            {user.districtName || 'Wilayah Agen Tidak Ditemukan'}
                           </div>
                         </div>
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
                           <input
                             type="text"
-                            placeholder="Contoh: 15417"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-[#b5000b]/25 focus:ring-4 focus:ring-[#b5000b]/5 focus:bg-white transition-all outline-none"
+                            placeholder="Sesuai lokasi agen..."
+                            readOnly
+                            className="w-full h-11 px-3.5 bg-gray-100 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-500 outline-none cursor-not-allowed"
                             value={sender.postalCode}
-                            onChange={(e) => setSender({ ...sender, postalCode: e.target.value })}
                           />
                         </div>
                         <div>

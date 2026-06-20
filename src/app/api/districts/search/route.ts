@@ -1,7 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { firestore } from '@/lib/firebaseAdmin';
+import fs from 'fs';
+import path from 'path';
+import { parse } from 'csv-parse/sync';
 
 export const preferredRegion = 'sin1';
+
+let cachedAllRegions: any[] | null = null;
+
+function getAllRegionsFromCsv() {
+  if (cachedAllRegions) return cachedAllRegions;
+  try {
+    const filePath = path.join(process.cwd(), 'src/data/all_regions.csv');
+    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const records = parse(fileContent, {
+      columns: true,
+      skip_empty_lines: true,
+      delimiter: ','
+    });
+    cachedAllRegions = records.map((record: any) => ({
+      id: record.id,
+      code: record.dist_code,
+      name: record.dist_name,
+      dist_all: record.dist_all || record.dist_name,
+      postal_code: record.postal_code || '',
+      type: parseInt(record.dist_type, 10),
+      parent: record.parent_dist_code || null
+    }));
+    return cachedAllRegions;
+  } catch (error) {
+    console.error('Failed to parse fallback CSV:', error);
+    return [];
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,75 +41,32 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([]);
   }
 
-  if (!firestore) {
-    console.error('Firestore not initialized');
-    return NextResponse.json({ message: 'Database error' }, { status: 500 });
-  }
-
-  const db = firestore;
-
   try {
-    const regionsRef = db.collection('regions');
-    // Firestore tidak mendukung pencarian parsial (LIKE) secara native.
-    // Kita gunakan trik dengan >= dan <= untuk memfilter berdasarkan awalan.
-    // Karena data dist_all bervariasi huruf besar/kecil, pastikan seed data menggunakan lowercase atau konsisten.
-    // Untuk ini, asumsikan query dikonversi huruf kapital karena `dist_all` biasanya "Kel. X, Kec. Y"
-    // Namun Firestore case-sensitive, jadi ini adalah limitasi sederhana. 
-    // Untuk lebih baik, asumsikan awalan (prefix).
-    const upperQuery = query.toUpperCase();
-
-    // Query untuk awalan (case-sensitive) - kita coba UPPERCASE dulu
-    const snapshot = await regionsRef
-      .where('dist_all', '>=', upperQuery)
-      .where('dist_all', '<=', upperQuery + '\uf8ff')
-      .limit(10)
-      .get();
-
-    // Jika kosong, mungkin huruf awal Kapital?
-    let finalDocs = snapshot.docs;
+    const csvData = getAllRegionsFromCsv();
+    const lowerQuery = query.toLowerCase();
     
-    // Sebagai alternatif, kita ambil semua limit(10) tanpa filter strict jika tidak bisa full-text search,
-    // tapi karena prompt mengharuskan trik >= dan <=, kita ikuti.
-    // Jika tidak ditemukan dengan UPPERCASE, mari coba Title Case atau huruf pertama kapital
-    if (finalDocs.length === 0) {
-       const titleCaseQuery = query.charAt(0).toUpperCase() + query.slice(1).toLowerCase();
-       const snap2 = await regionsRef
-        .where('dist_all', '>=', titleCaseQuery)
-        .where('dist_all', '<=', titleCaseQuery + '\uf8ff')
-        .limit(10)
-        .get();
-       finalDocs = snap2.docs;
-    }
-
-    if (finalDocs.length === 0) {
-       // Coba prefix lowercase
-       const lowerCaseQuery = query.toLowerCase();
-       const snap3 = await regionsRef
-        .where('dist_all', '>=', lowerCaseQuery)
-        .where('dist_all', '<=', lowerCaseQuery + '\uf8ff')
-        .limit(10)
-        .get();
-       finalDocs = snap3.docs;
-    }
+    // Perform substring match on dist_all
+    const finalDocs = csvData.filter(r => r.dist_all.toLowerCase().includes(lowerQuery));
 
     if (finalDocs.length === 0) {
       return NextResponse.json([]);
     }
 
-    const results = finalDocs.map((doc: any) => {
-      const data = doc.data();
+    const results = finalDocs.slice(0, 10).map((data: any) => {
+      let pc = data.postal_code || '';
+      if (pc.includes(',')) pc = pc.split(',')[0].trim();
       return {
-        district_code: data.dist_code,
-        postal_code: data.postal_code,
+        district_code: data.code,
+        postal_code: pc,
         name: data.dist_all,
         district: data.dist_all,
-        code: data.dist_code // for prompt compatibility
+        code: data.code // for prompt compatibility
       };
     });
     
     return NextResponse.json(results);
   } catch (error) {
-    console.error('Firestore search error:', error);
+    console.error('Search error:', error);
     return NextResponse.json({ message: 'Gagal mencari data wilayah' }, { status: 500 });
   }
 }
