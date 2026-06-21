@@ -183,8 +183,8 @@ async function runTest() {
   try {
     log("\n--- TEST SUITE 6 & 7: CREATE ORDER ---");
     const orderBody = {
-      sender: { name: 'Testing E2E', phone: '08123456789', address: 'Jl Test', districtCode: '317406' },
-      recipient: { name: 'Penerima E2E', phone: '08987654321', address: 'Jl Penerima', districtCode: '317406' },
+      sender: { name: 'Testing E2E', phone: '08123456789', address: 'Jl Test', districtCode: '31.74.07', postalCode: '12240' },
+      recipient: { name: 'Penerima E2E', phone: '08987654321', address: 'Jl Penerima', districtCode: '31.74.07', postalCode: '12240' },
       package: { itemName: 'Baju', category: '1', weight: 1, dimensions: { length: 30, width: 20, height: 5 }, value: 100000 },
       selectedService: { product_code: 'REG', delivery_price: 15000, estimated_delivery_time: '1 Hari' }
     };

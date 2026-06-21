@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         address: sender.address,
         districtCode: senderCode,
         district_code: senderCode,
-        postcode: sender.postalCode,
+        postcode: sender.postalCode || sender.postcode || sender.postal_code || '12240',
       },
       shipper_info: {
         name: sender.name,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
         address: sender.address,
         districtCode: senderCode,
         district_code: senderCode,
-        postcode: sender.postalCode,
+        postcode: sender.postalCode || sender.postcode || sender.postal_code || '12240',
       },
 
       // Receiver info
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         address: recipient.address,
         districtCode: recipientCode,
         district_code: recipientCode,
-        postcode: recipient.postalCode,
+        postcode: recipient.postalCode || recipient.postcode || recipient.postal_code || '12240',
       },
       receiver_info: {
         name: recipient.name,
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         address: recipient.address,
         districtCode: recipientCode,
         district_code: recipientCode,
-        postcode: recipient.postalCode,
+        postcode: recipient.postalCode || recipient.postcode || recipient.postal_code || '12240',
       },
 
       // Insurance
