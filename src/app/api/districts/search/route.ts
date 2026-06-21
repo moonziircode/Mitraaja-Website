@@ -1,7 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { firestore } from '@/lib/firebaseAdmin';
+import fs from 'fs';
+import path from 'path';
 
 export const preferredRegion = 'sin1';
+
+// Global cache for parsed districts to avoid reading from disk on every search query
+let cachedDistricts: Array<{
+  district_code: string;
+  postal_code: string;
+  name: string;
+  district: string;
+  code: string;
+}> | null = null;
+
+function loadDistricts() {
+  if (cachedDistricts) return cachedDistricts;
+
+  try {
+    const filePath = path.join(process.cwd(), 'src/data/regions.csv');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+    const results = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const quoteStart = line.indexOf('"');
+      const quoteEnd = line.indexOf('"', quoteStart + 1);
+      if (quoteStart === -1 || quoteEnd === -1) continue;
+
+      const dist_all = line.substring(quoteStart + 1, quoteEnd);
+      const rest = line.substring(quoteEnd + 2);
+      const parts = rest.split(',');
+
+      const dist_code = parts[1];
+      let postal_code = parts[parts.length - 1];
+      if (postal_code) {
+        postal_code = postal_code.replace(/['"]/g, '').trim();
+      }
+
+      results.push({
+        district_code: dist_code,
+        postal_code: postal_code,
+        name: dist_all,
+        district: dist_all,
+        code: dist_code,
+      });
+    }
+
+    cachedDistricts = results;
+    return results;
+  } catch (error) {
+    console.error('Failed to load districts from CSV:', error);
+    return [];
+  }
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,42 +65,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([]);
   }
 
-  if (!firestore) {
-    return NextResponse.json({ message: 'Firestore tidak diinisialisasi' }, { status: 500 });
-  }
-
   try {
-    const normalizedQuery = query.toLowerCase();
-    
-    // Firestore prefix search
-    const snapshot = await firestore.collection('all_regions_v2')
-      .orderBy('dist_all_lowercase')
-      .startAt(normalizedQuery)
-      .endAt(normalizedQuery + '\uf8ff')
-      .limit(30)
-      .get();
+    const normalizedQuery = query.toLowerCase().trim();
+    const districts = loadDistricts();
 
-    if (snapshot.empty) {
-      return NextResponse.json([]);
-    }
+    // Filter matches locally
+    const filtered = districts
+      .filter((d) => d.name.toLowerCase().includes(normalizedQuery))
+      .slice(0, 10);
 
-    const results = snapshot.docs
-      .map(doc => doc.data())
-      .filter(data => data.type === 4) // Filter kelurahans in memory to avoid composite index
-      .slice(0, 10)
-      .map(data => {
-      let pc = data.postal_code || '';
-      if (pc.includes(',')) pc = pc.split(',')[0].trim();
-      return {
-        district_code: data.code,
-        postal_code: pc,
-        name: data.dist_all,
-        district: data.dist_all,
-        code: data.code // for prompt compatibility
-      };
-    });
-    
-    return NextResponse.json(results);
+    return NextResponse.json(filtered);
   } catch (error) {
     console.error('Search error:', error);
     return NextResponse.json({ message: 'Gagal mencari data wilayah' }, { status: 500 });
