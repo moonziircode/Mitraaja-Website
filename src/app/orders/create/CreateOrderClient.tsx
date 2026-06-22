@@ -717,7 +717,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           origin: sender.district,
-          originCode: user.districtCode, // Always use agent's district code for accurate dropoff pricing
+          originCode: sender.districtCode || user.districtCode, // Use sender's selected location code, fallback to agent's code
           destination: recipient.district,
           destinationCode: recipient.districtCode,
           weight: chargeableWeight
