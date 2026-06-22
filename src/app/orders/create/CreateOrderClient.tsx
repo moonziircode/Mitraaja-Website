@@ -222,6 +222,22 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [loadingKecamatans, setLoadingKecamatans] = useState(false);
   const [loadingKelurahans, setLoadingKelurahans] = useState(false);
 
+  // Recipient region selections state
+  const [recipientProvince, setRecipientProvince] = useState<string>('');
+  const [recipientCity, setRecipientCity] = useState<string>('');
+  const [recipientKecamatan, setRecipientKecamatan] = useState<string>('');
+  const [recipientKelurahan, setRecipientKelurahan] = useState<{ name: string; postalCode: string; districtCode: string } | null>(null);
+
+  const [recipientCityList, setRecipientCityList] = useState<string[]>([]);
+  const [recipientKecamatanList, setRecipientKecamatanList] = useState<Array<{ name: string; code: string }>>([]);
+  const [recipientKelurahanList, setRecipientKelurahanList] = useState<Array<{ name: string; postalCode: string; districtCode: string }>>([]);
+  const [recipientProvinceList, setRecipientProvinceList] = useState<Array<{ name: string; code: string }>>([]);
+
+  const [loadingRecipientProvinces, setLoadingRecipientProvinces] = useState(false);
+  const [loadingRecipientCities, setLoadingRecipientCities] = useState(false);
+  const [loadingRecipientKecamatans, setLoadingRecipientKecamatans] = useState(false);
+  const [loadingRecipientKelurahans, setLoadingRecipientKelurahans] = useState(false);
+
   // ── Step 4 State: Promo Engine ──
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{
@@ -409,6 +425,100 @@ export default function CreateOrderClient({ user }: { user: User }) {
     loadKelurahans();
   }, [senderProvince, senderCity, senderKecamatan]);
 
+  // Fetch recipient provinces
+  useEffect(() => {
+    async function loadRecipientProvinces() {
+      setLoadingRecipientProvinces(true);
+      try {
+        const res = await fetch('/api/regions');
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setRecipientProvinceList(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load recipient provinces:', err);
+      } finally {
+        setLoadingRecipientProvinces(false);
+      }
+    }
+    loadRecipientProvinces();
+  }, []);
+
+  // Fetch recipient cities when province changes
+  useEffect(() => {
+    if (!recipientProvince) {
+      setRecipientCityList([]);
+      setRecipientCity('');
+      return;
+    }
+
+    async function loadRecipientCities() {
+      setLoadingRecipientCities(true);
+      try {
+        const res = await fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setRecipientCityList(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load recipient cities:', err);
+      } finally {
+        setLoadingRecipientCities(false);
+      }
+    }
+    loadRecipientCities();
+  }, [recipientProvince]);
+
+  // Fetch recipient kecamatans when city changes
+  useEffect(() => {
+    if (!recipientProvince || !recipientCity) {
+      setRecipientKecamatanList([]);
+      setRecipientKecamatan('');
+      return;
+    }
+
+    async function loadRecipientKecamatans() {
+      setLoadingRecipientKecamatans(true);
+      try {
+        const res = await fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}&city=${encodeURIComponent(recipientCity)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setRecipientKecamatanList(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load recipient kecamatans:', err);
+      } finally {
+        setLoadingRecipientKecamatans(false);
+      }
+    }
+    loadRecipientKecamatans();
+  }, [recipientProvince, recipientCity]);
+
+  // Fetch recipient kelurahans when kecamatan changes
+  useEffect(() => {
+    if (!recipientProvince || !recipientCity || !recipientKecamatan) {
+      setRecipientKelurahanList([]);
+      setRecipientKelurahan(null);
+      return;
+    }
+
+    async function loadRecipientKelurahans() {
+      setLoadingRecipientKelurahans(true);
+      try {
+        const res = await fetch(`/api/regions?province=${encodeURIComponent(recipientProvince)}&city=${encodeURIComponent(recipientCity)}&kecamatan=${encodeURIComponent(recipientKecamatan)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setRecipientKelurahanList(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load recipient kelurahans:', err);
+      } finally {
+        setLoadingRecipientKelurahans(false);
+      }
+    }
+    loadRecipientKelurahans();
+  }, [recipientProvince, recipientCity, recipientKecamatan]);
+
   const handleSelectSenderKelurahan = (kelValStr: string) => {
     if (!kelValStr) {
       setSenderKelurahan(null);
@@ -466,6 +576,64 @@ export default function CreateOrderClient({ user }: { user: User }) {
       resolveSenderLocation(sender.districtCode, sender.postalCode);
     }
   }, [sender.districtCode]);
+
+  const handleSelectRecipientKelurahan = (kelValStr: string) => {
+    if (!kelValStr) {
+      setRecipientKelurahan(null);
+      setRecipient(prev => ({
+        ...prev,
+        district: '',
+        districtCode: '',
+        postalCode: ''
+      }));
+      return;
+    }
+    const [name, postalCode, districtCode] = kelValStr.split('|');
+    const kelObj = { name, postalCode, districtCode };
+    setRecipientKelurahan(kelObj);
+
+    setRecipient(prev => ({
+      ...prev,
+      district: `Kec. ${recipientKecamatan}, ${recipientCity}, ${recipientProvince}`,
+      districtCode: districtCode,
+      postalCode: postalCode
+    }));
+  };
+
+  const resolveRecipientLocation = async (code: string, targetPostalCode: string) => {
+    if (!code) return;
+    try {
+      const res = await fetch(`/api/regions?code=${encodeURIComponent(code)}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        const { province, city, kecamatan } = json.data;
+        setRecipientProvince(province);
+        setRecipientCity(city);
+        setRecipientKecamatan(kecamatan);
+
+        const kelRes = await fetch(`/api/regions?province=${encodeURIComponent(province)}&city=${encodeURIComponent(city)}&kecamatan=${encodeURIComponent(kecamatan)}`);
+        const kelJson = await kelRes.json();
+        if (kelJson.success && Array.isArray(kelJson.data)) {
+          setRecipientKelurahanList(kelJson.data);
+          const matchedKel = kelJson.data.find((k: any) => k.postalCode === targetPostalCode);
+          if (matchedKel) {
+            setRecipientKelurahan(matchedKel);
+          } else if (kelJson.data.length > 0) {
+            setRecipientKelurahan(kelJson.data[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to resolve recipient location:', err);
+    }
+  };
+
+  // Auto resolve recipient's districtCode
+  useEffect(() => {
+    if (recipient.districtCode && !recipientProvince) {
+      resolveRecipientLocation(recipient.districtCode, recipient.postalCode);
+    }
+  }, [recipient.districtCode]);
 
   // Promo handling
   const handleApplyPromo = async () => {
@@ -556,6 +724,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
       resolveSenderLocation(addr.districtCode, addr.postalCode);
     } else if (addressBookTarget === 'recipient') {
       setRecipient(info);
+      resolveRecipientLocation(addr.districtCode, addr.postalCode);
     }
 
     setAddressBookOpen(false);
@@ -746,8 +915,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
         alert('Mohon lengkapi seluruh data pengirim, termasuk memilih Provinsi, Kota/Kabupaten, Kecamatan, dan Kelurahan.');
         return;
       }
-      if (!recipient.name.trim() || !recipient.phone.trim() || !recipient.address.trim() || !recipient.district.trim() || !recipient.postalCode.trim()) {
-        alert('Mohon lengkapi seluruh data penerima.');
+      if (!recipient.name.trim() || !recipient.phone.trim() || !recipient.address.trim() || !recipientProvince || !recipientCity || !recipientKecamatan || !recipientKelurahan) {
+        alert('Mohon lengkapi seluruh data penerima, termasuk memilih Provinsi, Kota/Kabupaten, Kecamatan, dan Kelurahan.');
         return;
       }
 
@@ -1243,28 +1412,91 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setRecipient({ ...recipient, phone: formatPhone(e.target.value) })}
                           />
                         </div>
-                        <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
-                          <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
-                          </div>
-
-                          <SearchableDistrictSelect
-                            label="Kecamatan / Kelurahan Penerima"
-                            value={recipient.district}
-                            onChange={handleSelectRecipientDistrict}
-                            placeholder="Ketik minimal 3 huruf (Cth: Pasar Minggu)"
-                          />
-                        </div>
+                        {/* Provinsi Penerima */}
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
-                          <input
-                            type="text"
-                            placeholder="Contoh: 11480"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
-                            value={recipient.postalCode}
-                            onChange={(e) => setRecipient({ ...recipient, postalCode: e.target.value })}
-                          />
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Provinsi {loadingRecipientProvinces && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={recipientProvince}
+                            onChange={(e) => {
+                              setRecipientProvince(e.target.value);
+                              setRecipientCity('');
+                              setRecipientKecamatan('');
+                              setRecipientKelurahan(null);
+                            }}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
+                          >
+                            <option value="">Pilih Provinsi</option>
+                            {recipientProvinceList.map((p) => (
+                              <option key={p.code} value={p.name}>{p.name}</option>
+                            ))}
+                          </select>
                         </div>
+
+                        {/* Kota/Kabupaten Penerima */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Kota / Kabupaten {loadingRecipientCities && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={recipientCity}
+                            onChange={(e) => {
+                              setRecipientCity(e.target.value);
+                              setRecipientKecamatan('');
+                              setRecipientKelurahan(null);
+                            }}
+                            disabled={!recipientProvince}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Kota/Kabupaten</option>
+                            {recipientCityList.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Kecamatan Penerima */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Kecamatan {loadingRecipientKecamatans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={recipientKecamatan}
+                            onChange={(e) => {
+                              setRecipientKecamatan(e.target.value);
+                              setRecipientKelurahan(null);
+                            }}
+                            disabled={!recipientCity}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Kecamatan</option>
+                            {recipientKecamatanList.map((k) => (
+                              <option key={k.code} value={k.name}>{k.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Kelurahan Penerima */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Kelurahan / Desa {loadingRecipientKelurahans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={recipientKelurahan ? `${recipientKelurahan.name}|${recipientKelurahan.postalCode}|${recipientKelurahan.districtCode}` : ''}
+                            onChange={(e) => handleSelectRecipientKelurahan(e.target.value)}
+                            disabled={!recipientKecamatan}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Kelurahan</option>
+                            {recipientKelurahanList.map((k, idx) => (
+                              <option key={idx} value={`${k.name}|${k.postalCode}|${k.districtCode}`}>
+                                {k.name} / {k.postalCode}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap</label>
                           <textarea
