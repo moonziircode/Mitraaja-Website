@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
       return val;
     };
 
-    const originCodeFinal = originCode || resolveCode(origin);
-    const destinationCodeFinal = destinationCode || resolveCode(destination);
+    const originCodeFinal = resolveCode(originCode || origin);
+    const destinationCodeFinal = resolveCode(destinationCode || destination);
 
     // If active session token is present, fetch real rates
     if (session.isLoggedIn && session.token && !session.token.startsWith('mock-token')) {
@@ -45,7 +45,11 @@ export async function POST(request: NextRequest) {
         const rates = await anterajaClient.getRates(originCodeFinal, destinationCodeFinal, weight, session.token);
         return NextResponse.json({ success: true, content: rates });
       } catch (err: any) {
-        console.error('Gagal mengambil tarif riil Anteraja, beralih ke simulasi:', err.message);
+        console.error('Gagal mengambil tarif riil Anteraja:', err.message);
+        return NextResponse.json(
+          { success: false, info: err.message || 'Gagal mengambil tarif riil Anteraja. Pastikan rute valid.' },
+          { status: 400 }
+        );
       }
     }
 
