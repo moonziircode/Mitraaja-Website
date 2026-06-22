@@ -206,6 +206,37 @@ export default function CreateOrderClient({ user }: { user: User }) {
     districtCode: ''
   });
 
+  // Sender region selections state
+  const [senderProvince, setSenderProvince] = useState<string>('');
+  const [senderCity, setSenderCity] = useState<string>('');
+  const [senderKecamatan, setSenderKecamatan] = useState<string>('');
+  const [senderKelurahan, setSenderKelurahan] = useState<{ name: string; postalCode: string; districtCode: string } | null>(null);
+
+  const [provinceList, setProvinceList] = useState<Array<{ name: string; code: string }>>([]);
+  const [cityList, setCityList] = useState<string[]>([]);
+  const [kecamatanList, setKecamatanList] = useState<Array<{ name: string; code: string }>>([]);
+  const [kelurahanList, setKelurahanList] = useState<Array<{ name: string; postalCode: string; districtCode: string }>>([]);
+
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingKecamatans, setLoadingKecamatans] = useState(false);
+  const [loadingKelurahans, setLoadingKelurahans] = useState(false);
+
+  // ── Step 4 State: Promo Engine ──
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{
+    promo_code: string;
+    total_promo: number;
+    task: Array<{
+      task_code: string;
+      base_price: number;
+      total_price: number;
+      promo_amount: number;
+    }>;
+  } | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+
   // Checkbox states for saving to address book
   const [saveSenderAddress, setSaveSenderAddress] = useState(false);
   const [saveRecipientAddress, setSaveRecipientAddress] = useState(false);
@@ -239,6 +270,249 @@ export default function CreateOrderClient({ user }: { user: User }) {
       districtCode: opt.district_code,
       postalCode: opt.postal_code || ''
     }));
+  };
+
+  // Fetch provinces
+  useEffect(() => {
+    async function loadProvinces() {
+      setLoadingProvinces(true);
+      try {
+        const res = await fetch('/api/regions');
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          let list = json.data;
+          if (user.isJabodetabek) {
+            list = list.filter((p: any) => ['DKI JAKARTA', 'JAWA BARAT', 'BANTEN'].includes(p.name.toUpperCase()));
+          } else if (user.provinceName) {
+            list = list.filter((p: any) => p.name.toUpperCase() === user.provinceName?.toUpperCase());
+          }
+          setProvinceList(list);
+
+          // Auto-select province if locked
+          if (!user.isJabodetabek && user.provinceName) {
+            const matched = list.find((p: any) => p.name.toUpperCase() === user.provinceName?.toUpperCase());
+            if (matched) {
+              setSenderProvince(matched.name);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load provinces:', err);
+      } finally {
+        setLoadingProvinces(false);
+      }
+    }
+    loadProvinces();
+  }, [user.isJabodetabek, user.provinceName]);
+
+  // Fetch cities when province changes
+  useEffect(() => {
+    if (!senderProvince) {
+      setCityList([]);
+      setSenderCity('');
+      return;
+    }
+
+    async function loadCities() {
+      setLoadingCities(true);
+      try {
+        const res = await fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          let list = json.data;
+          
+          if (user.isJabodetabek) {
+            const allowedJabo = [
+              'BEKASI', 'BOGOR', 'DEPOK',
+              'TANGERANG', 'TANGERANG SELATAN',
+              'JAKARTA BARAT', 'JAKARTA PUSAT', 'JAKARTA SELATAN', 'JAKARTA TIMUR', 'JAKARTA UTARA', 'KEPULAUAN SERIBU'
+            ];
+            list = list.filter((c: string) => allowedJabo.includes(c.toUpperCase()));
+          } else if (user.cityName) {
+            const normalizedUserCity = user.cityName.toUpperCase()
+              .replace(/^(KABUPATEN|KAB\.|KOTA)\s+/i, '')
+              .replace(/\s+(KOTA|KABUPATEN)$/i, '')
+              .trim();
+            list = list.filter((c: string) => c.toUpperCase() === normalizedUserCity);
+          }
+          
+          setCityList(list);
+
+          // Auto-select city if locked
+          if (!user.isJabodetabek && user.cityName) {
+            const normalizedUserCity = user.cityName.toUpperCase()
+              .replace(/^(KABUPATEN|KAB\.|KOTA)\s+/i, '')
+              .replace(/\s+(KOTA|KABUPATEN)$/i, '')
+              .trim();
+            const matched = list.find((c: string) => c.toUpperCase() === normalizedUserCity);
+            if (matched) {
+              setSenderCity(matched);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load cities:', err);
+      } finally {
+        setLoadingCities(false);
+      }
+    }
+    loadCities();
+  }, [senderProvince, user.isJabodetabek, user.cityName]);
+
+  // Fetch kecamatans when city changes
+  useEffect(() => {
+    if (!senderProvince || !senderCity) {
+      setKecamatanList([]);
+      setSenderKecamatan('');
+      return;
+    }
+
+    async function loadKecamatans() {
+      setLoadingKecamatans(true);
+      try {
+        const res = await fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}&city=${encodeURIComponent(senderCity)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setKecamatanList(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load kecamatans:', err);
+      } finally {
+        setLoadingKecamatans(false);
+      }
+    }
+    loadKecamatans();
+  }, [senderProvince, senderCity]);
+
+  // Fetch kelurahans when kecamatan changes
+  useEffect(() => {
+    if (!senderProvince || !senderCity || !senderKecamatan) {
+      setKelurahanList([]);
+      setSenderKelurahan(null);
+      return;
+    }
+
+    async function loadKelurahans() {
+      setLoadingKelurahans(true);
+      try {
+        const res = await fetch(`/api/regions?province=${encodeURIComponent(senderProvince)}&city=${encodeURIComponent(senderCity)}&kecamatan=${encodeURIComponent(senderKecamatan)}`);
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data)) {
+          setKelurahanList(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load kelurahans:', err);
+      } finally {
+        setLoadingKelurahans(false);
+      }
+    }
+    loadKelurahans();
+  }, [senderProvince, senderCity, senderKecamatan]);
+
+  const handleSelectSenderKelurahan = (kelValStr: string) => {
+    if (!kelValStr) {
+      setSenderKelurahan(null);
+      setSender(prev => ({
+        ...prev,
+        district: '',
+        districtCode: '',
+        postalCode: ''
+      }));
+      return;
+    }
+    const [name, postalCode, districtCode] = kelValStr.split('|');
+    const kelObj = { name, postalCode, districtCode };
+    setSenderKelurahan(kelObj);
+
+    setSender(prev => ({
+      ...prev,
+      district: `Kec. ${senderKecamatan}, ${senderCity}, ${senderProvince}`,
+      districtCode: districtCode,
+      postalCode: postalCode
+    }));
+  };
+
+  const resolveSenderLocation = async (code: string, targetPostalCode: string) => {
+    if (!code) return;
+    try {
+      const res = await fetch(`/api/regions?code=${encodeURIComponent(code)}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        const { province, city, kecamatan } = json.data;
+        setSenderProvince(province);
+        setSenderCity(city);
+        setSenderKecamatan(kecamatan);
+
+        const kelRes = await fetch(`/api/regions?province=${encodeURIComponent(province)}&city=${encodeURIComponent(city)}&kecamatan=${encodeURIComponent(kecamatan)}`);
+        const kelJson = await kelRes.json();
+        if (kelJson.success && Array.isArray(kelJson.data)) {
+          setKelurahanList(kelJson.data);
+          const matchedKel = kelJson.data.find((k: any) => k.postalCode === targetPostalCode);
+          if (matchedKel) {
+            setSenderKelurahan(matchedKel);
+          } else if (kelJson.data.length > 0) {
+            setSenderKelurahan(kelJson.data[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to resolve sender location:', err);
+    }
+  };
+
+  // Auto resolve sender's districtCode to populate province, city, kecamatan, kelurahan dropdowns
+  useEffect(() => {
+    if (sender.districtCode && !senderProvince) {
+      resolveSenderLocation(sender.districtCode, sender.postalCode);
+    }
+  }, [sender.districtCode]);
+
+  // Promo handling
+  const handleApplyPromo = async () => {
+    if (!promoCodeInput.trim()) {
+      setPromoError('Masukkan kode promo terlebih dahulu.');
+      return;
+    }
+    setIsValidatingPromo(true);
+    setPromoError(null);
+    try {
+      const payload = {
+        promo_code: promoCodeInput.trim().toUpperCase(),
+        task: [
+          {
+            task_code: 'DUMMY-TASK-CODE',
+            base_price: selectedService?.delivery_price || 0,
+            total_price: selectedService?.delivery_price || 0,
+            promo_amount: 0
+          }
+        ]
+      };
+
+      const res = await fetch('/api/promo/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 0 && data.content) {
+        setAppliedPromo(data.content);
+        setPromoError(null);
+      } else {
+        setAppliedPromo(null);
+        setPromoError(data.info || 'Kode promo tidak dapat digunakan.');
+      }
+    } catch (err: any) {
+      console.error('Failed to validate promo:', err);
+      setPromoError('Gagal memvalidasi kode promo.');
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setAppliedPromo(null);
+    setPromoCodeInput('');
+    setPromoError(null);
   };
 
   // Address Book actions
@@ -279,6 +553,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
         }
       }
       setSender(info);
+      resolveSenderLocation(addr.districtCode, addr.postalCode);
     } else if (addressBookTarget === 'recipient') {
       setRecipient(info);
     }
@@ -467,8 +742,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   const handleNextStep = () => {
     if (step === 1) {
-      if (!sender.name.trim() || !sender.phone.trim() || !sender.address.trim() || !sender.district.trim() || !sender.postalCode.trim()) {
-        alert('Mohon lengkapi seluruh data pengirim.');
+      if (!sender.name.trim() || !sender.phone.trim() || !sender.address.trim() || !senderProvince || !senderCity || !senderKecamatan || !senderKelurahan) {
+        alert('Mohon lengkapi seluruh data pengirim, termasuk memilih Provinsi, Kota/Kabupaten, Kecamatan, dan Kelurahan.');
         return;
       }
       if (!recipient.name.trim() || !recipient.phone.trim() || !recipient.address.trim() || !recipient.district.trim() || !recipient.postalCode.trim()) {
@@ -606,13 +881,16 @@ export default function CreateOrderClient({ user }: { user: User }) {
   };
 
   // ── Initiate GoPay QR Payment ──
-  const handleInitiatePayment = async (taskCode: string, deliveryPrice: number) => {
+  const handleInitiatePayment = async (taskCode: string, deliveryPrice: number, promoCode?: string, discount?: number) => {
     setPaymentTrxId(taskCode);
     setPaymentQrUrl(null);
     setPaymentStatus('PENDING');
     setPaymentProgress(0);
     setPaymentModalOpen(true);
     setOrderError(null);
+
+    const promoCodeVal = promoCode !== undefined ? promoCode : (appliedPromo ? appliedPromo.promo_code : undefined);
+    const discountVal = discount !== undefined ? discount : (appliedPromo ? appliedPromo.total_promo : 0);
 
     try {
       const res = await fetch('/api/payment/initiate', {
@@ -621,7 +899,9 @@ export default function CreateOrderClient({ user }: { user: User }) {
         body: JSON.stringify({
           taskCode,
           deliveryPrice,
-          shipperPhone: sender.phone
+          shipperPhone: sender.phone,
+          promoCode: promoCodeVal,
+          discount: discountVal
         })
       });
 
@@ -660,8 +940,9 @@ export default function CreateOrderClient({ user }: { user: User }) {
       if (data.success) {
         setOrderTaskCode(data.taskCode || null);
         const actualPrice = data.totalDeliveryPrice ?? data.deliveryPrice ?? selectedService?.delivery_price ?? 0;
-        localStorage.removeItem('mitraaja_draft_order'); // Clear draft on success
-        await handleInitiatePayment(data.taskCode, actualPrice);
+        const promoCode = appliedPromo ? appliedPromo.promo_code : undefined;
+        const discount = appliedPromo ? appliedPromo.total_promo : 0;
+        await handleInitiatePayment(data.taskCode, actualPrice, promoCode, discount);
       } else {
         setStep(5);
         setOrderError(data.message || 'Gagal membuat order.');
@@ -811,46 +1092,99 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setSender({ ...sender, phone: formatPhone(e.target.value) })}
                           />
                         </div>
+                        {/* Provinsi */}
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap (Jalan, No, RT/RW)</label>
-                          <textarea
-                            placeholder="Contoh: Jl. Jend. Sudirman No. 1, RT 01/RW 02..."
-                            rows={3}
-                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
-                            value={sender.address}
-                            onChange={(e) => setSender({ ...sender, address: e.target.value })}
-                          />
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Provinsi {loadingProvinces && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={senderProvince}
+                            onChange={(e) => {
+                              setSenderProvince(e.target.value);
+                              setSenderCity('');
+                              setSenderKecamatan('');
+                              setSenderKelurahan(null);
+                            }}
+                            disabled={!user.isJabodetabek && !!user.provinceName}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Provinsi</option>
+                            {provinceList.map((p) => (
+                              <option key={p.code} value={p.name}>{p.name}</option>
+                            ))}
+                          </select>
                         </div>
-                        <div className="space-y-4 p-4 bg-gray-50/50 border border-gray-150 rounded-2xl">
-                          <div className="flex items-center justify-between border-b border-gray-100 pb-1.5 mb-1">
-                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Wilayah Pengiriman</span>
-                          </div>
-                          
-                          <SearchableDistrictSelect
-                            label="Kecamatan / Kelurahan Pengirim"
-                            value={sender.district}
-                            onChange={handleSelectSenderDistrict}
-                            placeholder="Ketik minimal 3 huruf (Cth: Kebayoran Baru)"
-                            filterJabodetabek={user.isJabodetabek}
-                            filterCity={!user.isJabodetabek ? user.cityName : undefined}
-                          />
-                        </div>
+
+                        {/* Kota/Kabupaten */}
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kode Pos</label>
-                          <input
-                            type="text"
-                            placeholder="Contoh: 15417"
-                            className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
-                            value={sender.postalCode}
-                            onChange={(e) => setSender({ ...sender, postalCode: e.target.value })}
-                          />
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Kota / Kabupaten {loadingCities && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={senderCity}
+                            onChange={(e) => {
+                              setSenderCity(e.target.value);
+                              setSenderKecamatan('');
+                              setSenderKelurahan(null);
+                            }}
+                            disabled={(!user.isJabodetabek && !!user.cityName) || !senderProvince}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Kota/Kabupaten</option>
+                            {cityList.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
                         </div>
+
+                        {/* Kecamatan */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Kecamatan {loadingKecamatans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={senderKecamatan}
+                            onChange={(e) => {
+                              setSenderKecamatan(e.target.value);
+                              setSenderKelurahan(null);
+                            }}
+                            disabled={!senderCity}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Kecamatan</option>
+                            {kecamatanList.map((k) => (
+                              <option key={k.code} value={k.name}>{k.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Kelurahan */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                            Kelurahan / Desa {loadingKelurahans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                          </label>
+                          <select
+                            value={senderKelurahan ? `${senderKelurahan.name}|${senderKelurahan.postalCode}|${senderKelurahan.districtCode}` : ''}
+                            onChange={(e) => handleSelectSenderKelurahan(e.target.value)}
+                            disabled={!senderKecamatan}
+                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Pilih Kelurahan</option>
+                            {kelurahanList.map((k, idx) => (
+                              <option key={idx} value={`${k.name}|${k.postalCode}|${k.districtCode}`}>
+                                {k.name} / {k.postalCode}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Alamat Lengkap */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap</label>
                           <textarea
                             rows={3}
-                            placeholder="Nama Jalan, Blok, RT/RW, No. Rumah"
-                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
+                            placeholder="Nama Jalan, Nomor Rumah, RT/RW, Blok, Gang, dll. (tanpa mengulang Provinsi/Kota/Kecamatan/Kelurahan)"
+                            className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
                             value={sender.address}
                             onChange={(e) => setSender({ ...sender, address: e.target.value })}
                           />
@@ -1252,16 +1586,73 @@ export default function CreateOrderClient({ user }: { user: User }) {
                     </div>
 
                     {/* PAYMENT PANEL */}
-                    <div className="border border-gray-100 p-6 rounded-2xl flex flex-col justify-between items-center text-center bg-gray-50/20">
+                    <div className="border border-gray-100 p-6 rounded-2xl flex flex-col justify-between items-center text-center bg-gray-50/20 space-y-4">
                       <div className="space-y-2">
                         <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">TOTAL TAGIHAN</span>
-                        <h2 className="text-3xl font-mono font-extrabold text-primary">
-                          Rp {selectedService?.delivery_price.toLocaleString('id-ID')}
-                        </h2>
+                        {appliedPromo ? (
+                          <div className="space-y-1">
+                            <span className="text-xs text-gray-500 font-semibold line-through block">
+                              Rp {selectedService?.delivery_price.toLocaleString('id-ID')}
+                            </span>
+                            <h2 className="text-3xl font-mono font-extrabold text-primary">
+                              Rp {Math.max(0, (selectedService?.delivery_price || 0) - appliedPromo.total_promo).toLocaleString('id-ID')}
+                            </h2>
+                            <span className="text-xs text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg inline-block">
+                              Hemat Rp {appliedPromo.total_promo.toLocaleString('id-ID')} ({appliedPromo.promo_code})
+                            </span>
+                          </div>
+                        ) : (
+                          <h2 className="text-3xl font-mono font-extrabold text-primary">
+                            Rp {selectedService?.delivery_price.toLocaleString('id-ID')}
+                          </h2>
+                        )}
                         <p className="text-xs text-gray-400 font-medium">Pembayaran online dengan GoPay QR Code</p>
                       </div>
 
-                      <div className="w-full mt-6 space-y-3">
+                      {/* Promo Input Box */}
+                      <div className="w-full bg-white p-4 rounded-xl border border-gray-150 space-y-2.5 text-left">
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          Kode Promo / Voucher
+                        </label>
+                        {appliedPromo ? (
+                          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+                            <div>
+                              <span className="text-xs font-bold text-emerald-700 block">{appliedPromo.promo_code}</span>
+                              <span className="text-[10px] text-emerald-600 font-medium">Diskon Rp {appliedPromo.total_promo.toLocaleString('id-ID')} berhasil dipasang</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleRemovePromo}
+                              className="text-gray-400 hover:text-rose-500 text-xs font-bold transition-colors"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="Masukkan kode promo"
+                              value={promoCodeInput}
+                              onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                              className="flex-1 h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 outline-none focus:border-primary/20 focus:bg-white transition-all uppercase"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleApplyPromo}
+                              disabled={isValidatingPromo}
+                              className="h-9 px-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center"
+                            >
+                              {isValidatingPromo ? '...' : 'Gunakan'}
+                            </button>
+                          </div>
+                        )}
+                        {promoError && (
+                          <p className="text-[10px] text-rose-500 font-bold leading-normal mt-1">{promoError}</p>
+                        )}
+                      </div>
+
+                      <div className="w-full mt-2 space-y-3">
                         <button
                           onClick={handleCreateOrder}
                           disabled={isCreatingOrder}
@@ -1361,6 +1752,13 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           className="h-11 px-5 border border-gray-200 text-gray-600 hover:bg-gray-50 font-bold rounded-xl text-sm transition-all"
                         >
                           Buat Order Baru
+                        </button>
+                        <button
+                          onClick={() => window.open(`/orders/${orderTaskCode || createdAwb}/label?autoprint=true`, '_blank')}
+                          className="h-11 px-5 bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white font-bold rounded-xl text-sm transition-all flex items-center gap-1.5 shadow-md shadow-gray-900/10"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">print</span>
+                          Cetak Label Shipping
                         </button>
                         <button
                           onClick={() => router.push(`/tracking?awb=${createdAwb}`)}

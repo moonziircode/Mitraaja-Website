@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await request.json();
-    const { taskCode, deliveryPrice, shipperPhone } = payload;
+    const { taskCode, deliveryPrice, shipperPhone, promoCode, discount } = payload;
 
     if (!taskCode || !deliveryPrice) {
       return NextResponse.json(
@@ -45,21 +45,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const basePrice = Number(deliveryPrice);
+    const promoAmt = Number(discount || 0);
+    const totalPrice = Math.max(0, basePrice - promoAmt);
+
     // Build the request body for Anteraja payment initiation API
-    // The Android app sends null for prices and cash received, and Gson omits them.
-    // So we should omit them completely to avoid backend validation errors.
+    // Task detail fields are populated with promo details if present.
     const paymentBody = {
       task: [
         {
           task_code: taskCode,
-          taskCode: taskCode
+          taskCode: taskCode,
+          base_price: basePrice,
+          basePrice: basePrice,
+          total_price: totalPrice,
+          totalPrice: totalPrice,
+          promo_amount: promoAmt,
+          promoAmount: promoAmt
         }
       ],
       payment_code: '006', // GoPay QR pm_code
       paymentCode: '006',
       payment_phone: shipperPhone || '081234567890',
       paymentPhone: shipperPhone || '081234567890',
-      shipperPhoneNumber: shipperPhone || '081234567890'
+      shipperPhoneNumber: shipperPhone || '081234567890',
+      promo_code: promoCode || null,
+      promoCode: promoCode || null
     };
 
     const apiBase = process.env.ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';

@@ -30,11 +30,43 @@ function normalizeName(str: string) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const code = searchParams.get('code');
     const province = searchParams.get('province');
     const city = searchParams.get('city');
     const kecamatan = searchParams.get('kecamatan');
 
     const tree = getRegionsTree();
+
+    // If code parameter is provided, resolve the full hierarchy
+    if (code) {
+      const parts = code.split('.');
+      if (parts.length >= 1) {
+        const provCode = parts[0];
+        const provNameMatched = Object.keys(tree).find(p => tree[p].code === provCode);
+        if (provNameMatched) {
+          const provinceData = tree[provNameMatched];
+          for (const cityName of Object.keys(provinceData.cities)) {
+            const cityData = provinceData.cities[cityName];
+            for (const kecName of Object.keys(cityData.kecamatans)) {
+              const kecData = cityData.kecamatans[kecName];
+              // Match Kecamatan code
+              if (kecData.code === code || kecData.code.split('.').slice(0, 3).join('.') === code.split('.').slice(0, 3).join('.')) {
+                return NextResponse.json({
+                  success: true,
+                  data: {
+                    province: provNameMatched,
+                    city: cityName,
+                    kecamatan: kecName,
+                    districtCode: kecData.code
+                  }
+                });
+              }
+            }
+          }
+        }
+      }
+      return NextResponse.json({ success: false, message: 'Kode wilayah tidak ditemukan.' }, { status: 404 });
+    }
 
     // 1. If no query parameters, return list of provinces
     if (!province) {
