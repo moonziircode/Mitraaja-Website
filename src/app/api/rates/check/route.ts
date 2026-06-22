@@ -46,8 +46,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: true, content: rates });
       } catch (err: any) {
         console.error('Gagal mengambil tarif riil Anteraja:', err.message);
+        
+        let errorMessage = err.message || 'Gagal mengambil tarif riil Anteraja. Pastikan rute valid.';
+        if (errorMessage.includes('Status: 401')) {
+          errorMessage = 'Sesi login telah berakhir. Silakan Logout dan Login kembali.';
+        }
+
         return NextResponse.json(
-          { success: false, info: err.message || 'Gagal mengambil tarif riil Anteraja. Pastikan rute valid.' },
+          { success: false, info: errorMessage },
           { status: 400 }
         );
       }
