@@ -5,7 +5,7 @@ import axios from "axios";
 import { MaaTaskList } from "@/types/tasklist";
 import TasklistTabs from "./components/TasklistTabs";
 import TaskCard from "./components/TaskCard";
-import { Loader2, Search, XCircle, AlertCircle, Package } from "lucide-react";
+import { Loader2, Search, XCircle, AlertCircle, Package, RefreshCw } from "lucide-react";
 import { useDebounce } from "use-debounce";
 
 export default function TasklistClient() {
@@ -19,10 +19,23 @@ export default function TasklistClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch] = useDebounce(searchQuery, 800);
 
-  const fetchTasks = async (reset: boolean = false) => {
-    if (isLoading || (!hasMore && !reset)) return;
+  // Auto refresh interval for "Real-time" feel
+  useEffect(() => {
+    // Only auto-refresh if on ACTIVE tab and at the first page
+    if (activeTab !== "ACTIVE" || page > 1) return;
     
-    setIsLoading(true);
+    const intervalId = setInterval(() => {
+      fetchTasks(true, true); // true for reset, true for isBackground
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(intervalId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, page, searchQuery]);
+
+  const fetchTasks = async (reset: boolean = false, isBackground: boolean = false) => {
+    if ((isLoading && !isBackground) || (!hasMore && !reset)) return;
+    
+    if (!isBackground) setIsLoading(true);
     setIsError(null);
     
     try {
@@ -34,6 +47,7 @@ export default function TasklistClient() {
           page: currentPage,
           size: 10,
           key: debouncedSearch,
+          grouped: true,
         },
       });
 
@@ -90,9 +104,27 @@ export default function TasklistClient() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 pb-32">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tasklist</h1>
-        <p className="text-gray-500 mt-1">Kelola dan pantau daftar tugas penjemputan paket</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+            Tasklist
+            {activeTab === "ACTIVE" && (
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-50 border border-green-100 text-xs font-semibold text-green-600">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                Real-time
+              </span>
+            )}
+          </h1>
+          <p className="text-gray-500 mt-1">Kelola dan pantau daftar tugas penjemputan paket</p>
+        </div>
+        <button
+          onClick={() => fetchTasks(true)}
+          disabled={isLoading}
+          className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-blue-600 transition-all shadow-sm flex items-center justify-center"
+          title="Muat ulang"
+        >
+          <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin text-blue-600" : ""}`} />
+        </button>
       </div>
 
       <div className="relative mb-6">
