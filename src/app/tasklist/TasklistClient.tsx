@@ -4,14 +4,19 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import { MaaTaskList } from "@/types/tasklist";
 import TertundaCard from "./components/TertundaCard";
-import RiwayatOrderCard from "./components/RiwayatOrderCard";
-import TasklistTabs from "./components/TasklistTabs";
 import TaskDetailModal from "./components/TaskDetailModal";
+import Sidebar from "@/components/Sidebar";
 import { Loader2, Search, XCircle, AlertCircle, Package, RefreshCw } from "lucide-react";
 import { useDebounce } from "use-debounce";
 
-export default function TasklistClient() {
-  const [activeTab, setActiveTab] = useState("TERTUNDA");
+interface TasklistClientProps {
+  user: {
+    name: string;
+    nia: string;
+  };
+}
+
+export default function TasklistClient({ user }: TasklistClientProps) {
   const [tasks, setTasks] = useState<MaaTaskList[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -31,16 +36,16 @@ export default function TasklistClient() {
 
   // Auto refresh interval for "Real-time" feel
   useEffect(() => {
-    // Only auto-refresh if on TERTUNDA tab and at the first page
-    if (activeTab !== "TERTUNDA" || page > 1) return;
+    // Only auto-refresh if at the first page
+    if (page > 1) return;
     
     const intervalId = setInterval(() => {
       fetchTasks(true, true); // true for reset, true for isBackground
-    }, 30000); // 30 seconds
+    }, 15000); // 15 seconds
 
     return () => clearInterval(intervalId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, page, searchQuery]);
+  }, [page, searchQuery]);
 
   const fetchTasks = async (reset: boolean = false, isBackground: boolean = false) => {
     if ((isLoading && !isBackground) || (!hasMore && !reset)) return;
@@ -53,7 +58,7 @@ export default function TasklistClient() {
       
       const response = await axios.get("/api/tasklist", {
         params: {
-          state: activeTab,
+          state: "TERTUNDA",
           page: currentPage,
           size: 10,
           key: debouncedSearch,
@@ -87,7 +92,7 @@ export default function TasklistClient() {
   useEffect(() => {
     fetchTasks(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, debouncedSearch]);
+  }, [debouncedSearch]);
 
   // Observer for Infinite Scroll
   const observerTarget = useRef(null);
@@ -99,7 +104,7 @@ export default function TasklistClient() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hasMore, isLoading, page, activeTab, debouncedSearch]
+    [hasMore, isLoading, page, debouncedSearch]
   );
 
   useEffect(() => {
@@ -113,18 +118,19 @@ export default function TasklistClient() {
   }, [handleObserver]);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-8 pb-32">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-            Tasklist
-            {activeTab === "TERTUNDA" && (
-              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-pink-50 border border-pink-100 text-xs font-semibold text-pink-600">
-                <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></span>
-                Real-time
-              </span>
-            )}
-          </h1>
+    <div className="flex h-screen bg-background">
+      <Sidebar user={user} />
+      <main className="flex-1 overflow-auto bg-surface">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32">
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+                Tertunda
+                <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-pink-50 border border-pink-100 text-xs font-semibold text-pink-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></span>
+                  Real-time
+                </span>
+              </h1>
           <p className="text-gray-500 mt-1">Kelola dan pantau daftar tugas penjemputan paket</p>
         </div>
         <button
@@ -144,7 +150,7 @@ export default function TasklistClient() {
         <input
           type="text"
           className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-shadow shadow-sm"
-          placeholder={activeTab === "TERTUNDA" ? "Cari nomor AWB atau nama pengirim..." : "Cari booking code atau nama pengirim..."}
+          placeholder="Cari nomor AWB atau nama pengirim..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -158,8 +164,6 @@ export default function TasklistClient() {
         )}
       </div>
 
-      <TasklistTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
       {isError && (
         <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6 flex items-start">
           <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -171,33 +175,20 @@ export default function TasklistClient() {
       )}
 
       <div className="flex flex-col">
-        {tasks.map((task, index) => {
-          if (activeTab === "TERTUNDA") {
-            return (
-              <TertundaCard 
-                key={index} 
-                tasklist={task} 
-                onClickDetail={() => openDetail(task)} 
-              />
-            );
-          } else {
-            return (
-              <RiwayatOrderCard 
-                key={index} 
-                tasklist={task} 
-                onClickDetail={() => openDetail(task)} 
-                onActionSuccess={() => fetchTasks(true)}
-              />
-            );
-          }
-        })}
+        {tasks.map((task, index) => (
+          <TertundaCard 
+            key={index} 
+            tasklist={task} 
+            onClickDetail={() => openDetail(task)} 
+          />
+        ))}
 
         {!isLoading && tasks.length === 0 && !isError && (
           <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200 mt-4">
             <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-gray-800">Tidak ada data</h3>
             <p className="text-gray-500 mt-1 max-w-xs mx-auto">
-              Belum ada paket yang {activeTab === "TERTUNDA" ? "tertunda/menunggu pickup" : "belum dibayar di riwayat order"}.
+              Belum ada paket yang tertunda atau menunggu pickup.
             </p>
           </div>
         )}
@@ -216,8 +207,10 @@ export default function TasklistClient() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         tasklist={selectedTask}
-        activeTab={activeTab}
+        activeTab={"TERTUNDA"}
       />
+        </div>
+      </main>
     </div>
   );
 }

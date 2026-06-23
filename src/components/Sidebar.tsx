@@ -35,7 +35,7 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
     { href: '/tracking', label: 'Tracking', icon: 'location_on' },
     { href: '/claim', label: 'Claim Parcel', icon: 'receipt_long' },
     { href: '/orders', label: 'Riwayat Order', icon: 'list_alt' },
-    { href: '/tasklist', label: 'Tasklist', icon: 'task' },
+    { href: '/tasklist', label: 'Tertunda', icon: 'task' },
     { href: '/settings', label: 'Pengaturan', icon: 'settings' },
   ];
 

@@ -5,6 +5,7 @@ import { MaaTaskList } from "@/types/tasklist";
 import { MapPin, Phone, Package, ExternalLink, Box, Calendar, Clock, ArrowRight } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import PaymentModal from "@/components/PaymentModal";
 
 interface RiwayatOrderCardProps {
   tasklist: MaaTaskList;
@@ -14,6 +15,9 @@ interface RiwayatOrderCardProps {
 
 export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSuccess }: RiwayatOrderCardProps) {
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
   const router = useRouter();
 
   // For Riwayat Order, it is mostly NOT_PAID tasks. We use the first task as representative.
@@ -39,8 +43,8 @@ export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSucc
         shipperPhone: tasklist.owner_phone || "081234567890",
       });
       if (response.data.success && response.data.paymentUrl) {
-        window.open(response.data.paymentUrl, "_blank");
-        if (onActionSuccess) onActionSuccess();
+        setPaymentUrl(response.data.paymentUrl);
+        setIsPaymentModalOpen(true);
       } else {
         alert(response.data.message || "Gagal memulai pembayaran.");
       }
@@ -48,6 +52,25 @@ export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSucc
       alert(error.response?.data?.message || "Terjadi kesalahan saat memulai pembayaran.");
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  const handleRefreshStatus = async () => {
+    if (!bookingCode) return;
+    setIsRefreshingStatus(true);
+    try {
+      const response = await axios.get(`/api/payment/status/${bookingCode}`);
+      if (response.data.success && response.data.paymentStatus === "PAID") {
+        alert("Pembayaran berhasil dikonfirmasi! AWB telah terbit dan pesanan masuk ke menu Tertunda.");
+        setIsPaymentModalOpen(false);
+        if (onActionSuccess) onActionSuccess();
+      } else {
+        alert("Pembayaran belum terkonfirmasi. Jika Anda sudah membayar, harap tunggu beberapa saat.");
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Gagal mengecek status pembayaran.");
+    } finally {
+      setIsRefreshingStatus(false);
     }
   };
 
@@ -125,10 +148,18 @@ export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSucc
             disabled={isActionLoading}
             className="flex-1 sm:flex-none bg-pink-600 hover:bg-pink-700 text-white py-2 px-4 rounded-xl text-sm font-semibold shadow-md shadow-pink-200 transition-colors disabled:opacity-50"
           >
-            Bayar
+            {isActionLoading ? "Memproses..." : "Bayar"}
           </button>
         </div>
       </div>
+
+      <PaymentModal 
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        paymentUrl={paymentUrl}
+        onRefreshStatus={handleRefreshStatus}
+        isRefreshing={isRefreshingStatus}
+      />
     </div>
   );
 }

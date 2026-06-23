@@ -1,14 +1,14 @@
 import React from "react";
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import TasklistClient from "./TasklistClient";
+import OrdersClient from "./OrdersClient";
 
 export const metadata = {
-  title: "Tertunda - Mitraaja",
-  description: "Daftar paket tertunda Anteraja",
+  title: "Riwayat Order - Mitraaja",
+  description: "Daftar riwayat pesanan dan status pembayaran",
 };
 
-export default async function TasklistPage() {
+export default async function OrdersPage() {
   const session = await getSession();
 
   if (!session.isLoggedIn) {
@@ -20,5 +20,5 @@ export default async function TasklistPage() {
     nia: session.nia,
   };
 
-  return <TasklistClient user={user} />;
+  return <OrdersClient user={user} />;
 }
