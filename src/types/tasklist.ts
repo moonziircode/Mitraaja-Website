@@ -57,6 +57,14 @@ export interface MaaTask {
   packingPrice?: number;
   flightNumber?: string;
   payment?: MaaPayment;
+  // Snake case from API
+  task_code?: string;
+  source_order_no?: string;
+  order_source?: string;
+  client_name?: string;
+  payment_status?: string;
+  total_delivery_price?: number;
+  parcel_total_weight?: number;
 }
 
 export interface MaaTaskList {

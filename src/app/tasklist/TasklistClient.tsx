@@ -169,6 +169,7 @@ export default function TasklistClient() {
               // Open bottom sheet
               console.log("Detail clicked", task);
             }} 
+            onActionSuccess={() => fetchTasks(true)}
           />
         ))}
 
