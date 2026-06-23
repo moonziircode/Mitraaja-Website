@@ -9,9 +9,8 @@ interface TasklistTabsProps {
 }
 
 const TABS = [
-  { id: "ACTIVE", label: "Hari Ini" },
-  { id: "DELAY", label: "Tertunda" },
-  { id: "COMPLETED", label: "Riwayat" },
+  { id: "TERTUNDA", label: "Tertunda" },
+  { id: "RIWAYAT_ORDER", label: "Riwayat Order" },
 ];
 
 export default function TasklistTabs({ activeTab, setActiveTab }: TasklistTabsProps) {
@@ -24,7 +23,7 @@ export default function TasklistTabs({ activeTab, setActiveTab }: TasklistTabsPr
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`relative flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-colors whitespace-nowrap z-10 ${
-              isActive ? "text-blue-700" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
+              isActive ? "text-pink-600" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
             }`}
           >
             {isActive && (

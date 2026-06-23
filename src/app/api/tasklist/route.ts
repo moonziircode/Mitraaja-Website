@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const state = searchParams.get("state") || "ACTIVE"; // ACTIVE, DELAY, COMPLETED
+    const state = searchParams.get("state") || "TERTUNDA"; // TERTUNDA, RIWAYAT_ORDER
     const page = searchParams.get("page") || "0";
     const size = searchParams.get("size") || "10";
     const grouped = searchParams.get("grouped") || "false";
@@ -22,84 +22,94 @@ export async function GET(request: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_ANTERAJA_API_URL || "https://api.anteraja.id";
 
-    let endpoint = "";
-    const params: any = {
-      page,
-      size,
+    const baseHeaders = {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      "token": session.token,
+      "appid": "JV_APP",
+      "msgid": Date.now().toString(),
+      "imei": "dev_device_uuid_12345",
+      "deviceUuid": "dev_device_uuid_12345",
+      "hardwareSerialNo": "dev_serial",
+      "manufacture": "Apple",
+      "model": "Macbook",
+      "os": "macOS",
+      "osVersion": "14.0",
+      "appVersion": "2.2.4",
+      "mv": "1.1",
+      "source": "MAA",
     };
 
-    if (state === "ACTIVE") {
-      endpoint = `${baseUrl}/maa-task/order/v2/task/dropoff`;
-      // state is not strictly needed for v2 dropoff, but doesn't hurt.
-    } else if (state === "DELAY") {
-      endpoint = `${baseUrl}/maa-task/order/v2/task/dropoff/on-hold`;
-    } else if (state === "COMPLETED") {
-      endpoint = `${baseUrl}/maa-task/task/dropoff`;
-      params.state = "COMPLETED";
-    } else {
-      // Fallback
-      endpoint = `${baseUrl}/maa-task/order/v2/task/dropoff`;
-      params.state = state;
-    }
+    let allTasks: any[] = [];
 
-    if (grouped === "true") {
-      params.grouped = true;
-    }
-    
-    if (searchKey) {
-      params.key = searchKey;
-    }
+    // Helper function to fetch and extract flat tasks
+    const fetchTasks = async (endpoint: string, params: any) => {
+      console.log(`[GET Tasklist] Fetching from ${endpoint} with params:`, params);
+      const res = await axios.get(endpoint, {
+        params,
+        headers: baseHeaders,
+        validateStatus: () => true,
+      });
 
-    console.log(`[GET Tasklist] Fetching from ${endpoint} with params:`, params);
+      if (res.status === 401) throw new Error("Sesi kedaluwarsa. Harap login kembali.");
+      if (res.status >= 400 || (res.data && res.data.status !== 0 && res.data.status !== undefined)) {
+        console.error(`[GET Tasklist Error] Endpoint: ${endpoint}`, res.data);
+        return []; // Return empty instead of failing the whole request
+      }
 
-    const response = await axios.get(endpoint, {
-      params,
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "token": session.token,
-        "appid": "JV_APP",
-        "msgid": Date.now().toString(),
-        "imei": "dev_device_uuid_12345",
-        "deviceUuid": "dev_device_uuid_12345",
-        "hardwareSerialNo": "dev_serial",
-        "manufacture": "Apple",
-        "model": "Macbook",
-        "os": "macOS",
-        "osVersion": "14.0",
-        "appVersion": "2.2.4",
-        "mv": "1.1",
-        "source": "MAA",
-      },
-      validateStatus: () => true, // Don't throw on error status
-    });
-
-    console.log(`[GET Tasklist] Response status: ${response.status}`, response.data);
-
-    if (response.status === 401) {
-      return NextResponse.json(
-        { message: "Sesi kedaluwarsa. Harap login kembali." },
-        { status: 401 }
-      );
-    }
-
-    if (response.status >= 400) {
-      return NextResponse.json(
-        { message: response.data?.message || response.data?.info || "Gagal mengambil data tasklist" },
-        { status: response.status }
-      );
-    }
-
-    let rawContent = Array.isArray(response.data?.content) 
-      ? response.data.content 
-      : (response.data?.content?.tasks || []);
-    
-    // Check if the response is a flat list of MaaTask (missing .tasks array)
-    if (rawContent.length > 0 && !rawContent[0].tasks) {
-      // It's a flat list. We need to group it.
-      const groupedMap = new Map<string, any>();
+      let rawContent = Array.isArray(res.data?.content) 
+        ? res.data.content 
+        : (res.data?.content?.tasks || []);
       
-      for (const task of rawContent) {
+      let flatTasks: any[] = [];
+      for (const item of rawContent) {
+        if (item.tasks && Array.isArray(item.tasks)) {
+          flatTasks.push(...item.tasks);
+        } else {
+          flatTasks.push(item);
+        }
+      }
+      return flatTasks;
+    };
+
+    const queryParams: any = { page, size };
+    if (grouped === "true") queryParams.grouped = true;
+    if (searchKey) queryParams.key = searchKey;
+
+    if (state === "TERTUNDA") {
+      // Fetch both ACTIVE and DELAY
+      const activeTasks = await fetchTasks(`${baseUrl}/maa-task/order/v2/task/dropoff`, queryParams);
+      const delayTasks = await fetchTasks(`${baseUrl}/maa-task/order/v2/task/dropoff/on-hold`, queryParams);
+      
+      // Merge and deduplicate by task_code
+      const taskMap = new Map();
+      [...activeTasks, ...delayTasks].forEach(t => {
+        if (t.task_code && !taskMap.has(t.task_code)) {
+          taskMap.set(t.task_code, t);
+        }
+      });
+      allTasks = Array.from(taskMap.values());
+      
+      // Sort descending by createdAt
+      allTasks.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+    } else if (state === "RIWAYAT_ORDER") {
+      // Fetch history and filter for unpaid bookings
+      queryParams.state = "COMPLETED";
+      const historyTasks = await fetchTasks(`${baseUrl}/maa-task/task/dropoff`, queryParams);
+      
+      // Only keep tasks that are NOT_PAID
+      allTasks = historyTasks.filter(t => t.payment_status === "NOT_PAID");
+      
+      // Sort descending by createdAt
+      allTasks.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }
+
+    // Regroup if requested
+    let finalContent: any[] = allTasks;
+    if (grouped === "true") {
+      const groupedMap = new Map<string, any>();
+      for (const task of allTasks) {
         const groupKey = task.group || `${task.order_source}-${task.ownership_name || task.client_name}`;
         if (!groupedMap.has(groupKey)) {
           groupedMap.set(groupKey, {
@@ -113,14 +123,14 @@ export async function GET(request: NextRequest) {
         }
         groupedMap.get(groupKey).tasks.push(task);
       }
-      
-      response.data.content = Array.from(groupedMap.values());
-    } else {
-      // It was already grouped or empty, just ensure content is the array
-      response.data.content = rawContent;
+      finalContent = Array.from(groupedMap.values());
     }
 
-    return NextResponse.json(response.data);
+    return NextResponse.json({
+      status: 0,
+      info: "OK",
+      content: finalContent
+    });
 
   } catch (error: any) {
     console.error("[GET Tasklist Error]:", error);
