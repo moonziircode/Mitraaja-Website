@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       orders: [
         {
           order_source: maaTask.orderSource,
-          claim_key: maaTask.waybill,
+          claim_key: maaTask.sourceOrderNo,
         },
       ],
     };

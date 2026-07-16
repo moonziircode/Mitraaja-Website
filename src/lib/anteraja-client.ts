@@ -2,6 +2,7 @@
 
 export interface MaaTask {
   waybill: string;
+  sourceOrderNo: string;
   orderSource: string;
   shipperName: string;
   receiverName: string;
@@ -83,10 +84,11 @@ async function mockSearchAWB(awb: string): Promise<MaaTask | null> {
 
   return {
     waybill: awb,
-    orderSource: 'MOCK',
-    shipperName: `PT Pengirim ${awb.slice(-4)}`,
-    receiverName: 'Penerima Mock',
-    destinationCity: 'Jakarta',
+    sourceOrderNo: awb,
+    orderSource: 'B2B',
+    shipperName: 'Toko Baju Mock',
+    receiverName: 'Budi (Mock)',
+    destinationCity: 'Jakarta Selatan',
   };
 }
 
@@ -322,7 +324,8 @@ async function realSearchAWB(
 
   const task = body.content[0];
   return {
-    waybill: task.waybill_no || awb,
+    waybill: task.waybill || task.waybill_no || awb,
+    sourceOrderNo: task.source_order_no || task.waybill || task.waybill_no || awb,
     orderSource: task.order_source || '',
     shipperName: task.shipper_info?.name || '-',
     receiverName: task.receiver_info?.name || '-',

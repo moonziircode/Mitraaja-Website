@@ -21,18 +21,32 @@ export async function POST(request: NextRequest) {
     const trimmedAwb = awb.trim();
 
     // === Real Integration to Anteraja Claim API ===
-    // Build the claim payload matching Anteraja specifications
-    const claimPayload = {
-      agent_staff_id: session.nia,
-      orders: [
-        {
-          order_source: 'MOCK', // Usually resolved from search, or fallback to default
-          claim_key: trimmedAwb,
-        },
-      ],
-    };
-
     try {
+      // First search to get the correct orderSource and sourceOrderNo
+      let orderSource = 'B2B';
+      let claimKey = trimmedAwb;
+
+      try {
+        const taskDetails = await anterajaClient.searchAWB(trimmedAwb, session.nia, session.token);
+        if (taskDetails) {
+          orderSource = taskDetails.orderSource || 'B2B';
+          claimKey = taskDetails.sourceOrderNo || trimmedAwb;
+        }
+      } catch (searchError) {
+        console.warn(`[POST /api/parcels/claim] Search failed before claim for AWB ${trimmedAwb}, falling back to defaults`, searchError);
+      }
+
+      // Build the claim payload matching Anteraja specifications
+      const claimPayload = {
+        agent_staff_id: session.nia,
+        orders: [
+          {
+            order_source: orderSource,
+            claim_key: claimKey,
+          },
+        ],
+      };
+
       // Perform the claim action
       const result = await anterajaClient.claimAWB(trimmedAwb, claimPayload, session.token);
       return NextResponse.json({ success: true, message: result.message || `AWB ${trimmedAwb} berhasil diklaim.` }, { status: 200 });
