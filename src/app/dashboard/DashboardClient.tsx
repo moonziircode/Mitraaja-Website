@@ -268,7 +268,7 @@ export default function DashboardClient({ user }: { user: User }) {
               <span className="material-symbols-outlined text-[22px] text-gray-600">menu</span>
             </button>
             <div>
-              <h2 className="text-lg font-bold text-text-primary tracking-tight">Hai, Marketing {user.name}</h2>
+              <h2 className="text-lg font-bold text-text-primary tracking-tight">Hai, {user.name}</h2>
               <p className="text-[11px] text-text-secondary font-medium hidden sm:block">{currentDate}</p>
             </div>
           </div>

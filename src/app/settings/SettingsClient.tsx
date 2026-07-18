@@ -168,18 +168,10 @@ export default function SettingsClient({ user }: { user: User }) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nama Staff</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nama Gerai</span>
                   <p className="text-sm font-semibold text-gray-800 mt-1">{user.name}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">NIA (Agent Staff ID)</span>
-                  <p className="text-sm font-semibold text-gray-800 mt-1">{user.nia}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 col-span-2">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nama Gerai / Store</span>
-                  <p className="text-sm font-semibold text-gray-800 mt-1">Gudang Utama Mitra Anteraja (Mock Store)</p>
                 </div>
               </div>
             </div>
