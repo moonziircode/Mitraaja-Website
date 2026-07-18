@@ -129,24 +129,20 @@ export default function TrackingClient({ user }: { user: User }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen min-w-0">
         {/* Top Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 shrink-0 relative overflow-hidden">
+          <svg className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0,0 C40,40 60,-20 100,20 L100,0 L0,0 Z" fill="var(--color-primary)"></path>
+          </svg>
+          <div className="flex items-center gap-4 relative z-10">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
             >
-              <span className="material-symbols-outlined text-[22px] text-gray-600">menu</span>
+              <span className="material-symbols-outlined text-[22px] text-text-primary">menu</span>
             </button>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 tracking-tight">Lacak Paket Real-Time</h2>
-              <p className="text-[11px] text-gray-400 font-medium hidden sm:block">{currentDate}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-              <span className="material-symbols-outlined text-[16px] text-gray-400">badge</span>
-              <span className="text-xs font-semibold text-gray-600">NIA: {user.nia}</span>
+              <h2 className="text-lg font-bold text-text-primary tracking-tight">Lacak Paket Real-Time</h2>
+              <p className="text-[11px] text-text-secondary font-medium hidden sm:block">{currentDate}</p>
             </div>
           </div>
         </header>
@@ -156,23 +152,27 @@ export default function TrackingClient({ user }: { user: User }) {
           <div className="max-w-6xl mx-auto space-y-6">
             
             {/* Tracking Search Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-blue-600 text-[20px]" style={FILL}>location_on</span>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden relative">
+              <svg className="absolute bottom-0 right-0 w-full h-full opacity-5 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0,100 C40,60 60,120 100,80 L100,100 L0,100 Z" fill="var(--color-primary)"></path>
+              </svg>
+
+              <div className="px-6 py-5 border-b border-gray-50 flex items-center gap-3 relative z-10">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>location_on</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 text-[15px]">Pencarian Resi Anteraja</h3>
-                  <p className="text-[11px] text-gray-400 mt-0.5">Dapatkan detail tracking AWB secara instan</p>
+                  <h3 className="font-semibold text-text-primary text-[15px]">Pencarian Resi Anteraja</h3>
+                  <p className="text-[11px] text-text-secondary mt-0.5">Dapatkan detail tracking AWB secara instan</p>
                 </div>
               </div>
 
-              <div className="p-6">
+              <div className="p-6 relative z-10">
                 <form onSubmit={handleTrackingSubmit} className="flex gap-3">
                   <div className="relative flex-1">
                     <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
                     <input
-                      className="w-full h-12 pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 uppercase placeholder:text-gray-400 placeholder:normal-case focus:border-blue-200 focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all outline-none disabled:opacity-50"
+                      className="w-full h-12 pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-text-primary uppercase placeholder:text-gray-400 placeholder:normal-case focus:border-primary/50 focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all outline-none disabled:opacity-50"
                       placeholder="Masukkan nomor resi AWB..."
                       value={trackingAwb}
                       onChange={(e) => setTrackingAwb(e.target.value.toUpperCase())}
@@ -184,7 +184,7 @@ export default function TrackingClient({ user }: { user: User }) {
                   <button
                     type="submit"
                     disabled={!trackingAwb.trim() || isTracking}
-                    className="h-12 px-5 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-800 active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2 shrink-0"
+                    className="h-12 px-5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-light active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2 shrink-0 shadow-md shadow-primary/20"
                   >
                     {isTracking ? (
                       <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -244,7 +244,7 @@ export default function TrackingClient({ user }: { user: User }) {
                         </button>
                         <button
                           onClick={() => quickTrack(trackingResult.awb)}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                           title="Cek Ulang"
                         >
                           <span className="material-symbols-outlined text-[16px]">refresh</span>

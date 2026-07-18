@@ -1150,18 +1150,15 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 tracking-tight">Buat Pengiriman Baru</h2>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider hidden sm:block">
+        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 shrink-0 relative overflow-hidden">
+          <svg className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <path d="M0,0 C40,40 60,-20 100,20 L100,0 L0,0 Z" fill="var(--color-primary)"></path>
+          </svg>
+          <div className="relative z-10">
+            <h2 className="text-lg font-bold text-text-primary tracking-tight">Buat Pengiriman Baru</h2>
+            <p className="text-[10px] text-text-secondary font-semibold uppercase tracking-wider hidden sm:block">
               Wizard Pengiriman Manual & Reguler
             </p>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-              <span className="material-symbols-outlined text-[16px] text-gray-400">badge</span>
-              <span className="text-xs font-semibold text-gray-600">NIA: {user.nia}</span>
-            </div>
           </div>
         </header>
 
