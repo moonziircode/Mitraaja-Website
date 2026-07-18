@@ -305,15 +305,16 @@ export default function DashboardClient({ user }: { user: User }) {
           
             {/* Draft Alert / Hero Banner */}
             {hasDraft && (
-              <div className="relative w-full h-[140px] md:h-[160px] rounded-[20px] overflow-hidden shadow-sm animate-fade-in-up bg-white group border border-gray-100">
+              <div className="relative w-full h-[180px] md:h-[220px] lg:h-[250px] rounded-[20px] overflow-hidden shadow-sm animate-fade-in-up bg-white group border border-gray-100">
                 <Image 
-                  src="/Banner_Draft_Order.jpeg"
+                  src="/Banner_Order_Tertunda.png"
                   alt="Draft Order"
                   fill
                   className="object-cover object-right group-hover:scale-105 transition-transform duration-700"
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent flex flex-col justify-center px-6 md:px-12">
+                {/* Overlay gradient putih di kiri (sekitar 40-50%) yang memudar ke transparan di kanan */}
+                <div className="absolute inset-0 bg-gradient-to-r from-white/95 from-35% via-white/70 via-50% to-transparent to-70% flex flex-col justify-center px-6 md:px-[40px] lg:px-[48px]">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 bg-secondary/20 text-secondary rounded-xl flex items-center justify-center shadow-sm">
                       <span className="material-symbols-outlined text-[20px] text-secondary" style={FILL}>assignment_returned</span>
