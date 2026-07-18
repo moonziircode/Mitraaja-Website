@@ -46,6 +46,7 @@ export default function DashboardClient({ user }: { user: User }) {
   // ── UI State ──
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
 
   // ── Draft Check ──
   useEffect(() => {
@@ -275,14 +276,52 @@ export default function DashboardClient({ user }: { user: User }) {
           </div>
 
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleNewSession}
-              className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-primary/10 transition-colors relative"
-              title="Notifikasi"
-            >
-              <span className="material-symbols-outlined text-[20px]">notifications</span>
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-primary/10 transition-colors relative"
+                title="Notifikasi"
+              >
+                <span className="material-symbols-outlined text-[20px]">notifications</span>
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>
+              </button>
+
+              {isNotificationOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsNotificationOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-[320px] bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 z-50 overflow-hidden animate-fade-in-up">
+                    <div className="p-4 border-b border-gray-50 bg-gray-50/50">
+                      <h3 className="font-extrabold text-gray-900 tracking-tight">Notifikasi Terbaru</h3>
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto">
+                      <div className="p-4 hover:bg-gray-50/80 transition-colors cursor-pointer border-b border-gray-50 group">
+                        <div className="flex gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                            <span className="material-symbols-outlined text-primary text-[20px]">campaign</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-gray-900 mb-1 leading-snug">📢 Informasi Update Aplikasi MAA</h4>
+                            <div className="text-[12px] text-gray-600 leading-relaxed font-medium">
+                              Halo, Pengusaha Anteraja!<br/><br/>
+                              Diinformasikan bahwa hari ini akan dilakukan update aplikasi MAA. Mohon dipastikan aplikasi dapat segera diperbarui ke versi terbaru setelah update tersedia. Apabila mengalami kendala segera infokan kepada Tim Pengusaha Anteraja.<br/><br/>
+                              Terima kasih<br/><br/>
+                              Salam, Anteraja
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-2 font-bold">17 Juli 2026</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-3 text-center border-t border-gray-50 bg-gray-50/30">
+                      <button className="text-xs font-bold text-primary hover:text-primary-light transition-colors">Lihat semua notifikasi</button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             
             <div className="w-px h-8 bg-gray-200 hidden md:block" />
 
