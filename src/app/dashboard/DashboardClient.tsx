@@ -256,34 +256,34 @@ export default function DashboardClient({ user }: { user: User }) {
       )}
 
       {/* Sidebar */}
-      <Sidebar user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen min-w-0">
         {/* Top Header */}
-        <header className="h-[76px] bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-6 md:px-10 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-[60px] md:h-[76px] bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-4 md:px-10 shrink-0">
+          <div className="flex items-center gap-3 md:gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors"
+              className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors"
             >
-              <span className="material-symbols-outlined text-[24px] text-gray-600">menu</span>
+              <span className="material-symbols-outlined text-[20px] text-gray-600">menu</span>
             </button>
             <div>
-              <h2 className="text-xl font-extrabold text-text-primary tracking-tight">Hai, {user.name} 👋</h2>
-              <p className="text-[12px] text-text-secondary font-medium hidden sm:block mt-0.5">{currentDate}</p>
+              <h2 className="text-[17px] md:text-xl font-extrabold text-text-primary tracking-tight">Hai, {user.name} 👋</h2>
+              <p className="text-[11px] md:text-[12px] text-text-secondary font-medium hidden sm:block mt-0.5">{currentDate}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             <div className="relative">
               <button
                 onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-primary/10 transition-colors relative"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-primary/10 transition-colors relative"
                 title="Notifikasi"
               >
-                <span className="material-symbols-outlined text-[20px]">notifications</span>
-                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>
+                <span className="material-symbols-outlined text-[18px] md:text-[20px]">notifications</span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>
               </button>
 
               {isNotificationOpen && (
@@ -323,24 +323,24 @@ export default function DashboardClient({ user }: { user: User }) {
               )}
             </div>
             
-            <div className="w-px h-8 bg-gray-200 hidden md:block" />
+            <div className="w-px h-6 md:h-8 bg-gray-200 hidden md:block" />
 
-            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+            <div className="flex items-center gap-2 md:gap-3 cursor-pointer hover:opacity-80 transition-opacity">
               <div className="hidden md:block text-right">
                 <p className="text-sm font-bold text-text-primary">{user.name}</p>
                 <p className="text-[11px] text-text-secondary font-medium">Admin</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-sm">
                 {user.name.charAt(0)}
               </div>
-              <span className="material-symbols-outlined text-gray-400 text-[20px] hidden md:block">expand_more</span>
+              <span className="material-symbols-outlined text-gray-400 text-[18px] md:text-[20px] hidden md:block">expand_more</span>
             </div>
           </div>
         </header>
 
         {/* Scrollable Main Area */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="max-w-[1400px] mx-auto space-y-8">
+        <main className="flex-1 overflow-y-auto p-3 md:p-6 lg:p-8">
+          <div className="max-w-[1400px] mx-auto space-y-6 md:space-y-8">
           
             {/* Draft Alert / Hero Banner */}
             {hasDraft && (
@@ -353,19 +353,19 @@ export default function DashboardClient({ user }: { user: User }) {
                   priority
                 />
                 {/* Overlay gradient putih di kiri (sekitar 40-50%) yang memudar ke transparan di kanan */}
-                <div className="absolute inset-0 bg-gradient-to-r from-white/95 from-35% via-white/70 via-50% to-transparent to-70% flex flex-col justify-center px-6 md:px-[40px] lg:px-[48px]">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 bg-secondary/20 text-secondary rounded-xl flex items-center justify-center shadow-sm">
-                      <span className="material-symbols-outlined text-[20px] text-secondary" style={FILL}>assignment_returned</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-white/95 from-35% via-white/70 via-50% to-transparent to-70% flex flex-col justify-center px-4 md:px-[40px] lg:px-[48px]">
+                  <div className="flex items-center gap-2 md:gap-3 mb-2">
+                    <div className="w-8 h-8 md:w-10 md:h-10 bg-secondary/20 text-secondary rounded-xl flex items-center justify-center shadow-sm">
+                      <span className="material-symbols-outlined text-[16px] md:text-[20px] text-secondary" style={FILL}>assignment_returned</span>
                     </div>
-                    <h3 className="font-extrabold text-gray-900 text-xl md:text-2xl tracking-tight">Ada Draft Order Tertunda</h3>
+                    <h3 className="font-extrabold text-gray-900 text-lg md:text-2xl tracking-tight">Ada Draft Order Tertunda</h3>
                   </div>
-                  <p className="text-sm text-gray-700 font-medium max-w-md mb-5 leading-relaxed">Anda memiliki order yang belum selesai dibuat. Lanjutkan prosesnya sekarang untuk menghindari keterlambatan.</p>
+                  <p className="text-[11px] md:text-sm text-gray-700 font-medium max-w-xs md:max-w-md mb-4 md:mb-5 leading-relaxed">Anda memiliki order yang belum selesai dibuat. Lanjutkan prosesnya sekarang untuk menghindari keterlambatan.</p>
                   <button
                     onClick={() => router.push('/orders/create')}
-                    className="w-fit h-10 px-6 bg-secondary hover:bg-yellow-400 text-text-primary font-bold text-sm rounded-full transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2"
+                    className="w-fit h-8 md:h-10 px-4 md:px-6 bg-secondary hover:bg-yellow-400 text-text-primary font-bold text-xs md:text-sm rounded-full transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2"
                   >
-                    Lanjutkan <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    Lanjutkan <span className="material-symbols-outlined text-[14px] md:text-[16px]">arrow_forward</span>
                   </button>
                 </div>
               </div>
@@ -386,11 +386,11 @@ export default function DashboardClient({ user }: { user: User }) {
                    <span className="material-symbols-outlined text-[80px]">local_shipping</span>
                 </div>
                 <div className="relative z-10 flex flex-col h-full justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center mb-6">
-                    <span className="material-symbols-outlined text-white text-[24px]">add</span>
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center mb-4 md:mb-6">
+                    <span className="material-symbols-outlined text-white text-[20px] md:text-[24px]">add</span>
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-lg tracking-tight mb-1">Buat Order</h3>
+                    <h3 className="font-extrabold text-[15px] md:text-lg tracking-tight mb-0.5 md:mb-1">Buat Order</h3>
                     <p className="text-xs text-white/90 font-medium">Hitung ongkir & cetak resi</p>
                   </div>
                   <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
@@ -405,10 +405,10 @@ export default function DashboardClient({ user }: { user: User }) {
                 className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
               >
                 <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:scale-110 transition-transform duration-500 text-gray-900">
-                  <span className="material-symbols-outlined text-[100px]">qr_code_scanner</span>
+                  <span className="material-symbols-outlined text-[80px] md:text-[100px]">qr_code_scanner</span>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-6">
-                  <span className="material-symbols-outlined text-[24px]">qr_code_scanner</span>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-4 md:mb-6">
+                  <span className="material-symbols-outlined text-[20px] md:text-[24px]">qr_code_scanner</span>
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-[15px] tracking-tight">Klaim Paket</h3>
@@ -422,10 +422,10 @@ export default function DashboardClient({ user }: { user: User }) {
                 className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
               >
                 <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:scale-110 transition-transform duration-500 text-gray-900">
-                  <span className="material-symbols-outlined text-[100px]">calculate</span>
+                  <span className="material-symbols-outlined text-[80px] md:text-[100px]">calculate</span>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-6">
-                  <span className="material-symbols-outlined text-[24px]">calculate</span>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-4 md:mb-6">
+                  <span className="material-symbols-outlined text-[20px] md:text-[24px]">calculate</span>
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-[15px] tracking-tight">Cek Ongkir</h3>
@@ -439,10 +439,10 @@ export default function DashboardClient({ user }: { user: User }) {
                 className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
               >
                 <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:scale-110 transition-transform duration-500 text-gray-900">
-                  <span className="material-symbols-outlined text-[100px]">location_on</span>
+                  <span className="material-symbols-outlined text-[80px] md:text-[100px]">location_on</span>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-6">
-                  <span className="material-symbols-outlined text-[24px]">location_on</span>
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-4 md:mb-6">
+                  <span className="material-symbols-outlined text-[20px] md:text-[24px]">location_on</span>
                 </div>
                 <div>
                   <h3 className="font-extrabold text-gray-900 text-[15px] tracking-tight">Lacak Resi</h3>

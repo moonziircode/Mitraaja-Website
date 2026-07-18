@@ -51,7 +51,7 @@ export default function SettingsClient({ user }: { user: User }) {
       )}
 
       {/* Sidebar */}
-      <Sidebar user={user} />
+      <Sidebar user={user} isOpen={sidebarOpen} />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen min-w-0">
