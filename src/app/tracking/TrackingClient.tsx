@@ -325,7 +325,7 @@ export default function TrackingClient({ user }: { user: User }) {
                               {/* Content */}
                               <div className="flex-1 min-w-0 pt-0.5">
                                 <div className="flex items-center justify-between gap-3 mb-0.5">
-                                  <h4 className={`text-sm font-semibold truncate ${isFirst ? 'text-gray-900' : 'text-gray-600'}`}>
+                                  <h4 className={`text-sm font-semibold leading-snug ${isFirst ? 'text-gray-900' : 'text-gray-600'}`}>
                                     {event.status}
                                   </h4>
                                   <span className="text-[10px] font-mono text-gray-400 shrink-0">{event.time}</span>

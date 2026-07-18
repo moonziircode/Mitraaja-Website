@@ -5,6 +5,7 @@ import axios from "axios";
 import { MaaTaskList } from "@/types/tasklist";
 import TertundaCard from "./components/TertundaCard";
 import TaskDetailModal from "./components/TaskDetailModal";
+import PrintAWBModal from "./components/PrintAWBModal";
 import Sidebar from "@/components/Sidebar";
 import { Loader2, Search, XCircle, AlertCircle, Package, RefreshCw } from "lucide-react";
 import { useDebounce } from "use-debounce";
@@ -28,10 +29,17 @@ export default function TasklistClient({ user }: TasklistClientProps) {
 
   const [selectedTask, setSelectedTask] = useState<MaaTaskList | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [taskToPrint, setTaskToPrint] = useState<MaaTaskList | null>(null);
 
   const openDetail = (task: MaaTaskList) => {
     setSelectedTask(task);
     setIsModalOpen(true);
+  };
+
+  const openPrint = (task: MaaTaskList) => {
+    setTaskToPrint(task);
+    setIsPrintModalOpen(true);
   };
 
   // Auto refresh interval for "Real-time" feel
@@ -180,6 +188,7 @@ export default function TasklistClient({ user }: TasklistClientProps) {
             key={index} 
             tasklist={task} 
             onClickDetail={() => openDetail(task)} 
+            onPrint={() => openPrint(task)}
           />
         ))}
 
@@ -208,6 +217,12 @@ export default function TasklistClient({ user }: TasklistClientProps) {
         onClose={() => setIsModalOpen(false)}
         tasklist={selectedTask}
         activeTab={"TERTUNDA"}
+      />
+      
+      <PrintAWBModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        tasklist={taskToPrint}
       />
         </div>
       </main>

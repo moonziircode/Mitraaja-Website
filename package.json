@@ -11,6 +11,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.1",
     "axios": "^1.18.0",
+    "axios-cookiejar-support": "^7.0.0",
     "csv-parse": "^7.0.0",
     "firebase-admin": "^14.0.0",
     "framer-motion": "^12.40.0",
@@ -22,8 +23,11 @@
     "next": "16.2.9",
     "pdf-parse": "^2.4.5",
     "pg": "^8.21.0",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
+    "react-barcode": "^1.6.1",
     "react-dom": "19.2.4",
+    "tough-cookie": "^6.0.2",
     "use-debounce": "^10.1.1"
   },
   "devDependencies": {

@@ -30,29 +30,28 @@ export async function POST(request: NextRequest) {
       let color = 'gray';
 
       if (code === '255' || code === '7' || code === '21') {
-        status = 'Paket Sukses Terkirim / Retur';
         icon = 'check_circle';
         color = 'green';
       } else if (code === '240' || code === '245' || code === '5' || code === '6') {
-        status = 'Proses Antar Kurir';
         icon = 'two_wheeler';
         color = 'blue';
       } else if (code === '201' || code === '10' || code === '11') {
-        status = 'Paket Diterima di Drop Point';
         icon = 'storefront';
         color = 'indigo';
       } else if (code === '300' || code === '334' || code === '332' || code === '2' || code === '4') {
-        status = 'Paket Tiba di Hub (Transit)';
         icon = 'warehouse';
         color = 'violet';
       } else if (code === '160' || code === '1') {
-        status = 'Paket Dijemput Kurir (Pickup)';
         icon = 'hail';
         color = 'orange';
       } else if (code === '0' || code === '96') {
-        status = 'Pesanan Dikonfirmasi';
         icon = 'receipt_long';
         color = 'gray_light';
+      }
+
+      // Gunakan pesan asli Anteraja sebagai status utama jika ada, agar lebih detail dan menarik
+      if (messageId && messageId !== 'Update') {
+        status = messageId;
       }
 
       let formattedTime = timestamp;
@@ -70,7 +69,7 @@ export async function POST(request: NextRequest) {
         opcode: parseInt(code, 10) || 0,
         status,
         time: formattedTime,
-        detail: messageId,
+        detail: `Status Code: ${code}`, // Show the code as secondary detail, since status now holds the message
         icon,
         color,
       };

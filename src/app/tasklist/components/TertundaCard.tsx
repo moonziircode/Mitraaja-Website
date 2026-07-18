@@ -7,16 +7,22 @@ import { MapPin, Phone, Package, ExternalLink, Clock, User, FileText, Truck } fr
 interface TertundaCardProps {
   tasklist: MaaTaskList;
   onClickDetail: () => void;
+  onPrint?: () => void;
 }
 
-export default function TertundaCard({ tasklist, onClickDetail }: TertundaCardProps) {
+export default function TertundaCard({ tasklist, onClickDetail, onPrint }: TertundaCardProps) {
   const taskCount = tasklist.tasks?.length || 0;
   
   // Use the first task as representative for the group
   const firstTask: any = tasklist.tasks?.[0] || {};
+  if (!firstTask) return null;
+  
   const waybill = firstTask.waybill_no || firstTask.waybillNo || firstTask.task_code || "-";
   const serviceType = firstTask.product_code || firstTask.productCode || "SD";
   const status = firstTask.task_status || firstTask.taskStatus || "MENUNGGU PICKUP";
+  
+  const shipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || "Tanpa Nama";
+  const recipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "Penerima -";
   
   const shipperCity = firstTask.shipperInfo?.city || firstTask.shipper_info?.city || "-";
   const recipientCity = firstTask.recipientInfo?.city || firstTask.recipient_info?.city || "-";
@@ -25,7 +31,7 @@ export default function TertundaCard({ tasklist, onClickDetail }: TertundaCardPr
   const now = new Date();
   const diffHours = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60));
   const diffMinutes = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60)) % 60;
-  const waitingTime = diffHours > 0 ? `${diffHours}j ${diffMinutes}m` : `${diffMinutes}m`;
+  const waitingTime = diffHours > 0 ? `${diffHours} jam ${diffMinutes} mnt` : `${diffMinutes} menit`;
 
   return (
     <div 
@@ -46,9 +52,13 @@ export default function TertundaCard({ tasklist, onClickDetail }: TertundaCardPr
           <h3 className="font-mono font-bold text-gray-800 text-lg group-hover:text-pink-600 transition-colors">
             {waybill}
           </h3>
-          <div className="flex items-center text-sm text-gray-500 mt-1">
-            <User className="w-3.5 h-3.5 mr-1.5" />
-            <span>{tasklist.owner_name || tasklist.client_name || "Tanpa Nama"}</span>
+          <div className="flex items-center text-sm text-gray-600 mt-2 font-medium">
+            <User className="w-4 h-4 mr-1.5 text-gray-400" />
+            <span>Pengirim: {shipperName}</span>
+          </div>
+          <div className="flex items-center text-xs text-gray-500 mt-1">
+            <User className="w-3.5 h-3.5 mr-1.5 text-gray-300" />
+            <span>Penerima: {recipientName}</span>
           </div>
         </div>
         <div className="flex flex-col items-end">
@@ -66,14 +76,37 @@ export default function TertundaCard({ tasklist, onClickDetail }: TertundaCardPr
         <span className="truncate">{recipientCity}</span>
       </div>
 
-      <div className="border-t border-gray-100 pt-3 mt-3 flex items-center justify-between text-sm">
-        <div className="flex items-center gap-1.5 text-orange-600 font-medium">
-          <Truck className="w-4 h-4" />
-          <span>{status.replace(/_/g, " ")}</span>
+      <div className="border-t border-gray-100 pt-4 mt-3 flex flex-col gap-3">
+        <div className="flex items-start justify-between text-sm">
+          <div className="flex items-center gap-1.5 text-orange-600 font-medium bg-orange-50 px-2.5 py-1.5 rounded-lg">
+            <Truck className="w-4 h-4" />
+            <span className="text-xs uppercase tracking-wide">{status.replace(/_/g, " ")}</span>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+             <span className="text-xs text-gray-400">Tertunda Sejak</span>
+             <span className="text-xs font-semibold text-gray-700">{waitingTime} yang lalu</span>
+          </div>
         </div>
-        <div className="flex items-center text-pink-600 font-medium text-sm group-hover:underline">
-          Detail
-          <ExternalLink className="w-3.5 h-3.5 ml-1" />
+        
+        <div className="flex items-center justify-between w-full mt-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onPrint) {
+                onPrint();
+              } else {
+                onClickDetail();
+              }
+            }}
+            className="flex-1 bg-white border border-pink-200 text-pink-600 hover:bg-pink-50 font-medium py-2 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-1 mr-3"
+          >
+            <FileText className="w-3.5 h-3.5" /> Generate AWB
+          </button>
+          
+          <div className="flex items-center text-pink-600 font-medium text-xs bg-white border border-transparent group-hover:border-pink-100 py-2 px-3 rounded-xl transition-colors">
+            Detail
+            <ExternalLink className="w-3.5 h-3.5 ml-1" />
+          </div>
         </div>
       </div>
     </div>
