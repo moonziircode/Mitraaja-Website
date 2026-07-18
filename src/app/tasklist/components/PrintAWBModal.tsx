@@ -98,9 +98,9 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
 
           {/* Label Preview Area */}
           <div className="p-6 overflow-y-auto print:p-0 flex justify-center">
-            <div className="print:hidden p-4 bg-white rounded-xl shadow-sm inline-block relative">
+            <div id="printable-label-modal" className="p-4 bg-white rounded-xl shadow-sm inline-block relative print:p-0 print:shadow-none print:rounded-none">
               {loadingExtra && (
-                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-10 rounded-xl backdrop-blur-sm">
+                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-10 rounded-xl backdrop-blur-sm print:hidden">
                   <Loader2 className="w-8 h-8 animate-spin text-pink-600 mb-2" />
                   <span className="text-sm font-semibold text-gray-700">Mengambil data detail...</span>
                 </div>
@@ -142,6 +142,43 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
           </div>
         </motion.div>
       </motion.div>
+      
+      {/* ── Direct Print Styles Override ── */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Hide everything except the label */
+          body * {
+            visibility: hidden !important;
+          }
+          #printable-label-modal, #printable-label-modal * {
+            visibility: visible !important;
+          }
+          /* Position label at the top-left of printable page */
+          #printable-label-modal {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100mm !important;
+            height: 150mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+          }
+          /* Control page dimensions (A6) */
+          @page {
+            size: 100mm 150mm;
+            margin: 0;
+          }
+          /* Disable default headers and footers */
+          html, body {
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `}} />
     </AnimatePresence>
   );
 }
