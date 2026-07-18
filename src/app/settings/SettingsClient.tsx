@@ -185,13 +185,49 @@ export default function SettingsClient({ user }: { user: User }) {
               </div>
 
               <div className="space-y-4">
-                <div className="p-3 bg-emerald-50/40 border border-emerald-100 rounded-xl flex gap-3.5">
-                  <span className="material-symbols-outlined text-emerald-600 shrink-0">info</span>
-                  <div>
-                    <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Butuh Bantuan Segera?</h4>
-                    <p className="text-xs text-emerald-700 leading-relaxed mt-1">
-                      Apabila terjadi kendala sinkronisasi data AWB atau API timeout, harap hubungi Koordinator Hub Area Anda atau kirim tiket ke <a href="mailto:support@anteraja.id" className="underline font-semibold">support@anteraja.id</a>.
-                    </p>
+                <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-xl flex gap-3.5">
+                  <span className="material-symbols-outlined text-emerald-600 shrink-0 mt-0.5">support_agent</span>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-emerald-800 tracking-tight">Butuh bantuan?</h4>
+                    <p className="text-xs text-emerald-700 font-medium mt-0.5 mb-4">Hubungi Anteraja Care</p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* X (Twitter) */}
+                      <div className="flex items-start gap-2">
+                        <span className="font-serif text-lg font-bold leading-none text-emerald-700 -mt-0.5">𝕏</span>
+                        <div>
+                          <p className="text-[10px] text-emerald-600/80 font-bold uppercase tracking-wider">X</p>
+                          <a href="https://x.com/AnterajaCare" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 transition-colors underline decoration-emerald-200 hover:decoration-emerald-400 underline-offset-2">@AnterajaCare</a>
+                        </div>
+                      </div>
+
+                      {/* Call Center */}
+                      <div className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-emerald-600">call</span>
+                        <div>
+                          <p className="text-[10px] text-emerald-600/80 font-bold uppercase tracking-wider">Call Center</p>
+                          <a href="tel:02150663333" className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 transition-colors underline decoration-emerald-200 hover:decoration-emerald-400 underline-offset-2">021 - 5066 - 3333</a>
+                        </div>
+                      </div>
+
+                      {/* Email CS */}
+                      <div className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-emerald-600">mail</span>
+                        <div>
+                          <p className="text-[10px] text-emerald-600/80 font-bold uppercase tracking-wider">Customer Service</p>
+                          <a href="mailto:cs@anteraja.id" className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 transition-colors underline decoration-emerald-200 hover:decoration-emerald-400 underline-offset-2">cs@anteraja.id</a>
+                        </div>
+                      </div>
+
+                      {/* Whatsapp */}
+                      <div className="flex items-start gap-2">
+                        <span className="material-symbols-outlined text-[16px] text-emerald-600">chat</span>
+                        <div>
+                          <p className="text-[10px] text-emerald-600/80 font-bold uppercase tracking-wider">Kontak Pengusaha Anteraja</p>
+                          <a href="https://wa.me/6282280001250" target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 transition-colors underline decoration-emerald-200 hover:decoration-emerald-400 underline-offset-2">Whatsapp: 082280001250</a>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
