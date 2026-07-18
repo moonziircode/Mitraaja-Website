@@ -16,6 +16,9 @@ interface PrintAWBModalProps {
 export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
+  const [extraData, setExtraData] = useState<{ shipperName?: string, recipientName?: string, recipientAddress?: string } | null>(null);
+  const [loadingExtra, setLoadingExtra] = useState(false);
+
   // Focus lock or escape key to close can be added here
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -25,23 +28,25 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
     return () => window.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
-  if (!tasklist || !isOpen) return null;
+  // Reset extraData when modal closes or tasklist changes
+  useEffect(() => {
+    if (!isOpen) {
+      setExtraData(null);
+    }
+  }, [isOpen]);
 
-  const firstTask: any = tasklist.tasks?.[0] || {};
+  const firstTask: any = tasklist?.tasks?.[0] || {};
   const awb = firstTask.waybill_no || firstTask.waybillNo || firstTask.task_code || "-";
   const serviceType = firstTask.product_code || firstTask.productCode || firstTask.service || "SD";
   
-  const initialShipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || tasklist.client_name || "-";
-  const initialShipperPhone = firstTask.shipperInfo?.phone || firstTask.shipper_info?.phone || tasklist.owner_phone || "-";
+  const initialShipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist?.owner_name || tasklist?.client_name || "-";
+  const initialShipperPhone = firstTask.shipperInfo?.phone || firstTask.shipper_info?.phone || tasklist?.owner_phone || "-";
   
   const initialRecipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "-";
   const initialRecipientPhone = firstTask.recipientInfo?.phone || firstTask.recipient_info?.phone || "-";
   const initialRecipientAddress = firstTask.recipientInfo?.address || firstTask.recipient_info?.address || "-";
   
-  const weight = tasklist.tasks?.reduce((acc, t: any) => acc + (t.parcel_total_weight || t.parcelTotalWeight || 0), 0) || 900; // default 0.9kg
-  
-  const [extraData, setExtraData] = useState<{ shipperName?: string, recipientName?: string, recipientAddress?: string } | null>(null);
-  const [loadingExtra, setLoadingExtra] = useState(false);
+  const weight = tasklist?.tasks?.reduce((acc, t: any) => acc + (t.parcel_total_weight || t.parcelTotalWeight || 0), 0) || 900; // default 0.9kg
 
   useEffect(() => {
     if (isOpen && awb !== "-" && (initialShipperName === "-" || initialRecipientName === "-")) {
@@ -60,6 +65,8 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
         .finally(() => setLoadingExtra(false));
     }
   }, [isOpen, awb, initialShipperName, initialRecipientName]);
+
+  if (!tasklist || !isOpen) return null;
 
   const shipperName = extraData?.shipperName || initialShipperName;
   const shipperPhone = initialShipperPhone;
