@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Printer } from "lucide-react";
+import { X, Printer, Loader2 } from "lucide-react";
 import AWBLabel from "@/components/awb/AWBLabel";
 import { MaaTaskList } from "@/types/tasklist";
+import axios from "axios";
 
 interface PrintAWBModalProps {
   isOpen: boolean;
@@ -28,17 +29,44 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
 
   const firstTask: any = tasklist.tasks?.[0] || {};
   const awb = firstTask.waybill_no || firstTask.waybillNo || firstTask.task_code || "-";
-  const serviceType = firstTask.product_code || firstTask.productCode || "SD";
+  const serviceType = firstTask.product_code || firstTask.productCode || firstTask.service || "SD";
   
-  const shipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || "-";
-  const shipperPhone = firstTask.shipperInfo?.phone || firstTask.shipper_info?.phone || tasklist.owner_phone || "-";
+  const initialShipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || tasklist.client_name || "-";
+  const initialShipperPhone = firstTask.shipperInfo?.phone || firstTask.shipper_info?.phone || tasklist.owner_phone || "-";
   
-  const recipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "-";
-  const recipientPhone = firstTask.recipientInfo?.phone || firstTask.recipient_info?.phone || "-";
-  const recipientAddress = firstTask.recipientInfo?.address || firstTask.recipient_info?.address || "-";
+  const initialRecipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "-";
+  const initialRecipientPhone = firstTask.recipientInfo?.phone || firstTask.recipient_info?.phone || "-";
+  const initialRecipientAddress = firstTask.recipientInfo?.address || firstTask.recipient_info?.address || "-";
   
   const weight = tasklist.tasks?.reduce((acc, t: any) => acc + (t.parcel_total_weight || t.parcelTotalWeight || 0), 0) || 900; // default 0.9kg
   
+  const [extraData, setExtraData] = useState<{ shipperName?: string, recipientName?: string, recipientAddress?: string } | null>(null);
+  const [loadingExtra, setLoadingExtra] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && awb !== "-" && (initialShipperName === "-" || initialRecipientName === "-")) {
+      setLoadingExtra(true);
+      axios.post('/api/track', { awb })
+        .then(res => {
+          if (res.data) {
+            setExtraData({
+              shipperName: res.data.sender !== '-' ? res.data.sender : undefined,
+              recipientName: res.data.receiver !== '-' ? res.data.receiver : undefined,
+              recipientAddress: res.data.destination !== '-' ? res.data.destination : undefined,
+            });
+          }
+        })
+        .catch(err => console.error("Gagal load tracking detail:", err))
+        .finally(() => setLoadingExtra(false));
+    }
+  }, [isOpen, awb, initialShipperName, initialRecipientName]);
+
+  const shipperName = extraData?.shipperName || initialShipperName;
+  const shipperPhone = initialShipperPhone;
+  const recipientName = extraData?.recipientName || initialRecipientName;
+  const recipientPhone = initialRecipientPhone;
+  const recipientAddress = extraData?.recipientAddress || initialRecipientAddress;
+
   const handlePrint = () => {
     window.print();
   };
@@ -70,7 +98,13 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
 
           {/* Label Preview Area */}
           <div className="p-6 overflow-y-auto print:p-0 flex justify-center">
-            <div className="print:hidden p-4 bg-white rounded-xl shadow-sm inline-block">
+            <div className="print:hidden p-4 bg-white rounded-xl shadow-sm inline-block relative">
+              {loadingExtra && (
+                <div className="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-10 rounded-xl backdrop-blur-sm">
+                  <Loader2 className="w-8 h-8 animate-spin text-pink-600 mb-2" />
+                  <span className="text-sm font-semibold text-gray-700">Mengambil data detail...</span>
+                </div>
+              )}
               <AWBLabel
                 ref={printRef}
                 awb={awb}
@@ -100,7 +134,8 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
             </button>
             <button
               onClick={handlePrint}
-              className="px-5 py-2.5 rounded-xl font-semibold bg-pink-600 text-white hover:bg-pink-700 transition-colors flex items-center gap-2"
+              disabled={loadingExtra}
+              className="px-5 py-2.5 rounded-xl font-semibold bg-pink-600 text-white hover:bg-pink-700 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               <Printer className="w-4 h-4" /> Cetak Resi
             </button>

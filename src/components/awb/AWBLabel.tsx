@@ -47,17 +47,17 @@ const AWBLabel = forwardRef<HTMLDivElement, AWBLabelProps>(
     return (
       <div 
         ref={ref} 
-        className="bg-white text-black font-sans w-[100mm] min-h-[150mm] border border-gray-300 p-2 text-xs flex flex-col mx-auto print:border-none print:w-[100mm] print:h-auto print:m-0"
-        style={{ width: "100mm" }}
+        className="bg-white font-sans w-[100mm] min-h-[150mm] border border-gray-300 p-2 text-[11px] flex flex-col mx-auto print:border-none print:w-[100mm] print:h-auto print:m-0"
+        style={{ width: "100mm", color: "#3B2C2F" }}
       >
         {/* 1. Header */}
-        <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-2">
+        <div className="flex justify-between items-start border-b-[3px] pb-2 mb-2" style={{ borderColor: "#841945" }}>
           <div className="flex flex-col">
-            <h1 className="text-xl font-bold text-red-600 tracking-tighter m-0 leading-none" style={{ fontFamily: "Arial, sans-serif" }}>anteraja</h1>
+            <img src="/logo-anteraja.png" alt="Anteraja Logo" className="h-6 object-contain" />
           </div>
           <div className="text-right">
-            <div className="flex items-center justify-end gap-1 font-bold text-sm">
-              <span className="material-symbols-outlined text-[14px]">call</span>
+            <div className="flex items-center justify-end gap-1 font-bold text-sm" style={{ color: "#ED0677" }}>
+              <span className="material-symbols-outlined text-[15px]">call</span>
               021-5066 3333
             </div>
           </div>
@@ -71,31 +71,32 @@ const AWBLabel = forwardRef<HTMLDivElement, AWBLabelProps>(
         </div>
 
         {/* 2. Area Barcode & 3. Jenis Layanan */}
-        <div className="flex justify-between items-start border-b-2 border-black pb-2 mb-2">
-          <div className="flex-1 flex flex-col items-center overflow-hidden">
+        <div className="flex justify-between items-start border-b-[3px] pb-2 mb-2" style={{ borderColor: "#3B2C2F" }}>
+          <div className="flex-1 flex flex-col items-center overflow-hidden pr-2">
             <Barcode 
               value={awb} 
               width={1.8} 
               height={50} 
               fontSize={14} 
               margin={0} 
-              displayValue={true} 
+              displayValue={true}
+              lineColor="#3B2C2F"
             />
           </div>
-          <div className="w-16 flex items-center justify-center border-l-2 border-black pl-2 h-[60px]">
+          <div className="w-16 flex items-center justify-center border-l-[3px] pl-2 h-[60px]" style={{ borderColor: "#3B2C2F" }}>
             <span className="text-3xl font-black">{serviceType}</span>
           </div>
         </div>
 
         {/* 4. Routing / Kode Jalur */}
-        <div className="border-b-2 border-black pb-2 mb-2 text-center">
-          <span className="text-4xl font-black">{routingCode || "33.10"}</span>
+        <div className="border-b-[3px] pb-2 mb-2 text-center" style={{ borderColor: "#3B2C2F" }}>
+          <span className="text-4xl font-black tracking-tight">{routingCode || "33.10"}</span>
         </div>
 
         {/* 5. Informasi Penerima */}
-        <div className="border-b-2 border-black pb-2 mb-2 flex-1 min-h-[80px]">
+        <div className="border-b-[3px] pb-2 mb-2 flex-1 min-h-[80px]" style={{ borderColor: "#3B2C2F" }}>
           <div className="font-black text-sm mb-1">PENERIMA:</div>
-          <div className="font-bold text-sm">
+          <div className="font-bold text-[13px]">
             {maskName(recipientName)}
             {recipientPhone && <span className="ml-2 font-normal">{maskPhone(recipientPhone)}</span>}
           </div>
@@ -105,12 +106,12 @@ const AWBLabel = forwardRef<HTMLDivElement, AWBLabelProps>(
         </div>
 
         {/* 6. Area Kosong & 7. QR Code */}
-        <div className="border-b-2 border-black pb-2 mb-2 flex justify-between h-24">
-          <div className="flex-1 border-r-2 border-black pr-2">
+        <div className="border-b-[3px] pb-2 mb-2 flex justify-between h-24" style={{ borderColor: "#3B2C2F" }}>
+          <div className="flex-1 border-r-[3px] pr-2" style={{ borderColor: "#3B2C2F" }}>
             {/* Area Kosong */}
           </div>
           <div className="w-24 pl-2 flex items-center justify-center">
-            <QRCodeSVG value={awb} size={80} level="M" />
+            <QRCodeSVG value={awb} size={80} level="M" fgColor="#3B2C2F" />
           </div>
         </div>
 

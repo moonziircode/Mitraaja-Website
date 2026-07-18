@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { MaaTaskList } from "@/types/tasklist";
+import axios from "axios";
 import { MapPin, Phone, Package, ExternalLink, Clock, User, FileText, Truck } from "lucide-react";
 
 interface TertundaCardProps {
@@ -18,11 +19,31 @@ export default function TertundaCard({ tasklist, onClickDetail, onPrint }: Tertu
   if (!firstTask) return null;
   
   const waybill = firstTask.waybill_no || firstTask.waybillNo || firstTask.task_code || "-";
-  const serviceType = firstTask.product_code || firstTask.productCode || "SD";
-  const status = firstTask.task_status || firstTask.taskStatus || "MENUNGGU PICKUP";
+  const serviceType = firstTask.product_code || firstTask.productCode || firstTask.service || "SD";
+  const status = firstTask.task_status || firstTask.taskStatus || firstTask.order_status || "MENUNGGU PICKUP";
   
-  const shipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || "Tanpa Nama";
-  const recipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "Penerima -";
+  const initialShipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || tasklist.client_name || "Tanpa Nama";
+  const initialRecipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "Penerima -";
+  
+  const [extraData, setExtraData] = useState<{ shipperName?: string, recipientName?: string } | null>(null);
+
+  useEffect(() => {
+    if (waybill !== "-" && (initialShipperName === "Tanpa Nama" || initialRecipientName === "Penerima -")) {
+      axios.post('/api/track', { awb: waybill })
+        .then(res => {
+          if (res.data) {
+            setExtraData({
+              shipperName: res.data.sender !== '-' ? res.data.sender : undefined,
+              recipientName: res.data.receiver !== '-' ? res.data.receiver : undefined,
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [waybill, initialShipperName, initialRecipientName]);
+
+  const shipperName = extraData?.shipperName || initialShipperName;
+  const recipientName = extraData?.recipientName || initialRecipientName;
   
   const shipperCity = firstTask.shipperInfo?.city || firstTask.shipper_info?.city || "-";
   const recipientCity = firstTask.recipientInfo?.city || firstTask.recipient_info?.city || "-";
