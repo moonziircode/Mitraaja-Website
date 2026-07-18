@@ -6,12 +6,15 @@
 
 @theme {
   /* ===== Anteraja Brand Color Tokens ===== */
-  --color-primary: #FF007A;
-  --color-primary-light: #FF4D9D;
+  --color-primary: #ED0677; /* Magenta Sigap */
+  --color-primary-light: #F6AABF; /* Pink Aman */
+  --color-secondary: #FFCB05; /* Kuning Ramah */
   --color-background: #FFE6F2;
-  --color-text-primary: #1F1F1F;
+  --color-text-primary: #3B2C2F; /* Hitam Integritas */
   --color-text-secondary: #6B7280;
   --color-surface: #FFFFFF;
+  --color-accent-blue: #496AAA; /* Biru Terpercaya */
+  --color-accent-maroon: #841945; /* Marun Amanah */
   
   --color-status-baru: #FFE6F2; /* example */
   --color-status-menunggu: #FFF3CD;
@@ -161,8 +164,8 @@ body {
 
 /* ===== Selection ===== */
 ::selection {
-  background: rgba(255, 0, 122, 0.12); /* #FF007A with 12% opacity */
-  color: #FF007A;
+  background: rgba(237, 6, 119, 0.12); /* #ED0677 with 12% opacity */
+  color: #ED0677;
 }
 
 /* ===== Custom Utilities ===== */
@@ -180,7 +183,7 @@ body {
 }
 
 .input-focus-ring:focus-within {
-    border-color: #FF4D9D;
-    box-shadow: 0 0 0 3px rgba(255, 77, 157, 0.2);
+    border-color: #ED0677;
+    box-shadow: 0 0 0 3px rgba(237, 6, 119, 0.2);
 }
 

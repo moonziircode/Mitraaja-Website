@@ -268,16 +268,12 @@ export default function DashboardClient({ user }: { user: User }) {
               <span className="material-symbols-outlined text-[22px] text-gray-600">menu</span>
             </button>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 tracking-tight">Konsol Operasional</h2>
-              <p className="text-[11px] text-gray-400 font-medium hidden sm:block">{currentDate}</p>
+              <h2 className="text-lg font-bold text-text-primary tracking-tight">Hai, Marketing {user.name}</h2>
+              <p className="text-[11px] text-text-secondary font-medium hidden sm:block">{currentDate}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-              <span className="material-symbols-outlined text-[16px] text-gray-400">badge</span>
-              <span className="text-xs font-semibold text-gray-600">NIA: {user.nia}</span>
-            </div>
             <button
               onClick={handleNewSession}
               className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:text-primary hover:bg-background border border-gray-100 transition-colors"
@@ -319,8 +315,12 @@ export default function DashboardClient({ user }: { user: User }) {
               {/* Card 1: Create Order */}
               <div 
                 onClick={() => router.push('/orders/create')}
-                className="bg-gradient-to-r from-primary to-primary-light rounded-2xl p-5 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                className="bg-primary rounded-2xl p-5 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
               >
+                {/* Simulated Journey Graphics using SVG */}
+                <svg className="absolute top-0 right-0 w-full h-full opacity-20 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <path d="M0,50 C30,20 70,80 100,50 L100,100 L0,100 Z" fill="var(--color-secondary)"></path>
+                </svg>
                 <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
                   <span className="material-symbols-outlined text-[100px]">local_shipping</span>
                 </div>
@@ -486,7 +486,7 @@ export default function DashboardClient({ user }: { user: User }) {
                     <button
                       type="submit"
                       disabled={!awbValue.trim() || isScanning}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-5 bg-gradient-to-r from-primary to-primary-light text-white rounded-lg font-semibold text-sm hover:from-primary-light hover:to-primary active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-5 bg-primary text-white rounded-lg font-semibold text-sm hover:bg-primary-light active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2"
                     >
                       {isScanning ? (
                         <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">

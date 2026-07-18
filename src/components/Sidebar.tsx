@@ -90,20 +90,11 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
         })}
       </nav>
 
-      {/* User Profile - Not fully matching mockup but good enough */}
+      {/* Footer Area */}
       <div className="px-4 py-5 border-t border-gray-50">
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50/70">
-          <div className="w-10 h-10 rounded-full bg-background text-primary flex items-center justify-center font-bold text-sm tracking-tight shrink-0">
-            {userInitials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-text-primary truncate">{user.name}</p>
-            <p className="text-[11px] text-text-secondary truncate">NIA: {user.nia}</p>
-          </div>
-        </div>
         <button
           onClick={handleLogout}
-          className="mt-3 w-full h-9 flex items-center justify-center gap-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-primary hover:bg-background border border-gray-100 transition-colors"
+          className="w-full h-9 flex items-center justify-center gap-2 rounded-lg text-xs font-semibold text-text-secondary hover:text-primary hover:bg-background border border-gray-100 transition-colors"
         >
           <span className="material-symbols-outlined text-[17px]">logout</span>
           Akhiri Sesi
