@@ -75,15 +75,12 @@ export default function RatesClient({ user }: RatesClientProps) {
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 mb-8 relative">
             {/* Background SVG Wrapper */}
             <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
-              <svg className="absolute bottom-0 left-0 w-full h-32 opacity-[0.03]" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <path d="M0,100 C30,0 70,0 100,100 Z" fill="var(--color-primary)"></path>
-              </svg>
-              <svg className="absolute top-0 right-0 w-32 h-32 opacity-[0.03]" viewBox="0 0 100 100" preserveAspectRatio="none">
-                <circle cx="100" cy="0" r="100" fill="var(--color-primary)"></circle>
+              <svg className="absolute top-0 right-0 w-full h-full opacity-10" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <path d="M0,50 C30,20 70,80 100,50 L100,100 L0,100 Z" fill="var(--color-primary)"></path>
               </svg>
             </div>
             
-            <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 relative z-10">
+            <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 relative z-20">
               <div className="flex-1 relative">
                 <div className="flex items-center gap-2 mb-2 text-primary">
                   <MapPin className="w-4 h-4" />
