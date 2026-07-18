@@ -198,13 +198,7 @@ export default function TrackingClient({ user }: { user: User }) {
                   </button>
                 </form>
 
-                <button
-                  onClick={() => quickTrack('11003838770507')}
-                  className="mt-3 text-[11px] text-primary hover:text-primary-light font-semibold flex items-center gap-1 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-[13px]">play_circle</span>
-                  Coba lacak nomor tes: 11003838770507
-                </button>
+
               </div>
             </div>
 
