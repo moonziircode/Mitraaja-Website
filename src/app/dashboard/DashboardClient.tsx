@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback, type FormEvent } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface User {
   name: string;
@@ -259,403 +260,489 @@ export default function DashboardClient({ user }: { user: User }) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen min-w-0">
         {/* Top Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-4 md:px-8 shrink-0">
+        <header className="h-[76px] bg-white/90 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-20 flex items-center justify-between px-6 md:px-10 shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 transition-colors"
+              className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors"
             >
-              <span className="material-symbols-outlined text-[22px] text-gray-600">menu</span>
+              <span className="material-symbols-outlined text-[24px] text-gray-600">menu</span>
             </button>
             <div>
-              <h2 className="text-lg font-bold text-text-primary tracking-tight">Hai, {user.name}</h2>
-              <p className="text-[11px] text-text-secondary font-medium hidden sm:block">{currentDate}</p>
+              <h2 className="text-xl font-extrabold text-text-primary tracking-tight">Hai, {user.name} 👋</h2>
+              <p className="text-[12px] text-text-secondary font-medium hidden sm:block mt-0.5">{currentDate}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-4">
             <button
               onClick={handleNewSession}
-              className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold text-text-secondary hover:text-primary hover:bg-background border border-gray-100 transition-colors"
-              title="Sesi Baru"
+              className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:text-primary hover:bg-primary/10 transition-colors relative"
+              title="Notifikasi"
             >
-              <span className="material-symbols-outlined text-[16px]">refresh</span>
-              <span className="hidden sm:inline">Sesi Baru</span>
+              <span className="material-symbols-outlined text-[20px]">notifications</span>
+              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-white"></span>
             </button>
+            
+            <div className="w-px h-8 bg-gray-200 hidden md:block" />
+
+            <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="hidden md:block text-right">
+                <p className="text-sm font-bold text-text-primary">{user.name}</p>
+                <p className="text-[11px] text-text-secondary font-medium">Admin</p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                {user.name.charAt(0)}
+              </div>
+              <span className="material-symbols-outlined text-gray-400 text-[20px] hidden md:block">expand_more</span>
+            </div>
           </div>
         </header>
 
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">
+          <div className="max-w-[1400px] mx-auto space-y-8">
           
-            {/* Draft Alert */}
+            {/* Draft Alert / Hero Banner */}
             {hasDraft && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-fade-in-up">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[20px]" style={FILL}>assignment_returned</span>
+              <div className="relative w-full h-[140px] md:h-[160px] rounded-[20px] overflow-hidden shadow-sm animate-fade-in-up bg-white group border border-gray-100">
+                <Image 
+                  src="/Banner_Draft_Order.jpeg"
+                  alt="Draft Order"
+                  fill
+                  className="object-cover object-right group-hover:scale-105 transition-transform duration-700"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent flex flex-col justify-center px-6 md:px-12">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 bg-secondary/20 text-secondary rounded-xl flex items-center justify-center shadow-sm">
+                      <span className="material-symbols-outlined text-[20px] text-secondary" style={FILL}>assignment_returned</span>
+                    </div>
+                    <h3 className="font-extrabold text-gray-900 text-xl md:text-2xl tracking-tight">Ada Draft Order Tertunda</h3>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-amber-900 text-sm">Ada Draft Order Tertunda</h4>
-                    <p className="text-[11px] text-amber-700 font-medium">Anda memiliki order yang belum selesai dibuat.</p>
-                  </div>
+                  <p className="text-sm text-gray-700 font-medium max-w-md mb-5 leading-relaxed">Anda memiliki order yang belum selesai dibuat. Lanjutkan prosesnya sekarang untuk menghindari keterlambatan.</p>
+                  <button
+                    onClick={() => router.push('/orders/create')}
+                    className="w-fit h-10 px-6 bg-secondary hover:bg-yellow-400 text-text-primary font-bold text-sm rounded-full transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 flex items-center gap-2"
+                  >
+                    Lanjutkan <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </button>
                 </div>
-                <button
-                  onClick={() => router.push('/orders/create')}
-                  className="h-9 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl transition-colors shadow-sm"
-                >
-                  Lanjutkan
-                </button>
               </div>
             )}
 
             {/* Quick Actions Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {/* Card 1: Create Order */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              {/* Card 1: Create Order (Col Span 2) */}
               <div 
                 onClick={() => router.push('/orders/create')}
-                className="bg-primary rounded-2xl p-5 text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                className="md:col-span-2 bg-primary rounded-[20px] p-6 text-white shadow-md shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group"
               >
-                {/* Simulated Journey Graphics using SVG */}
-                <svg className="absolute top-0 right-0 w-full h-full opacity-20 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <path d="M0,50 C30,20 70,80 100,50 L100,100 L0,100 Z" fill="var(--color-secondary)"></path>
+                {/* SVG Curve Background */}
+                <svg className="absolute bottom-0 right-0 w-full h-full opacity-20 pointer-events-none transition-transform duration-700 group-hover:scale-110" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <path d="M0,100 C40,50 60,110 100,20 L100,100 L0,100 Z" fill="#ffffff"></path>
                 </svg>
-                <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
-                  <span className="material-symbols-outlined text-[100px]">local_shipping</span>
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-20 group-hover:opacity-40 transition-opacity duration-300 group-hover:translate-x-2">
+                   <span className="material-symbols-outlined text-[80px]">local_shipping</span>
                 </div>
-                <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    <span className="material-symbols-outlined text-white text-[20px]">add</span>
+                <div className="relative z-10 flex flex-col h-full justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center mb-6">
+                    <span className="material-symbols-outlined text-white text-[24px]">add</span>
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm tracking-tight">Buat Order</h3>
-                    <p className="text-[10px] text-white/80 font-medium mt-0.5 leading-tight">Hitung ongkir & cetak resi</p>
+                    <h3 className="font-extrabold text-lg tracking-tight mb-1">Buat Order</h3>
+                    <p className="text-xs text-white/90 font-medium">Hitung ongkir & cetak resi</p>
+                  </div>
+                  <div className="absolute bottom-6 right-6 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward_ios</span>
                   </div>
                 </div>
               </div>
 
-              {/* Card 2: Scan & Claim */}
+              {/* Card 2: Klaim Paket */}
               <div 
                 onClick={handleScrollToScan}
-                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
               >
-                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
-                  <span className="material-symbols-outlined text-[100px]">barcode_scanner</span>
+                <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                  <span className="material-symbols-outlined text-[100px]">qr_code_scanner</span>
                 </div>
-                <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-background border border-primary-light/20 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[20px]">qr_code_scanner</span>
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 text-sm tracking-tight">Klaim Paket</h3>
-                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5 leading-tight">Klaim via scan AWB</p>
-                  </div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-6">
+                  <span className="material-symbols-outlined text-[24px]">qr_code_scanner</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-[15px] tracking-tight">Klaim Paket</h3>
+                  <p className="text-[11px] text-gray-500 font-medium mt-1">Klaim via scan AWB</p>
                 </div>
               </div>
 
               {/* Card 3: Cek Ongkir */}
               <div 
-                onClick={() => alert('Cek Ongkir Cepat akan segera hadir!')}
-                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                onClick={() => router.push('/rates/check')}
+                className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
               >
-                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:scale-110 transition-transform duration-500 text-gray-900">
                   <span className="material-symbols-outlined text-[100px]">calculate</span>
                 </div>
-                <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-background border border-primary-light/20 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[20px]">calculate</span>
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 text-sm tracking-tight">Cek Ongkir</h3>
-                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5 leading-tight">Kalkulator tarif cepat</p>
-                  </div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-6">
+                  <span className="material-symbols-outlined text-[24px]">calculate</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-[15px] tracking-tight">Cek Ongkir</h3>
+                  <p className="text-[11px] text-gray-500 font-medium mt-1">Kalkulator tarif cepat</p>
                 </div>
               </div>
 
               {/* Card 4: Lacak Resi */}
               <div 
                 onClick={() => router.push('/tracking')}
-                className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md hover:border-gray-200 hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group"
+                className="bg-white rounded-[20px] p-6 border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between"
               >
-                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500 text-gray-900">
+                <div className="absolute -right-4 -bottom-4 opacity-[0.02] group-hover:scale-110 transition-transform duration-500 text-gray-900">
                   <span className="material-symbols-outlined text-[100px]">location_on</span>
                 </div>
-                <div className="relative z-10 space-y-3">
-                  <div className="w-10 h-10 rounded-xl bg-background border border-primary-light/20 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-[20px]">location_on</span>
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-gray-900 text-sm tracking-tight">Lacak Resi</h3>
-                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5 leading-tight">Pantau status paket</p>
-                  </div>
+                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/5 flex items-center justify-center text-primary mb-6">
+                  <span className="material-symbols-outlined text-[24px]">location_on</span>
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-gray-900 text-[15px] tracking-tight">Lacak Resi</h3>
+                  <p className="text-[11px] text-gray-500 font-medium mt-1">Pantau status paket</p>
                 </div>
               </div>
             </div>
             
             {/* Stats Dashboard */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                <div className="flex items-center justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-white to-gray-50/50 rounded-[20px] border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:border-gray-200 transition-colors">
+                <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-[120px]">inventory_2</span>
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-[11px] text-gray-400 font-semibold mb-1 uppercase tracking-wider">Total Scan</p>
-                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                    <p className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">Total Scan</p>
+                    <p className="text-3xl font-extrabold text-gray-900 tracking-tight">{stats.total}</p>
+                    <p className="text-[11px] text-gray-500 font-medium mt-0.5">Paket discan</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-gray-400 text-[20px]" style={FILL}>inventory_2</span>
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-primary text-[24px]" style={FILL}>inventory_2</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                <div className="flex items-center justify-between">
+              <div className="bg-gradient-to-br from-white to-emerald-50/30 rounded-[20px] border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:border-gray-200 transition-colors">
+                <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-[120px]">check_circle</span>
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-[11px] text-gray-400 font-semibold mb-1 uppercase tracking-wider">Berhasil</p>
-                    <p className="text-2xl font-bold text-emerald-600">{stats.success}</p>
+                    <p className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">Berhasil</p>
+                    <p className="text-3xl font-extrabold text-emerald-600 tracking-tight">{stats.success}</p>
+                    <p className="text-[11px] text-gray-500 font-medium mt-0.5">Paket berhasil</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-emerald-500 text-[20px]" style={FILL}>check_circle</span>
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-emerald-600 text-[24px]" style={FILL}>check_circle</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-                <div className="flex items-center justify-between">
+              <div className="bg-gradient-to-br from-white to-rose-50/30 rounded-[20px] border border-gray-100 shadow-sm p-5 relative overflow-hidden group hover:border-gray-200 transition-colors">
+                <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-[120px]">cancel</span>
+                </div>
+                <div className="flex items-center justify-between relative z-10">
                   <div>
-                    <p className="text-[11px] text-gray-400 font-semibold mb-1 uppercase tracking-wider">Gagal</p>
-                    <p className="text-2xl font-bold text-rose-600">{stats.error}</p>
+                    <p className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">Gagal</p>
+                    <p className="text-3xl font-extrabold text-rose-600 tracking-tight">{stats.error}</p>
+                    <p className="text-[11px] text-gray-500 font-medium mt-0.5">Paket gagal</p>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-rose-500 text-[20px]" style={FILL}>cancel</span>
+                  <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-rose-600 text-[24px]" style={FILL}>cancel</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Scanner Card */}
-            <div id="scanner-card" className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden scroll-mt-6">
-              <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-background flex items-center justify-center">
-                    <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>qr_code_scanner</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-[15px]">Scan & Claim Paket</h3>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Arahkan scanner atau ketik nomor resi di bawah</p>
-                  </div>
-                </div>
-                <div className={`flex items-center gap-2 text-[11px] font-semibold ${isFocused ? 'text-emerald-600' : 'text-gray-400'}`}>
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${isFocused ? 'bg-emerald-500 animate-pulse-ring' : 'bg-gray-300'}`} />
-                  {isFocused ? 'Scanner Aktif' : 'Standby'}
-                </div>
-              </div>
-
-              {/* Input Field */}
-              <div className="p-6">
-                <form onSubmit={handleScanSubmit}>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">barcode_scanner</span>
-                    <input
-                      ref={inputRef}
-                      autoFocus
-                      className="w-full h-14 pl-12 pr-32 bg-gray-50 border-2 border-gray-100 rounded-xl text-base font-mono font-semibold text-gray-900 uppercase placeholder:text-gray-300 placeholder:normal-case placeholder:font-sans focus:border-primary-light/50 focus:ring-4 focus:ring-background focus:bg-white transition-all outline-none"
-                      placeholder="Masukkan atau scan resi AWB..."
-                      value={awbValue}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase();
-                        setAwbValue(val);
-                        // Auto-submit if input reaches exactly 14 characters (standard Anteraja AWB length)
-                        if (val.trim().length === 14) {
-                          performClaim(val);
-                        }
-                      }}
-                      onPaste={(e) => {
-                        e.preventDefault();
-                        const pasted = e.clipboardData.getData('text').trim().toUpperCase();
-                        if (pasted) {
-                          setAwbValue(pasted);
-                          performClaim(pasted);
-                        }
-                      }}
-                      disabled={isScanning}
-                      onFocus={() => setIsFocused(true)}
-                      onBlur={() => setIsFocused(false)}
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <button
-                      type="submit"
-                      disabled={!awbValue.trim() || isScanning}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-5 bg-primary text-white rounded-lg font-semibold text-sm hover:bg-primary-light active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2"
-                    >
-                      {isScanning ? (
-                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                      ) : (
-                        <span className="material-symbols-outlined text-[18px]">send</span>
-                      )}
-                      <span>Klaim</span>
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Feedback State */}
-              {scanResult && (
-                <div className="px-6 pb-6 animate-fade-in-up">
-                  {scanResult.status === 'searching' && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                        <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-blue-800 text-sm">Memproses Claim...</h4>
-                        <p className="text-sm font-mono text-blue-600 mt-0.5">{scanResult.awb}</p>
-                      </div>
+            {/* Scan and History Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Scanner Card */}
+              <div id="scanner-card" className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden scroll-mt-6 flex flex-col">
+                <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-primary text-[20px]" style={FILL}>qr_code_scanner</span>
                     </div>
-                  )}
-
-                  {scanResult.status === 'success' && (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
-                      <div className="flex items-start gap-4">
-                        <div className="w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-emerald-600 text-2xl" style={FILL}>check_circle</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-bold text-emerald-800 text-[15px]">Klaim Sukses</h4>
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Berhasil</span>
-                          </div>
-                          <p className="text-sm font-mono font-semibold text-emerald-700 mb-3">{scanResult.awb}</p>
-                          <div className="grid grid-cols-3 gap-3">
-                            <div>
-                              <span className="text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Pengirim</span>
-                              <p className="text-xs font-semibold text-emerald-800 truncate">{scanResult.shipperName}</p>
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Penerima</span>
-                              <p className="text-xs font-semibold text-emerald-800 truncate">{scanResult.receiverName}</p>
-                            </div>
-                            <div>
-                              <span className="text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Tujuan</span>
-                              <p className="text-xs font-semibold text-emerald-800 truncate">{scanResult.destinationCity}</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-[16px]">Scan & Claim Paket</h3>
+                      <p className="text-[11px] text-gray-500 font-medium mt-0.5">Arahkan scanner atau ketik nomor resi di bawah</p>
                     </div>
-                  )}
-
-                  {scanResult.status === 'error' && (
-                    <div className="bg-rose-50 border border-rose-100 rounded-xl p-5">
-                      <div className="flex items-start gap-4">
-                        <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                          <span className="material-symbols-outlined text-rose-600 text-2xl" style={FILL}>cancel</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-rose-800 text-[15px] mb-1">Klaim Gagal</h4>
-                          <p className="text-sm font-mono font-semibold text-rose-700 mb-2">{scanResult.awb}</p>
-                          <p className="text-xs text-rose-700 bg-rose-100/60 p-3 rounded-lg">{scanResult.message}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                  <div className={`flex items-center gap-2 text-[11px] font-bold px-3 py-1.5 rounded-full ${isFocused ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}>
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${isFocused ? 'bg-emerald-500 animate-pulse-ring' : 'bg-gray-300'}`} />
+                    {isFocused ? 'Scanner Aktif' : 'Standby'}
+                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Scan History Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-gray-900 text-[15px]">Riwayat Sesi</h3>
-                  <p className="text-[11px] text-gray-400 mt-0.5">{history.length} Scan Terdaftar</p>
-                </div>
-                <div className="flex gap-2">
-                  {history.length > 0 && (
-                    <>
-                      <button
-                        onClick={downloadCSV}
-                        className="h-8 px-3 text-[11px] font-semibold text-gray-500 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors flex items-center gap-1.5"
-                      >
-                        <span className="material-symbols-outlined text-[15px]">download</span>
-                        Ekspor CSV
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm('Hapus seluruh riwayat scan?')) setHistory([]);
+                {/* Input Field */}
+                <div className="p-6 md:p-8 flex-1 flex flex-col justify-center">
+                  <form onSubmit={handleScanSubmit}>
+                    <div className="relative group">
+                      <span className={`material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${isFocused ? 'text-primary' : 'text-gray-400'} text-[24px]`}>barcode_scanner</span>
+                      <input
+                        ref={inputRef}
+                        autoFocus
+                        className="w-full h-16 pl-14 pr-36 bg-gray-50 border-2 border-gray-100 rounded-[16px] text-lg font-mono font-bold text-gray-900 uppercase placeholder:text-gray-400 placeholder:normal-case placeholder:font-sans focus:border-primary/40 focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all outline-none"
+                        placeholder="Scan / Ketik resi..."
+                        value={awbValue}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase();
+                          setAwbValue(val);
+                          if (val.trim().length === 14) {
+                            performClaim(val);
+                          }
                         }}
-                        className="h-8 px-3 text-[11px] font-semibold text-gray-500 bg-gray-50 rounded-lg border border-gray-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-colors flex items-center gap-1.5"
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasted = e.clipboardData.getData('text').trim().toUpperCase();
+                          if (pasted) {
+                            setAwbValue(pasted);
+                            performClaim(pasted);
+                          }
+                        }}
+                        disabled={isScanning}
+                        onFocus={() => setIsFocused(true)}
+                        onBlur={() => setIsFocused(false)}
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!awbValue.trim() || isScanning}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 h-11 px-6 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary-light active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-2 shadow-sm"
                       >
-                        <span className="material-symbols-outlined text-[15px]">delete</span>
-                        Bersihkan
+                        {isScanning ? (
+                          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        ) : (
+                          <span className="material-symbols-outlined text-[20px]">send</span>
+                        )}
+                        <span>Klaim</span>
                       </button>
-                    </>
+                    </div>
+                    <p className="text-[11px] text-gray-500 font-medium mt-4 flex items-center gap-1.5 justify-center">
+                       <span className="material-symbols-outlined text-[14px]">info</span>
+                       Pastikan kursor berada di kotak ini saat menggunakan barcode scanner.
+                    </p>
+                  </form>
+                </div>
+                
+                {/* Feedback State */}
+                {scanResult && (
+                  <div className="px-6 md:px-8 pb-6 md:pb-8 animate-fade-in-up">
+                    {scanResult.status === 'searching' && (
+                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                          <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-blue-800 text-sm">Memproses Claim...</h4>
+                          <p className="text-sm font-mono text-blue-600 mt-0.5">{scanResult.awb}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {scanResult.status === 'success' && (
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5">
+                        <div className="flex items-start gap-4">
+                          <div className="w-11 h-11 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-emerald-600 text-2xl" style={FILL}>check_circle</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-bold text-emerald-800 text-[15px]">Klaim Sukses</h4>
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Berhasil</span>
+                            </div>
+                            <p className="text-sm font-mono font-semibold text-emerald-700 mb-3">{scanResult.awb}</p>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <span className="text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Pengirim</span>
+                                <p className="text-xs font-semibold text-emerald-800 truncate">{scanResult.shipperName}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Penerima</span>
+                                <p className="text-xs font-semibold text-emerald-800 truncate">{scanResult.receiverName}</p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Tujuan</span>
+                                <p className="text-xs font-semibold text-emerald-800 truncate">{scanResult.destinationCity}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {scanResult.status === 'error' && (
+                      <div className="bg-rose-50 border border-rose-100 rounded-xl p-5">
+                        <div className="flex items-start gap-4">
+                          <div className="w-11 h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-rose-600 text-2xl" style={FILL}>cancel</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-rose-800 text-[15px] mb-1">Klaim Gagal</h4>
+                            <p className="text-sm font-mono font-semibold text-rose-700 mb-2">{scanResult.awb}</p>
+                            <p className="text-xs text-rose-700 bg-rose-100/60 p-3 rounded-lg">{scanResult.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Scan History Table */}
+              <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[400px] md:h-auto">
+                <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center">
+                       <span className="material-symbols-outlined text-gray-500 text-[20px]">history</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-[16px]">Riwayat Sesi</h3>
+                      <p className="text-[11px] text-gray-500 font-medium mt-0.5">{history.length} Scan Terdaftar</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {history.length > 0 && (
+                      <>
+                        <button
+                          onClick={downloadCSV}
+                          className="h-8 px-3 text-[11px] font-bold text-gray-500 bg-gray-50 rounded-lg border border-gray-100 hover:bg-gray-100 transition-colors flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">download</span>
+                          CSV
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm('Hapus seluruh riwayat scan?')) setHistory([]);
+                          }}
+                          className="h-8 px-3 text-[11px] font-bold text-gray-500 bg-gray-50 rounded-lg border border-gray-100 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-colors flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">delete</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-x-auto overflow-y-auto">
+                  {history.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-gray-50/30">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-4xl text-gray-300">inventory_2</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-gray-700 mb-1">Belum ada data sesi</h4>
+                      <p className="text-xs text-gray-400 font-medium max-w-[200px] mb-6">Mulai scan paket untuk melihat riwayat di sini.</p>
+                      <button 
+                        onClick={handleScrollToScan}
+                        className="h-9 px-5 bg-white border border-gray-200 shadow-sm text-gray-600 font-bold text-xs rounded-full hover:border-gray-300 hover:text-gray-800 transition-colors"
+                      >
+                        Mulai Scan
+                      </button>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead className="sticky top-0 z-10">
+                        <tr className="bg-gray-50/95 backdrop-blur-sm">
+                          <th className="px-6 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider w-10">No</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">AWB</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tujuan</th>
+                          <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {history.map((item, idx) => (
+                          <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 text-xs text-gray-400 font-mono">{idx + 1}</td>
+                            <td className="px-4 py-4 text-xs font-mono font-bold text-gray-800">{item.awb}</td>
+                            <td className="px-4 py-4 text-xs font-medium text-gray-600 truncate max-w-[120px]">{item.destinationCity}</td>
+                            <td className="px-4 py-4">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  item.status === 'success'
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-rose-50 text-rose-700'
+                                }`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                {item.status === 'success' ? 'SUKSES' : 'GAGAL'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
               </div>
+            </div>
 
-              <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
-                <table className="w-full">
-                  <thead className="sticky top-0 z-10">
-                    <tr className="bg-gray-50/95 backdrop-blur-sm">
-                      <th className="px-6 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider w-10">No</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">No. Resi (AWB)</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pengirim</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Tujuan</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider">Waktu</th>
-                      <th className="px-4 py-3 text-left text-[10px] font-bold text-gray-400 uppercase tracking-wider w-20">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {history.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-16 text-center">
-                          <span className="material-symbols-outlined text-5xl text-gray-200 block mb-3">barcode_scanner</span>
-                          <p className="text-sm text-gray-400 font-medium">Belum ada scan terdaftar</p>
-                          <p className="text-[11px] text-gray-300 mt-1">Gunakan barcode scanner atau ketik manual resi</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      history.map((item, idx) => (
-                        <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="px-6 py-3.5 text-xs text-gray-400 font-mono">{idx + 1}</td>
-                          <td className="px-4 py-3.5 text-sm font-mono font-semibold text-gray-800">{item.awb}</td>
-                          <td className="px-4 py-3.5 text-xs font-medium text-gray-600">{item.shipperName}</td>
-                          <td className="px-4 py-3.5 text-xs font-medium text-gray-600">
-                            {item.receiverName && item.receiverName !== '-' && item.receiverName !== item.destinationCity ? (
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-gray-900">{item.receiverName}</span>
-                                <span className="text-[10px] text-gray-400 mt-0.5">{item.destinationCity}</span>
-                              </div>
-                            ) : (
-                              item.destinationCity
-                            )}
-                          </td>
-                          <td className="px-4 py-3.5 text-xs font-mono text-gray-400">{formatTime(item.timestamp)}</td>
-                          <td className="px-4 py-3.5">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                item.status === 'success'
-                                  ? 'bg-emerald-50 text-emerald-700'
-                                  : 'bg-rose-50 text-rose-700'
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                              {item.status === 'success' ? 'SUKSES' : 'GAGAL'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+            {/* Bottom Row: Activity Summary & Promo Banner */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-6">
+              
+              {/* Activity Chart */}
+              <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm p-6 md:p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                     <h3 className="font-bold text-gray-900 text-[16px]">Ringkasan Aktivitas</h3>
+                     <p className="text-[11px] text-gray-500 font-medium mt-0.5">Statistik sesi Anda saat ini</p>
+                  </div>
+                  <select className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 font-semibold text-gray-600 outline-none focus:border-primary/50">
+                    <option>Sesi Saat Ini</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-end h-40 gap-8 mt-6 border-b border-gray-100 pb-2 px-4">
+                  <div className="flex-1 flex flex-col justify-end items-center group h-full">
+                    <div className="w-full max-w-[60px] bg-primary/20 group-hover:bg-primary/40 rounded-t-xl transition-all duration-500 ease-out" style={{ height: `${Math.max((stats.total / (Math.max(stats.total, 1))) * 100, 5)}%` }}></div>
+                    <span className="text-[11px] font-bold text-gray-600 mt-3">Total</span>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-end items-center group h-full">
+                    <div className="w-full max-w-[60px] bg-emerald-200 group-hover:bg-emerald-300 rounded-t-xl transition-all duration-500 ease-out" style={{ height: `${Math.max((stats.success / (Math.max(stats.total, 1))) * 100, 5)}%` }}></div>
+                    <span className="text-[11px] font-bold text-gray-600 mt-3">Berhasil</span>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-end items-center group h-full">
+                    <div className="w-full max-w-[60px] bg-rose-200 group-hover:bg-rose-300 rounded-t-xl transition-all duration-500 ease-out" style={{ height: `${Math.max((stats.error / (Math.max(stats.total, 1))) * 100, 5)}%` }}></div>
+                    <span className="text-[11px] font-bold text-gray-600 mt-3">Gagal</span>
+                  </div>
+                </div>
               </div>
+
+              {/* Promo Banner */}
+              <div className="relative w-full h-full min-h-[200px] rounded-[24px] overflow-hidden shadow-sm group border border-gray-100 bg-white">
+                <Image 
+                  src="/Banner_Kirim_Paket.jpeg"
+                  alt="Kirim Paket Promosi"
+                  fill
+                  className="object-cover object-right group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent flex flex-col justify-center px-8 md:px-10">
+                  <h3 className="font-extrabold text-primary text-2xl mb-2 tracking-tight">Kirim Paket?</h3>
+                  <p className="text-xs text-gray-700 font-bold max-w-[220px] mb-5 leading-relaxed">Nikmati layanan Anteraja yang cepat, aman, dan terpercaya.</p>
+                  <button
+                    onClick={() => router.push('/orders/create')}
+                    className="w-fit h-10 px-6 bg-primary hover:bg-primary-light text-white font-bold text-xs rounded-full transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                  >
+                    Buat Order Sekarang &gt;
+                  </button>
+                </div>
+              </div>
+
             </div>
 
           </div>

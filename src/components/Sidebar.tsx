@@ -70,10 +70,10 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
             <Link
               key={item.href}
               href={item.href}
-              className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all ${
+              className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-300 ${
                 isActive
-                  ? 'bg-background text-primary'
-                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary hover:scale-[1.02]'
               }`}
             >
               <span
