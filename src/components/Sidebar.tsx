@@ -47,6 +47,7 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
   const menuItems = [
     { href: '/dashboard', label: 'Dashboard', icon: 'home' },
     { href: '/orders/create', label: 'Buat Order', icon: 'add_box' },
+    { href: '/print', label: 'Cetak AWB', icon: 'print' },
     { href: '/rates/check', label: 'Cek Ongkir', icon: 'calculate' },
     { href: '/tracking', label: 'Tracking', icon: 'location_on' },
     { href: '/claim', label: 'Claim Parcel', icon: 'receipt_long' },
@@ -63,7 +64,7 @@ export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '500
     .toUpperCase();
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 bg-surface border-r border-gray-100 flex flex-col transition-all duration-300 ease-in-out md:translate-x-0 md:relative md:z-auto ${isCollapsed ? 'w-[88px]' : 'w-64 md:w-72'} ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <aside className={`print:hidden fixed inset-y-0 left-0 z-50 bg-surface border-r border-gray-100 flex flex-col transition-all duration-300 ease-in-out md:translate-x-0 md:relative md:z-auto ${isCollapsed ? 'w-[88px]' : 'w-64 md:w-72'} ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Toggle Button for Desktop */}
       <button
         onClick={toggleSidebar}

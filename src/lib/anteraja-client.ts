@@ -7,6 +7,12 @@ export interface MaaTask {
   shipperName: string;
   receiverName: string;
   destinationCity: string;
+  serviceCode?: string;
+  weight?: number;
+  codAmount?: number;
+  items?: Array<any>;
+  shipperInfo?: any;
+  receiverInfo?: any;
 }
 
 export interface ClaimPayload {
@@ -330,6 +336,12 @@ async function realSearchAWB(
     shipperName: task.shipper_info?.name || '-',
     receiverName: task.receiver_info?.name || '-',
     destinationCity: task.receiver_info?.address || '-',
+    serviceCode: task.product_code || '',
+    weight: task.parcel_total_weight || 0,
+    codAmount: task.cod_amount || 0,
+    items: task.items || [],
+    shipperInfo: task.shipper_info || {},
+    receiverInfo: task.receiver_info || {},
   };
 }
 
