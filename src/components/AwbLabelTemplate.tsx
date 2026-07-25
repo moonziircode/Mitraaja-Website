@@ -4,6 +4,8 @@ import { QRCodeSVG } from 'qrcode.react';
 
 export interface LabelData {
   awb: string;
+  sourceOrderNo?: string;
+  orderSource?: string;
   serviceCode: string;
   weight: number;
   codAmount?: number;
@@ -76,7 +78,9 @@ const AwbLabelTemplate = forwardRef<HTMLDivElement, Props>(({ data, paperSize = 
         <div className="text-right">
           <div className="text-2xl font-black tracking-tighter uppercase">{data.serviceCode || 'REG'}</div>
           {data.codAmount && data.codAmount > 0 && (
-            <div className="text-lg font-bold border-2 border-black px-2 py-0.5 mt-1 inline-block">COD</div>
+            <div className="text-sm font-bold border-2 border-black px-1.5 py-0.5 mt-1 inline-block whitespace-nowrap">
+              COD: Rp {data.codAmount.toLocaleString('id-ID')}
+            </div>
           )}
         </div>
       </div>
@@ -85,6 +89,12 @@ const AwbLabelTemplate = forwardRef<HTMLDivElement, Props>(({ data, paperSize = 
       <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-2">
         <div className="flex-1 flex flex-col items-center justify-center">
           <Barcode value={data.awb} width={isSmall ? 1.5 : 2} height={isSmall ? 40 : 60} fontSize={isSmall ? 12 : 16} margin={0} displayValue={true} />
+          {(data.sourceOrderNo || data.orderSource) && (
+            <div className="text-[10px] font-bold mt-1 text-center leading-tight">
+              {data.sourceOrderNo && <div>Ref: {data.sourceOrderNo}</div>}
+              {data.orderSource && <div>Source: {data.orderSource}</div>}
+            </div>
+          )}
         </div>
         <div className="ml-2 flex items-center justify-center">
           <QRCodeSVG value={data.awb} size={isSmall ? 60 : 80} level="M" />
