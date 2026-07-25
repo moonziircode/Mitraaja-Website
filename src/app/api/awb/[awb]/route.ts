@@ -26,6 +26,8 @@ export async function GET(
 
     let maaTask = null;
     let searchErrorMsg = '';
+    let isFallback = false;
+    let lastHistory = null;
 
     try {
       maaTask = await anterajaClient.searchAWB(awb, agentStaffId, token);
@@ -56,8 +58,14 @@ export async function GET(
             if (detail) {
               // Construct a simulated MaaTask from public tracking data
               
-              // Extract destination from history if address is masked
               const history = content.history || [];
+              if (history.length > 0) {
+                lastHistory = {
+                  message: history[0].message?.id || '-',
+                  timestamp: history[0].timestamp || '-'
+                };
+              }
+
               let extractedDest = '-';
               for (const event of history) {
                 const msg = event.message?.id || '';
@@ -88,6 +96,9 @@ export async function GET(
                 serviceCode: detail.service_code || 'REG',
                 weight: detail.weight ? (detail.weight / 1000) : 1, // Convert gram to kg
                 codAmount: detail.actual_amount || 0,
+                invoice: detail.invoice || '',
+                shippedDate: detail.shipped_date || '',
+                estimatedDate: detail.estimated_date || '',
                 items: [],
                 shipperInfo: {
                   name: detail.sender?.name || '-',
@@ -100,6 +111,7 @@ export async function GET(
                   phone: detail.receiver?.phone || '-'
                 }
               } as any;
+              isFallback = true;
             }
           }
         }
@@ -117,7 +129,9 @@ export async function GET(
 
     return NextResponse.json({ 
       success: true, 
-      data: maaTask 
+      data: maaTask,
+      isFallback,
+      lastHistory
     });
 
   } catch (err: any) {

@@ -6,6 +6,9 @@ export interface LabelData {
   awb: string;
   sourceOrderNo?: string;
   orderSource?: string;
+  invoice?: string;
+  shippedDate?: string;
+  estimatedDate?: string;
   serviceCode: string;
   weight: number;
   codAmount?: number;
@@ -89,15 +92,22 @@ const AwbLabelTemplate = forwardRef<HTMLDivElement, Props>(({ data, paperSize = 
       <div className="flex justify-between items-center border-b-2 border-black pb-2 mb-2">
         <div className="flex-1 flex flex-col items-center justify-center">
           <Barcode value={data.awb} width={isSmall ? 1.5 : 2} height={isSmall ? 40 : 60} fontSize={isSmall ? 12 : 16} margin={0} displayValue={true} />
-          {(data.sourceOrderNo || data.orderSource) && (
+          {(data.sourceOrderNo || data.orderSource || data.invoice) && (
             <div className="text-[10px] font-bold mt-1 text-center leading-tight">
               {data.sourceOrderNo && <div>Ref: {data.sourceOrderNo}</div>}
+              {data.invoice && <div>Inv: {data.invoice}</div>}
               {data.orderSource && <div>Source: {data.orderSource}</div>}
             </div>
           )}
         </div>
-        <div className="ml-2 flex items-center justify-center">
+        <div className="ml-2 flex flex-col items-center justify-center">
           <QRCodeSVG value={data.awb} size={isSmall ? 60 : 80} level="M" />
+          {(data.shippedDate || data.estimatedDate) && (
+            <div className="text-[8px] font-medium mt-1 text-center">
+              {data.shippedDate && <div>Kirim: {data.shippedDate.split(' ')[0]}</div>}
+              {data.estimatedDate && <div>Est: {data.estimatedDate.split(' ')[0]}</div>}
+            </div>
+          )}
         </div>
       </div>
 

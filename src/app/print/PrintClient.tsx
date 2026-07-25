@@ -46,6 +46,11 @@ export default function PrintClient({ user }: { user: User }) {
       // Transform backend MaaTask to LabelData format
       const parsedData: LabelData = {
         awb: task.waybill || awb,
+        sourceOrderNo: task.sourceOrderNo,
+        orderSource: task.orderSource,
+        invoice: task.invoice,
+        shippedDate: task.shippedDate,
+        estimatedDate: task.estimatedDate,
         serviceCode: task.serviceCode || 'REG',
         weight: task.weight || 1,
         codAmount: task.codAmount || 0,

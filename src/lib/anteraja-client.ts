@@ -13,6 +13,9 @@ export interface MaaTask {
   items?: Array<any>;
   shipperInfo?: any;
   receiverInfo?: any;
+  invoice?: string;
+  shippedDate?: string;
+  estimatedDate?: string;
 }
 
 export interface ClaimPayload {
@@ -305,7 +308,6 @@ async function realSearchAWB(
   const response = await fetch(url, {
     method: 'GET',
     headers: headers,
-    keepalive: true,
   });
 
   if (response.status === 404) return null;
@@ -342,6 +344,9 @@ async function realSearchAWB(
     items: task.items || [],
     shipperInfo: task.shipper_info || {},
     receiverInfo: task.receiver_info || {},
+    invoice: task.invoice || '',
+    shippedDate: task.shipped_date || '',
+    estimatedDate: task.estimated_date || '',
   };
 }
 
@@ -421,7 +426,6 @@ async function realGetRates(
   const response = await fetch(url, {
     method: 'GET',
     headers: headers,
-    keepalive: true,
   });
 
   if (!response.ok) {
