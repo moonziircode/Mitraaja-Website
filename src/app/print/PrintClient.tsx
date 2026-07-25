@@ -17,6 +17,8 @@ export default function PrintClient({ user }: { user: User }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [labelData, setLabelData] = useState<LabelData | null>(null);
+  const [isFallback, setIsFallback] = useState(false);
+  const [trackingWarning, setTrackingWarning] = useState<{message: string, timestamp: string} | null>(null);
   const [paperSize, setPaperSize] = useState<'100x150' | '80x100' | '80mm'>('100x150');
   
   const printRef = useRef<HTMLDivElement>(null);
@@ -28,6 +30,8 @@ export default function PrintClient({ user }: { user: User }) {
     setIsLoading(true);
     setError('');
     setLabelData(null);
+    setIsFallback(false);
+    setTrackingWarning(null);
 
     try {
       const res = await fetch(`/api/awb/${awb.trim()}`);
@@ -63,6 +67,8 @@ export default function PrintClient({ user }: { user: User }) {
       };
 
       setLabelData(parsedData);
+      setIsFallback(body.isFallback || false);
+      setTrackingWarning(body.lastHistory || null);
     } catch (err: any) {
       setError(err.message || 'Gagal mencari AWB');
     } finally {
@@ -144,6 +150,24 @@ export default function PrintClient({ user }: { user: User }) {
                 </div>
               )}
             </div>
+
+            {/* Warning Section for Already Claimed / Fallback */}
+            {isFallback && trackingWarning && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6 text-amber-900 shadow-sm animate-fade-in print:hidden">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-amber-500 shrink-0 mt-0.5">warning</span>
+                  <div>
+                    <h4 className="font-bold text-sm mb-1">Perhatian: AWB Sudah Diproses / Diklaim</h4>
+                    <p className="text-sm opacity-90 mb-2">Sistem menggunakan data pelacakan publik karena resi ini sudah diklaim oleh pihak lain atau tidak ditemukan di daftar tugas MAA Anda.</p>
+                    <div className="bg-white/60 rounded-lg p-3 border border-amber-100 text-xs">
+                      <div className="font-semibold mb-1">Update Pelacakan Terakhir:</div>
+                      <div className="text-amber-800">{trackingWarning.message}</div>
+                      <div className="text-amber-600/80 mt-1">{trackingWarning.timestamp}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Preview Section */}
             {labelData && (
