@@ -473,6 +473,12 @@ async function realVerifyTracking(
   const url = `${apiBase}/tracking?waybill=${encodeURIComponent(awb)}&agent_staff_id=${encodeURIComponent(agentStaffId)}`;
 
   let events: any[] = [];
+  let is201Detected = false;
+  let detectedCode: string | number = '201';
+  let detectedOpcode: string | number = '59';
+  let detectedMessage = 'Paket sudah diterima di drop point Mitra AnterAja';
+
+  // 1. Try MAA Task tracking endpoint
   try {
     const res = await fetch(url, {
       method: 'GET',
@@ -488,45 +494,63 @@ async function realVerifyTracking(
     console.warn('[verifyTracking] MAA tracking endpoint error:', e);
   }
 
-  if (events.length === 0) {
-    try {
-      const pubRes = await fetch('https://api.anteraja.id/order/tracking', {
-        method: 'POST',
-        headers: {
-          'mv': '1.2',
-          'source': 'aca_android',
-          'Content-Type': 'application/json; charset=UTF-8',
-          'User-Agent': 'okhttp/3.10.0',
-        },
-        body: JSON.stringify([{ codes: awb.trim() }]),
-      });
-      if (pubRes.ok) {
-        const pubData = await pubRes.json();
-        if (pubData.status === 200 && pubData.content && pubData.content.length > 0) {
-          events = pubData.content[0].history || [];
+  // 2. Also try Public tracking endpoint (or as fallback)
+  try {
+    const pubRes = await fetch('https://api.anteraja.id/order/tracking', {
+      method: 'POST',
+      headers: {
+        'mv': '1.2',
+        'source': 'aca_android',
+        'Content-Type': 'application/json; charset=UTF-8',
+        'User-Agent': 'okhttp/3.10.0',
+      },
+      body: JSON.stringify([{ codes: awb.trim() }]),
+    });
+    if (pubRes.ok) {
+      const pubData = await pubRes.json();
+      if (pubData.status === 200 && pubData.content && pubData.content.length > 0) {
+        const item = pubData.content[0];
+        if (item.detail?.final_status === '201' || item.detail?.final_status === 201) {
+          is201Detected = true;
+        }
+        if (Array.isArray(item.history)) {
+          events = [...events, ...item.history];
         }
       }
-    } catch (pubErr) {
-      console.warn('[verifyTracking] Public tracking fallback error:', pubErr);
     }
+  } catch (pubErr) {
+    console.warn('[verifyTracking] Public tracking fallback error:', pubErr);
   }
 
+  // 3. Inspect all events
   for (const ev of events) {
     const code = String(ev.tracking_code || ev.trackingCode || ev.code || '');
     const op = String(ev.opcode || ev.op_code || '');
     const msg = (ev.message?.id || ev.message || '').toLowerCase();
 
-    const is201 = code === '201' || msg.includes('diterima di drop point') || msg.includes('staging store') || msg.includes('received at drop point');
-    const isOpcode59 = op === '59' || code === '59' || is201;
+    const is201 =
+      code === '201' ||
+      msg.includes('diterima di drop point') ||
+      msg.includes('staging store') ||
+      msg.includes('received at drop point');
+    const isOpcode59 = op === '59' || code === '59';
 
     if (is201 || isOpcode59) {
-      return {
-        verified: true,
-        trackingCode: code || '201',
-        opcode: op || '59',
-        message: ev.message?.id || ev.message || 'Paket diterima di drop point',
-      };
+      is201Detected = true;
+      if (code) detectedCode = code;
+      if (op) detectedOpcode = op;
+      if (ev.message?.id || ev.message) detectedMessage = ev.message?.id || ev.message;
+      break;
     }
+  }
+
+  if (is201Detected) {
+    return {
+      verified: true,
+      trackingCode: detectedCode,
+      opcode: detectedOpcode,
+      message: detectedMessage,
+    };
   }
 
   return { verified: false, message: 'Tracking Code 201 / Opcode 59 belum terbit' };
@@ -729,8 +753,10 @@ async function processFullClaimLifecycle(
   let trackingCode: string | number | undefined = undefined;
   let opcode: string | number | undefined = undefined;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    if (attempt > 1) await delay(700);
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    if (attempt > 1) {
+      await delay(attempt * 600);
+    }
     if (IS_MOCK_MODE) {
       trackingVerified = true;
       trackingCode = '201';
@@ -771,8 +797,8 @@ async function processFullClaimLifecycle(
   let finalStatusVerified = false;
   let finalTaskStatus: string | undefined = undefined;
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    if (attempt > 1) await delay(700);
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    if (attempt > 1) await delay(attempt * 500);
     if (IS_MOCK_MODE) {
       finalStatusVerified = true;
       finalTaskStatus = 'WAITING_FOR_HANDOVER_SERAH';
