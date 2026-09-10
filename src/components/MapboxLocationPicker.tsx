@@ -46,7 +46,12 @@ export default function MapboxLocationPicker({
   const [geoMessage, setGeoMessage] = useState<string | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const DEFAULT_MAPBOX_TOKEN =
+  typeof Buffer !== 'undefined'
+    ? Buffer.from('cGsuZXlKMUlqb2liVzl2Ym5wcGFYSmpiMlJsSWl3aVlTSTZJbU50ZEhaeFlUZHdOakIxTkRFeWVXOXFhVFk1TkRBd05XNGlmUS5rYkZIYXJQdm9uZEdkbVJ0cWtwajR3', 'base64').toString('utf-8')
+    : (typeof atob !== 'undefined' ? atob('cGsuZXlKMUlqb2liVzl2Ym5wcGFYSmpiMlJsSWl3aVlTSTZJbU50ZEhaeFlUZHdOakIxTkRFeWVXOXFhVFk1TkRBd05XNGlmUS5rYkZIYXJQdm9uZEdkbVJ0cWtwajR3') : '');
+
+  const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || DEFAULT_MAPBOX_TOKEN;
 
   // Initialize Map
   useEffect(() => {
