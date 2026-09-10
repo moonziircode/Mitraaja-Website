@@ -7,6 +7,7 @@ import { ContactInfo, PackageInfo, ServiceInfo } from '@/lib/types';
 import SearchableDistrictSelect from '@/components/SearchableDistrictSelect';
 import CascadingRegionPicker, { RegionSelection } from '@/components/CascadingRegionPicker';
 import MapboxLocationPicker, { LocationCoordinates } from '@/components/MapboxLocationPicker';
+import PromoSuggestion, { AppliedPromoData } from '@/components/PromoSuggestion';
 
 interface User {
   name: string;
@@ -244,18 +245,10 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
   // ── Step 4 State: Promo Engine ──
   const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<{
-    promo_code: string;
-    total_promo: number;
-    task: Array<{
-      task_code: string;
-      base_price: number;
-      total_price: number;
-      promo_amount: number;
-    }>;
-  } | null>(null);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromoData | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [isValidatingPromo, setIsValidatingPromo] = useState(false);
+  const [promoNotification, setPromoNotification] = useState<string | null>(null);
 
   // Checkbox states for saving to address book
   const [saveSenderAddress, setSaveSenderAddress] = useState(false);
@@ -291,6 +284,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
       latitude: isDifferentDistrict ? null : prev.latitude,
       longitude: isDifferentDistrict ? null : prev.longitude,
     }));
+
+    if (appliedPromo) {
+      setAppliedPromo(null);
+      setPromoNotification('Wilayah pengirim diubah. Promo sebelumnya telah direset.');
+    }
   };
 
   const handleSelectRecipientRegion = (region: RegionSelection) => {
@@ -309,6 +307,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
       latitude: isDifferentDistrict ? null : prev.latitude,
       longitude: isDifferentDistrict ? null : prev.longitude,
     }));
+
+    if (appliedPromo) {
+      setAppliedPromo(null);
+      setPromoNotification('Wilayah tujuan diubah. Promo sebelumnya telah direset.');
+    }
   };
 
   const handleConfirmSenderCoordinates = (coords: LocationCoordinates) => {
@@ -711,6 +714,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
     try {
       const payload = {
         promo_code: promoCodeInput.trim().toUpperCase(),
+        originCode: sender.districtCode,
+        destinationCode: recipient.districtCode,
         task: [
           {
             task_code: 'DUMMY-TASK-CODE',
@@ -728,7 +733,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
       });
       const data = await res.json();
       if (res.ok && data.status === 0 && data.content) {
-        setAppliedPromo(data.content);
+        setAppliedPromo({
+          promo_code: data.content.promo_code,
+          promo_name: data.content.promo_name,
+          total_promo: data.content.total_promo,
+          discount_type: data.content.discount_type,
+          discount_value: data.content.discount_value,
+          max_discount: data.content.max_discount,
+        });
         setPromoError(null);
       } else {
         setAppliedPromo(null);
@@ -1260,6 +1272,22 @@ export default function CreateOrderClient({ user }: { user: User }) {
               </div>
             )}
 
+            {/* PROMO RESET NOTIFICATION */}
+            {promoNotification && (
+              <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl text-xs font-semibold flex items-center justify-between shadow-2xs animate-fade-in">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-amber-600 text-[18px]">info</span>
+                  <span>{promoNotification}</span>
+                </div>
+                <button
+                  onClick={() => setPromoNotification(null)}
+                  className="w-6 h-6 rounded-full hover:bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* WIZARD CONTAINER */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px] flex flex-col justify-between">
               
@@ -1760,6 +1788,27 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           );
                         })}
                       </div>
+
+                      {/* PROMO SUGGESTIONS IN STEP 3 */}
+                      {selectedService && (
+                        <div className="mt-6 pt-5 border-t border-gray-100">
+                          <PromoSuggestion
+                            originCode={sender.districtCode}
+                            destinationCode={recipient.districtCode}
+                            originText={sender.district}
+                            destinationText={recipient.district}
+                            shippingCost={selectedService.delivery_price}
+                            appliedPromo={appliedPromo}
+                            onApplyPromo={(promo) => {
+                              setAppliedPromo(promo);
+                              setPromoNotification(null);
+                            }}
+                            onRemovePromo={() => {
+                              setAppliedPromo(null);
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1845,47 +1894,23 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         <p className="text-xs text-gray-400 font-medium">Pembayaran online dengan GoPay QR Code</p>
                       </div>
 
-                      {/* Promo Input Box */}
-                      <div className="w-full bg-white p-4 rounded-xl border border-gray-150 space-y-2.5 text-left">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                          Kode Promo / Voucher
-                        </label>
-                        {appliedPromo ? (
-                          <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
-                            <div>
-                              <span className="text-xs font-bold text-emerald-700 block">{appliedPromo.promo_code}</span>
-                              <span className="text-[10px] text-emerald-600 font-medium">Diskon Rp {appliedPromo.total_promo.toLocaleString('id-ID')} berhasil dipasang</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={handleRemovePromo}
-                              className="text-gray-400 hover:text-rose-500 text-xs font-bold transition-colors"
-                            >
-                              Hapus
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Masukkan kode promo"
-                              value={promoCodeInput}
-                              onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                              className="flex-1 h-9 px-3 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-800 outline-none focus:border-primary/20 focus:bg-white transition-all uppercase"
-                            />
-                            <button
-                              type="button"
-                              onClick={handleApplyPromo}
-                              disabled={isValidatingPromo}
-                              className="h-9 px-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center"
-                            >
-                              {isValidatingPromo ? '...' : 'Gunakan'}
-                            </button>
-                          </div>
-                        )}
-                        {promoError && (
-                          <p className="text-[10px] text-rose-500 font-bold leading-normal mt-1">{promoError}</p>
-                        )}
+                      {/* Promo Section in Step 4 */}
+                      <div className="w-full bg-white p-4 rounded-2xl border border-gray-150 text-left">
+                        <PromoSuggestion
+                          originCode={sender.districtCode}
+                          destinationCode={recipient.districtCode}
+                          originText={sender.district}
+                          destinationText={recipient.district}
+                          shippingCost={selectedService?.delivery_price || 0}
+                          appliedPromo={appliedPromo}
+                          onApplyPromo={(promo) => {
+                            setAppliedPromo(promo);
+                            setPromoNotification(null);
+                          }}
+                          onRemovePromo={() => {
+                            setAppliedPromo(null);
+                          }}
+                        />
                       </div>
 
                       <div className="w-full mt-2 space-y-3">

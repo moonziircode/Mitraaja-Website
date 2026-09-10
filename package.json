@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:promos": "node scripts/seed-promos.js",
+    "test:promos": "node scripts/test-promos.js"
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.1",
