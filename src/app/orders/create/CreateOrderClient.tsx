@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import { ContactInfo, PackageInfo, ServiceInfo } from '@/lib/types';
 import SearchableDistrictSelect from '@/components/SearchableDistrictSelect';
 import CascadingRegionPicker, { RegionSelection } from '@/components/CascadingRegionPicker';
+import MapboxLocationPicker, { LocationCoordinates } from '@/components/MapboxLocationPicker';
 
 interface User {
   name: string;
@@ -35,6 +36,8 @@ interface SavedAddress {
   district: string;
   districtCode: string;
   postalCode: string;
+  latitude?: number | null;
+  longitude?: number | null;
   label?: string;
 }
 
@@ -267,7 +270,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [senderPickerOpen, setSenderPickerOpen] = useState(false);
   const [recipientPickerOpen, setRecipientPickerOpen] = useState(false);
 
+  // ── Mapbox Location Picker States ──
+  const [senderMapOpen, setSenderMapOpen] = useState(false);
+  const [recipientMapOpen, setRecipientMapOpen] = useState(false);
+
   const handleSelectSenderRegion = (region: RegionSelection) => {
+    // If selecting new region, check if district changed to reset outdated coordinates
+    const isDifferentDistrict = sender.districtCode && sender.districtCode !== (region.subdistrict.districtCode || region.district.code);
+
     setSenderProvince(region.province.name);
     setSenderCity(region.city.name);
     setSenderKecamatan(region.district.name);
@@ -277,11 +287,15 @@ export default function CreateOrderClient({ user }: { user: User }) {
       ...prev,
       district: `Kec. ${region.district.name}, ${region.city.name}, ${region.province.name}`,
       districtCode: region.subdistrict.districtCode || region.district.code,
-      postalCode: region.subdistrict.postalCode
+      postalCode: region.subdistrict.postalCode,
+      latitude: isDifferentDistrict ? null : prev.latitude,
+      longitude: isDifferentDistrict ? null : prev.longitude,
     }));
   };
 
   const handleSelectRecipientRegion = (region: RegionSelection) => {
+    const isDifferentDistrict = recipient.districtCode && recipient.districtCode !== (region.subdistrict.districtCode || region.district.code);
+
     setRecipientProvince(region.province.name);
     setRecipientCity(region.city.name);
     setRecipientKecamatan(region.district.name);
@@ -291,7 +305,25 @@ export default function CreateOrderClient({ user }: { user: User }) {
       ...prev,
       district: `Kec. ${region.district.name}, ${region.city.name}, ${region.province.name}`,
       districtCode: region.subdistrict.districtCode || region.district.code,
-      postalCode: region.subdistrict.postalCode
+      postalCode: region.subdistrict.postalCode,
+      latitude: isDifferentDistrict ? null : prev.latitude,
+      longitude: isDifferentDistrict ? null : prev.longitude,
+    }));
+  };
+
+  const handleConfirmSenderCoordinates = (coords: LocationCoordinates) => {
+    setSender(prev => ({
+      ...prev,
+      latitude: coords.latitude,
+      longitude: coords.longitude
+    }));
+  };
+
+  const handleConfirmRecipientCoordinates = (coords: LocationCoordinates) => {
+    setRecipient(prev => ({
+      ...prev,
+      latitude: coords.latitude,
+      longitude: coords.longitude
     }));
   };
 
@@ -736,7 +768,9 @@ export default function CreateOrderClient({ user }: { user: User }) {
       address: addr.address,
       district: addr.district,
       districtCode: addr.districtCode,
-      postalCode: addr.postalCode
+      postalCode: addr.postalCode,
+      latitude: addr.latitude || null,
+      longitude: addr.longitude || null
     };
 
     if (addressBookTarget === 'sender') {
@@ -797,6 +831,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
             district: sender.district,
             districtCode: sender.districtCode || '',
             postalCode: sender.postalCode,
+            latitude: sender.latitude || null,
+            longitude: sender.longitude || null,
             label: `Pengirim: ${sender.name}`
           });
         }
@@ -818,6 +854,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
             district: recipient.district,
             districtCode: recipient.districtCode || '',
             postalCode: recipient.postalCode,
+            latitude: recipient.latitude || null,
+            longitude: recipient.longitude || null,
             label: `Penerima: ${recipient.name}`
           });
         }
@@ -1300,6 +1338,37 @@ export default function CreateOrderClient({ user }: { user: User }) {
                               <span className="material-symbols-outlined text-[18px]">expand_more</span>
                             </div>
                           </div>
+
+                          {/* Mapbox Coordinate Picker Trigger & Badge */}
+                          <div className="mt-2 flex items-center justify-between p-2.5 bg-gray-50/70 border border-gray-150 rounded-xl">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className={`material-symbols-outlined text-[18px] ${sender.latitude ? 'text-emerald-500' : 'text-gray-400'}`}>
+                                {sender.latitude ? 'check_circle' : 'pin_drop'}
+                              </span>
+                              <div className="truncate">
+                                <span className="text-[10px] font-bold uppercase tracking-wider block text-gray-400">
+                                  Titik Koordinat (Mapbox)
+                                </span>
+                                {sender.latitude && sender.longitude ? (
+                                  <span className="text-xs font-mono font-bold text-gray-800">
+                                    {sender.latitude}, {sender.longitude}
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-medium text-gray-400">
+                                    Belum ditentukan (opsional)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSenderMapOpen(true)}
+                              className="h-7 px-2.5 bg-white hover:bg-gray-50 text-gray-700 hover:text-primary border border-gray-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shrink-0 shadow-2xs"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">map</span>
+                              <span>{sender.latitude ? 'Ubah Lokasi' : 'Tentukan Lokasi'}</span>
+                            </button>
+                          </div>
                         </div>
 
                         {/* Alamat Lengkap */}
@@ -1398,6 +1467,37 @@ export default function CreateOrderClient({ user }: { user: User }) {
                               <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Pilih</span>
                               <span className="material-symbols-outlined text-[18px]">expand_more</span>
                             </div>
+                          </div>
+
+                          {/* Mapbox Coordinate Picker Trigger & Badge */}
+                          <div className="mt-2 flex items-center justify-between p-2.5 bg-gray-50/70 border border-gray-150 rounded-xl">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className={`material-symbols-outlined text-[18px] ${recipient.latitude ? 'text-emerald-500' : 'text-gray-400'}`}>
+                                {recipient.latitude ? 'check_circle' : 'pin_drop'}
+                              </span>
+                              <div className="truncate">
+                                <span className="text-[10px] font-bold uppercase tracking-wider block text-gray-400">
+                                  Titik Koordinat (Mapbox)
+                                </span>
+                                {recipient.latitude && recipient.longitude ? (
+                                  <span className="text-xs font-mono font-bold text-gray-800">
+                                    {recipient.latitude}, {recipient.longitude}
+                                  </span>
+                                ) : (
+                                  <span className="text-[11px] font-medium text-gray-400">
+                                    Belum ditentukan (opsional)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setRecipientMapOpen(true)}
+                              className="h-7 px-2.5 bg-white hover:bg-gray-50 text-gray-700 hover:text-primary border border-gray-200 rounded-lg text-[10px] font-bold flex items-center gap-1 transition-all shrink-0 shadow-2xs"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">map</span>
+                              <span>{recipient.latitude ? 'Ubah Lokasi' : 'Tentukan Lokasi'}</span>
+                            </button>
                           </div>
                         </div>
 
@@ -2141,6 +2241,36 @@ export default function CreateOrderClient({ user }: { user: User }) {
           postalCode: recipient.postalCode,
           subdistrictName: recipientKelurahan?.name
         }}
+      />
+
+      {/* SENDER MAPBOX LOCATION PICKER */}
+      <MapboxLocationPicker
+        isOpen={senderMapOpen}
+        onClose={() => setSenderMapOpen(false)}
+        onConfirm={handleConfirmSenderCoordinates}
+        initialLatitude={sender.latitude}
+        initialLongitude={sender.longitude}
+        initialAddress={
+          senderKelurahan
+            ? `${senderProvince}, ${senderCity}, ${senderKecamatan}, ${senderKelurahan.name}`
+            : sender.address || ''
+        }
+        title="Tentukan Titik Lokasi Pengirim"
+      />
+
+      {/* RECIPIENT MAPBOX LOCATION PICKER */}
+      <MapboxLocationPicker
+        isOpen={recipientMapOpen}
+        onClose={() => setRecipientMapOpen(false)}
+        onConfirm={handleConfirmRecipientCoordinates}
+        initialLatitude={recipient.latitude}
+        initialLongitude={recipient.longitude}
+        initialAddress={
+          recipientKelurahan
+            ? `${recipientProvince}, ${recipientCity}, ${recipientKecamatan}, ${recipientKelurahan.name}`
+            : recipient.address || ''
+        }
+        title="Tentukan Titik Lokasi Penerima"
       />
     </div>
   );

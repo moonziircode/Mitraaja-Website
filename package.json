@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.1",
+    "@types/mapbox-gl": "^3.4.1",
     "axios": "^1.18.0",
     "axios-cookiejar-support": "^7.0.0",
     "csv-parse": "^7.0.0",
@@ -20,6 +21,7 @@
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.21.0",
+    "mapbox-gl": "^3.30.0",
     "next": "16.2.9",
     "pdf-parse": "^2.4.5",
     "pg": "^8.21.0",

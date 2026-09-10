@@ -5,6 +5,8 @@ export interface ContactInfo {
   district: string;
   postalCode: string;
   districtCode?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface PackageInfo {
