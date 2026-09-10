@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import CreateOrderClient from './CreateOrderClient';
-import fs from 'fs';
-import path from 'path';
-import { parse } from 'csv-parse/sync';
+import { getDistrictByCode } from '@/lib/districts-db';
 
 export default async function CreateOrderPage() {
   const session = await getSession();
@@ -21,29 +19,16 @@ export default async function CreateOrderPage() {
 
   try {
     if (session.districtCode) {
-      const filePath = path.join(process.cwd(), 'src/data/all_regions.csv');
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const records = parse(fileContent, {
-        columns: true,
-        skip_empty_lines: true,
-      });
-      const record: any = records.find((r: any) => r.dist_code === session.districtCode);
+      const record = await getDistrictByCode(session.districtCode);
       if (record) {
         agentDistrictName = record.dist_all || record.dist_name;
-        if (!agentPostalCode) agentPostalCode = record.postal_code?.split(',')[0] || '';
-        
-        // Find City (dist_type=3) and Province (dist_type=2)
-        const agentCity: any = records.find((r: any) => r.dist_code === record.parent_dist_code);
-        if (agentCity) {
-          agentCityCode = agentCity.dist_code;
-          agentCityName = agentCity.dist_name;
-          
-          const agentProv: any = records.find((r: any) => r.dist_code === agentCity.parent_dist_code);
-          if (agentProv) {
-            agentProvinceCode = agentProv.dist_code;
-            agentProvinceName = agentProv.dist_name;
-          }
+        if (!agentPostalCode) {
+          agentPostalCode = record.postal_code?.split(',')[0] || '';
         }
+        agentCityCode = record.city_code || '';
+        agentCityName = record.city_name || '';
+        agentProvinceCode = record.province_code || '';
+        agentProvinceName = record.province_name || '';
       }
     }
   } catch (error) {

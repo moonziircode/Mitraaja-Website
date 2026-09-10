@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { firestore } from '@/lib/firebaseAdmin';
+import { searchDistricts } from '@/lib/districts-db';
 
 export const preferredRegion = 'sin1';
 
@@ -7,43 +7,31 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get('q');
 
-  if (!query || query.length < 3) {
+  if (!query || query.trim().length < 2) {
     return NextResponse.json([]);
   }
 
-  if (!firestore) {
-    return NextResponse.json({ message: 'Firestore tidak diinisialisasi' }, { status: 500 });
-  }
-
   try {
-    const normalizedQuery = query.toLowerCase().trim();
+    const districts = await searchDistricts(query, 20);
 
-    // Firestore prefix search on regions_v2 name_lowercase field
-    const snapshot = await firestore.collection('regions_v2')
-      .orderBy('name_lowercase')
-      .startAt(normalizedQuery)
-      .endAt(normalizedQuery + '\uf8ff')
-      .limit(10)
-      .get();
-
-    if (snapshot.empty) {
-      return NextResponse.json([]);
-    }
-
-    const results = snapshot.docs.map((doc) => {
-      const data = doc.data();
+    const results = districts.map((data) => {
+      const displayName = data.dist_all || `${data.dist_name}, ${data.city_name}, ${data.province_name}`;
       return {
-        district_code: data.code,
+        district_code: data.dist_code,
         postal_code: data.postal_code || '',
-        name: data.name,
-        district: data.name,
-        code: data.code,
+        name: displayName,
+        district: data.dist_name,
+        code: data.dist_code,
+        city_code: data.city_code,
+        city_name: data.city_name,
+        province_code: data.province_code,
+        province_name: data.province_name,
       };
     });
 
     return NextResponse.json(results);
   } catch (error) {
-    console.error('Search error:', error);
+    console.error('[GET /api/districts/search] Search error:', error);
     return NextResponse.json({ message: 'Gagal mencari data wilayah' }, { status: 500 });
   }
 }
