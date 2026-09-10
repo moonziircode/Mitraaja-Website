@@ -636,7 +636,7 @@ async function processFullClaimLifecycle(
     };
   }
 
-  // ── PHASE 1: Pre-Claim Search ──
+  // ── PHASE 1: Pre-Claim Search & Already Claimed Pre-Check ──
   let maaTask: MaaTask | null = null;
   let shipperName = '-';
   let receiverName = '-';
@@ -657,6 +657,57 @@ async function processFullClaimLifecycle(
     }
   } catch (searchErr: any) {
     console.warn(`[Phase 1] Search AWB error for ${awb}:`, searchErr.message);
+  }
+
+  // Pre-check: If package was already claimed and dropoff completed previously
+  // (e.g. tracking code 201 or opcode 59 is already active on upstream Anteraja)
+  const initialTrackCheck = await realVerifyTracking(awb, agentStaffId, token);
+  if (initialTrackCheck.verified) {
+    // If search didn't get names, attempt public tracking detail to populate shipper & receiver names
+    try {
+      const pubRes = await fetch('https://api.anteraja.id/order/tracking', {
+        method: 'POST',
+        headers: {
+          'mv': '1.2',
+          'source': 'aca_android',
+          'Content-Type': 'application/json; charset=UTF-8',
+          'User-Agent': 'okhttp/3.10.0',
+        },
+        body: JSON.stringify([{ codes: awb.trim() }]),
+      });
+      if (pubRes.ok) {
+        const pubData = await pubRes.json();
+        const detail = pubData.content?.[0]?.detail;
+        if (detail) {
+          if (shipperName === '-' && detail.sender?.name) shipperName = detail.sender.name;
+          if (receiverName === '-' && detail.receiver?.name) receiverName = detail.receiver.name;
+          if (destinationCity === '-' && detail.receiver?.address) destinationCity = detail.receiver.address;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return {
+      success: true,
+      awb,
+      orderSource,
+      claimKey,
+      agentStaffId,
+      taskCode: existingTaskCode || 'ALREADY_CLAIMED',
+      shipperName,
+      receiverName,
+      destinationCity,
+      phase1Status: 'SUCCESS',
+      phase2Status: 'CLAIMED',
+      phase3Status: 'COMPLETED',
+      trackingCode: initialTrackCheck.trackingCode || '201',
+      opcode: initialTrackCheck.opcode || '59',
+      trackingVerificationStatus: 'VERIFIED',
+      finalTaskStatus: 'WAITING_FOR_HANDOVER_SERAH',
+      finalResult: 'SUCCESS',
+      message: `Paket sudah berhasil diklaim sebelumnya (Tracking Code: ${initialTrackCheck.trackingCode || '201'}, Opcode: ${initialTrackCheck.opcode || '59'}). Status: WAITING_FOR_HANDOVER_SERAH`,
+    };
   }
 
   if (!maaTask) {
