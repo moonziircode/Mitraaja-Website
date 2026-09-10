@@ -13,48 +13,79 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: 'Tidak terautentikasi' }, { status: 401 });
     }
     
-    const { awb } = await request.json();
-    if (!awb || typeof awb !== 'string' || !awb.trim()) {
-      return NextResponse.json({ success: false, message: 'Nomor AWB tidak valid.' }, { status: 400 });
+    const body = await request.json().catch(() => ({}));
+    const awbList: string[] = [];
+
+    if (typeof body.awb === 'string' && body.awb.trim()) {
+      awbList.push(body.awb.trim());
+    }
+    if (Array.isArray(body.awbs)) {
+      body.awbs.forEach((a: unknown) => {
+        if (typeof a === 'string' && a.trim()) awbList.push(a.trim());
+      });
+    }
+    if (Array.isArray(body.orders)) {
+      body.orders.forEach((o: any) => {
+        const key = o?.claim_key || o?.awb;
+        if (typeof key === 'string' && key.trim()) awbList.push(key.trim());
+      });
     }
 
-    const trimmedAwb = awb.trim();
+    if (awbList.length === 0) {
+      return NextResponse.json({ success: false, message: 'Tidak ada nomor AWB yang diberikan.' }, { status: 400 });
+    }
 
-    // === Real Integration to Anteraja Claim API ===
-    try {
-      // First search to get the correct orderSource and sourceOrderNo
-      let orderSource = 'B2B';
-      let claimKey = trimmedAwb;
+    // Deduplicate preserving order
+    const uniqueAwbs = Array.from(new Set(awbList));
+    const agentStaffId = session.nia;
+    const token = session.token;
 
-      try {
-        const taskDetails = await anterajaClient.searchAWB(trimmedAwb, session.nia, session.token);
-        if (taskDetails) {
-          orderSource = taskDetails.orderSource || 'B2B';
-          claimKey = taskDetails.sourceOrderNo || trimmedAwb;
-        }
-      } catch (searchError) {
-        console.warn(`[POST /api/parcels/claim] Search failed before claim for AWB ${trimmedAwb}, falling back to defaults`, searchError);
+    // Process each AWB through full 5-phase lifecycle
+    const results = [];
+    for (const awb of uniqueAwbs) {
+      if (!/^[0-9]{14}$/.test(awb)) {
+        results.push({
+          awb,
+          claim_key: awb,
+          success: false,
+          claim_status: 'FAILED',
+          claim_message: 'Format AWB tidak valid (harus tepat 14 digit angka numerik).',
+          final_result: 'FAILED',
+        });
+        continue;
       }
 
-      // Build the claim payload matching Anteraja specifications
-      const claimPayload = {
-        agent_staff_id: session.nia,
-        orders: [
-          {
-            order_source: orderSource,
-            claim_key: claimKey,
-          },
-        ],
-      };
-
-      // Perform the claim action
-      const result = await anterajaClient.claimAWB(trimmedAwb, claimPayload, session.token);
-      return NextResponse.json({ success: true, message: result.message || `AWB ${trimmedAwb} berhasil diklaim.` }, { status: 200 });
-    } catch (apiError: any) {
-      const errorMsg = apiError.message || 'Gagal mengklaim AWB.';
-      return NextResponse.json({ success: false, message: errorMsg }, { status: 400 });
+      const lifecycleResult = await anterajaClient.processFullClaimLifecycle(awb, agentStaffId, token);
+      results.push({
+        awb: lifecycleResult.awb,
+        claim_key: lifecycleResult.awb,
+        success: lifecycleResult.success,
+        claim_status: lifecycleResult.success ? 'SUCCESS' : 'FAILED',
+        claim_message: lifecycleResult.message,
+        task_code: lifecycleResult.taskCode,
+        tracking_code: lifecycleResult.trackingCode,
+        opcode: lifecycleResult.opcode,
+        final_task_status: lifecycleResult.finalTaskStatus,
+        final_result: lifecycleResult.finalResult,
+      });
     }
 
+    const successCount = results.filter((r) => r.success).length;
+    const failedCount = results.length - successCount;
+
+    return NextResponse.json({
+      success: true,
+      message: `Proses klaim selesai: ${successCount} berhasil, ${failedCount} gagal.`,
+      content: {
+        orders: results,
+      },
+      results,
+      summary: {
+        total: results.length,
+        success: successCount,
+        failed: failedCount,
+      },
+    }, { status: 200 });
   } catch (err: any) {
     const message = err instanceof Error ? err.message : 'Terjadi kesalahan internal server';
     console.error('[POST /api/parcels/claim] Error:', message);

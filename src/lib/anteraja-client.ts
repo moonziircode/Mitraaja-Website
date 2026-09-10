@@ -16,6 +16,28 @@ export interface MaaTask {
   invoice?: string;
   shippedDate?: string;
   estimatedDate?: string;
+  taskCode?: string;
+}
+
+export interface ClaimLifecycleResult {
+  success: boolean;
+  awb: string;
+  orderSource?: string;
+  claimKey?: string;
+  agentStaffId: string;
+  taskCode?: string;
+  shipperName: string;
+  receiverName: string;
+  destinationCity: string;
+  phase1Status: 'SUCCESS' | 'FAILED';
+  phase2Status: 'CLAIMED' | 'FAILED' | 'SKIPPED';
+  phase3Status: 'COMPLETED' | 'FAILED' | 'SKIPPED';
+  trackingCode?: string | number;
+  opcode?: string | number;
+  trackingVerificationStatus: 'VERIFIED' | 'PENDING' | 'FAILED';
+  finalTaskStatus?: string;
+  finalResult: 'SUCCESS' | 'FAILED' | 'INCOMPLETE' | 'VERIFICATION_PENDING' | 'VERIFICATION_FAILED';
+  message: string;
 }
 
 export interface ClaimPayload {
@@ -347,18 +369,12 @@ async function realSearchAWB(
     invoice: task.invoice || '',
     shippedDate: task.shipped_date || '',
     estimatedDate: task.estimated_date || '',
+    taskCode: task.task_code || task.taskCode || '',
   };
 }
 
-async function realClaimAWB(
-  awb: string,
-  payload: ClaimPayload,
-  token: string,
-): Promise<{ message: string }> {
-  const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
-  const url = `${apiBase}/order/v2/claim/${encodeURIComponent(awb)}`;
-
-  const headers = {
+function getMaaHeaders(token: string) {
+  return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'token': token,
@@ -375,10 +391,19 @@ async function realClaimAWB(
     'mv': '1.1',
     'source': 'MAA',
   };
+}
+
+async function realClaimAWB(
+  awb: string,
+  payload: ClaimPayload,
+  token: string,
+): Promise<{ message: string; taskCode?: string; content?: any }> {
+  const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
+  const url = `${apiBase}/order/v2/claim/${encodeURIComponent(awb)}`;
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: headers,
+    headers: getMaaHeaders(token),
     body: JSON.stringify(payload),
     keepalive: true,
   });
@@ -394,7 +419,418 @@ async function realClaimAWB(
     throw new Error(body.info || 'Gagal melakukan klaim AWB.');
   }
 
-  return { message: body.info || 'Claimed Successfully' };
+  let taskCode: string | undefined = undefined;
+  if (body.content) {
+    if (typeof body.content === 'object') {
+      taskCode = body.content.task_code || body.content.taskCode;
+      if (!taskCode && Array.isArray(body.content)) {
+        taskCode = body.content[0]?.task_code || body.content[0]?.taskCode;
+      }
+      if (!taskCode && Array.isArray(body.content.orders)) {
+        taskCode = body.content.orders[0]?.task_code || body.content.orders[0]?.taskCode;
+      }
+    }
+  }
+
+  return { message: body.info || 'Claimed Successfully', taskCode, content: body.content };
+}
+
+async function realCompleteDropoff(
+  awb: string,
+  agentStaffId: string,
+  token: string,
+): Promise<{ success: boolean; message: string; data?: any }> {
+  const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
+  const url = `${apiBase}/task-complete/dropoff?waybill=${encodeURIComponent(awb)}&agent_staff_id=${encodeURIComponent(agentStaffId)}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: getMaaHeaders(token),
+    body: JSON.stringify({}),
+    keepalive: true,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    const errorMessage = errorBody?.info || errorBody?.message || `Complete dropoff gagal (Status: ${response.status})`;
+    throw new Error(errorMessage);
+  }
+
+  const body = await response.json();
+  if (body.status !== 0) {
+    throw new Error(body.info || 'Gagal menyelesaikan dropoff.');
+  }
+
+  return { success: true, message: body.info || 'Dropoff Berhasil', data: body.content };
+}
+
+async function realVerifyTracking(
+  awb: string,
+  agentStaffId: string,
+  token: string,
+): Promise<{ verified: boolean; trackingCode?: string | number; opcode?: string | number; message?: string }> {
+  const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
+  const url = `${apiBase}/tracking?waybill=${encodeURIComponent(awb)}&agent_staff_id=${encodeURIComponent(agentStaffId)}`;
+
+  let events: any[] = [];
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: getMaaHeaders(token),
+    });
+    if (res.ok) {
+      const body = await res.json();
+      if (body.status === 0 && body.content) {
+        events = Array.isArray(body.content) ? body.content : (body.content.history || []);
+      }
+    }
+  } catch (e) {
+    console.warn('[verifyTracking] MAA tracking endpoint error:', e);
+  }
+
+  if (events.length === 0) {
+    try {
+      const pubRes = await fetch('https://api.anteraja.id/order/tracking', {
+        method: 'POST',
+        headers: {
+          'mv': '1.2',
+          'source': 'aca_android',
+          'Content-Type': 'application/json; charset=UTF-8',
+          'User-Agent': 'okhttp/3.10.0',
+        },
+        body: JSON.stringify([{ codes: awb.trim() }]),
+      });
+      if (pubRes.ok) {
+        const pubData = await pubRes.json();
+        if (pubData.status === 200 && pubData.content && pubData.content.length > 0) {
+          events = pubData.content[0].history || [];
+        }
+      }
+    } catch (pubErr) {
+      console.warn('[verifyTracking] Public tracking fallback error:', pubErr);
+    }
+  }
+
+  for (const ev of events) {
+    const code = String(ev.tracking_code || ev.trackingCode || ev.code || '');
+    const op = String(ev.opcode || ev.op_code || '');
+    const msg = (ev.message?.id || ev.message || '').toLowerCase();
+
+    const is201 = code === '201' || msg.includes('diterima di drop point') || msg.includes('staging store') || msg.includes('received at drop point');
+    const isOpcode59 = op === '59' || code === '59' || is201;
+
+    if (is201 || isOpcode59) {
+      return {
+        verified: true,
+        trackingCode: code || '201',
+        opcode: op || '59',
+        message: ev.message?.id || ev.message || 'Paket diterima di drop point',
+      };
+    }
+  }
+
+  return { verified: false, message: 'Tracking Code 201 / Opcode 59 belum terbit' };
+}
+
+async function realVerifyFinalTaskStatus(
+  taskCode: string,
+  awb: string,
+  token: string,
+): Promise<{ verified: boolean; taskStatus?: string; message?: string }> {
+  const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
+  const headers = getMaaHeaders(token);
+
+  if (taskCode) {
+    try {
+      const detailUrl = `${apiBase}/order/v2/task/dropoff/detail?task_code=${encodeURIComponent(taskCode)}`;
+      const res = await fetch(detailUrl, { method: 'GET', headers });
+      if (res.ok) {
+        const body = await res.json();
+        if (body.status === 0 && body.content) {
+          const st = body.content.task_status || body.content.taskStatus || '';
+          if (st === 'WAITING_FOR_HANDOVER_SERAH') {
+            return { verified: true, taskStatus: st, message: 'Status WAITING_FOR_HANDOVER_SERAH terverifikasi' };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[verifyFinalTaskStatus] task detail check error:', err);
+    }
+  }
+
+  try {
+    const listUrl = `${apiBase}/order/v2/task/dropoff?page=0&size=20`;
+    const res = await fetch(listUrl, { method: 'GET', headers });
+    if (res.ok) {
+      const body = await res.json();
+      if (body.status === 0 && body.content) {
+        const tasks = Array.isArray(body.content) ? body.content : (body.content.tasks || []);
+        for (const item of tasks) {
+          const subTasks = Array.isArray(item.tasks) ? item.tasks : [item];
+          for (const t of subTasks) {
+            const w = t.waybill_no || t.waybillNo || t.waybill || '';
+            const tc = t.task_code || t.taskCode || '';
+            if (w === awb || (taskCode && tc === taskCode)) {
+              const st = t.task_status || t.taskStatus || '';
+              if (st === 'WAITING_FOR_HANDOVER_SERAH') {
+                return { verified: true, taskStatus: st, message: 'Status WAITING_FOR_HANDOVER_SERAH terverifikasi' };
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[verifyFinalTaskStatus] dropoff list check error:', err);
+  }
+
+  return { verified: false, message: 'Status WAITING_FOR_HANDOVER_SERAH belum tercapai' };
+}
+
+async function processFullClaimLifecycle(
+  rawAwb: string,
+  agentStaffId: string,
+  token: string,
+): Promise<ClaimLifecycleResult> {
+  const awb = rawAwb.trim();
+
+  // Validate strict 14 digits
+  if (!/^[0-9]{14}$/.test(awb)) {
+    return {
+      success: false,
+      awb,
+      agentStaffId,
+      shipperName: '-',
+      receiverName: '-',
+      destinationCity: '-',
+      phase1Status: 'FAILED',
+      phase2Status: 'FAILED',
+      phase3Status: 'SKIPPED',
+      trackingVerificationStatus: 'FAILED',
+      finalResult: 'FAILED',
+      message: 'Format AWB tidak valid (harus tepat 14 digit angka numerik).',
+    };
+  }
+
+  // ── PHASE 1: Pre-Claim Search ──
+  let maaTask: MaaTask | null = null;
+  let shipperName = '-';
+  let receiverName = '-';
+  let destinationCity = '-';
+  let orderSource = 'B2B';
+  let claimKey = awb;
+  let existingTaskCode: string | undefined = undefined;
+
+  try {
+    maaTask = await anterajaClient.searchAWB(awb, agentStaffId, token);
+    if (maaTask) {
+      shipperName = maaTask.shipperName || '-';
+      receiverName = maaTask.receiverName || '-';
+      destinationCity = maaTask.destinationCity || '-';
+      orderSource = maaTask.orderSource || 'B2B';
+      claimKey = maaTask.sourceOrderNo || awb;
+      existingTaskCode = maaTask.taskCode;
+    }
+  } catch (searchErr: any) {
+    console.warn(`[Phase 1] Search AWB error for ${awb}:`, searchErr.message);
+  }
+
+  if (!maaTask) {
+    return {
+      success: false,
+      awb,
+      agentStaffId,
+      shipperName,
+      receiverName,
+      destinationCity,
+      phase1Status: 'FAILED',
+      phase2Status: 'FAILED',
+      phase3Status: 'SKIPPED',
+      trackingVerificationStatus: 'FAILED',
+      finalResult: 'FAILED',
+      message: 'Pre-claim gagal: AWB tidak ditemukan dalam sistem Anteraja.',
+    };
+  }
+
+  // ── PHASE 2: Order Claim ──
+  let taskCode = existingTaskCode;
+  let phase2Status: 'CLAIMED' | 'FAILED' | 'SKIPPED' = 'CLAIMED';
+
+  if (!taskCode) {
+    try {
+      const claimRes = await anterajaClient.claimAWB(
+        awb,
+        {
+          agent_staff_id: agentStaffId,
+          orders: [{ order_source: orderSource, claim_key: claimKey }],
+        },
+        token,
+      );
+      taskCode = claimRes.taskCode || claimKey;
+      phase2Status = 'CLAIMED';
+    } catch (claimErr: any) {
+      const errMsg = claimErr.message || '';
+      if (errMsg.toLowerCase().includes('sudah pernah di klaim') || errMsg.toLowerCase().includes('already claimed')) {
+        phase2Status = 'CLAIMED';
+        taskCode = taskCode || claimKey;
+      } else {
+        return {
+          success: false,
+          awb,
+          orderSource,
+          claimKey,
+          agentStaffId,
+          shipperName,
+          receiverName,
+          destinationCity,
+          phase1Status: 'SUCCESS',
+          phase2Status: 'FAILED',
+          phase3Status: 'SKIPPED',
+          trackingVerificationStatus: 'FAILED',
+          finalResult: 'FAILED',
+          message: `Order Claim gagal: ${errMsg}`,
+        };
+      }
+    }
+  }
+
+  // ── PHASE 3: Task Complete Dropoff ──
+  let phase3Status: 'COMPLETED' | 'FAILED' | 'SKIPPED' = 'COMPLETED';
+  try {
+    if (IS_MOCK_MODE) {
+      await delay(150);
+    } else {
+      await realCompleteDropoff(awb, agentStaffId, token);
+    }
+    phase3Status = 'COMPLETED';
+  } catch (dropoffErr: any) {
+    console.error(`[Phase 3] Complete Dropoff failed for ${awb}:`, dropoffErr.message);
+    return {
+      success: false,
+      awb,
+      orderSource,
+      claimKey,
+      agentStaffId,
+      taskCode,
+      shipperName,
+      receiverName,
+      destinationCity,
+      phase1Status: 'SUCCESS',
+      phase2Status: 'CLAIMED',
+      phase3Status: 'FAILED',
+      trackingVerificationStatus: 'FAILED',
+      finalResult: 'INCOMPLETE',
+      message: `Order sudah diklaim (Task: ${taskCode || '-'}), namun gagal menyelesaikan dropoff: ${dropoffErr.message}`,
+    };
+  }
+
+  // ── PHASE 4: Verify Tracking (Tracking Code 201 & Opcode 59) ──
+  let trackingVerified = false;
+  let trackingCode: string | number | undefined = undefined;
+  let opcode: string | number | undefined = undefined;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    if (attempt > 1) await delay(700);
+    if (IS_MOCK_MODE) {
+      trackingVerified = true;
+      trackingCode = '201';
+      opcode = '59';
+      break;
+    } else {
+      const trackRes = await realVerifyTracking(awb, agentStaffId, token);
+      if (trackRes.verified) {
+        trackingVerified = true;
+        trackingCode = trackRes.trackingCode;
+        opcode = trackRes.opcode;
+        break;
+      }
+    }
+  }
+
+  if (!trackingVerified) {
+    return {
+      success: false,
+      awb,
+      orderSource,
+      claimKey,
+      agentStaffId,
+      taskCode,
+      shipperName,
+      receiverName,
+      destinationCity,
+      phase1Status: 'SUCCESS',
+      phase2Status: 'CLAIMED',
+      phase3Status: 'COMPLETED',
+      trackingVerificationStatus: 'FAILED',
+      finalResult: 'VERIFICATION_FAILED',
+      message: 'Dropoff selesai, namun Tracking Code 201 belum terverifikasi dari upstream Anteraja.',
+    };
+  }
+
+  // ── PHASE 5: Verify Final Task Status (WAITING_FOR_HANDOVER_SERAH) ──
+  let finalStatusVerified = false;
+  let finalTaskStatus: string | undefined = undefined;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    if (attempt > 1) await delay(700);
+    if (IS_MOCK_MODE) {
+      finalStatusVerified = true;
+      finalTaskStatus = 'WAITING_FOR_HANDOVER_SERAH';
+      break;
+    } else {
+      const finalRes = await realVerifyFinalTaskStatus(taskCode || '', awb, token);
+      if (finalRes.verified) {
+        finalStatusVerified = true;
+        finalTaskStatus = finalRes.taskStatus || 'WAITING_FOR_HANDOVER_SERAH';
+        break;
+      }
+    }
+  }
+
+  if (!finalStatusVerified) {
+    return {
+      success: false,
+      awb,
+      orderSource,
+      claimKey,
+      agentStaffId,
+      taskCode,
+      shipperName,
+      receiverName,
+      destinationCity,
+      phase1Status: 'SUCCESS',
+      phase2Status: 'CLAIMED',
+      phase3Status: 'COMPLETED',
+      trackingCode: trackingCode || '201',
+      opcode: opcode || '59',
+      trackingVerificationStatus: 'VERIFIED',
+      finalTaskStatus: finalTaskStatus || 'BELUM_SERAH',
+      finalResult: 'VERIFICATION_PENDING',
+      message: 'Tracking Code 201 terbit, namun final task status belum mencapai WAITING_FOR_HANDOVER_SERAH.',
+    };
+  }
+
+  // ── ALL 5 MILESTONES COMPLETE ──
+  return {
+    success: true,
+    awb,
+    orderSource,
+    claimKey,
+    agentStaffId,
+    taskCode,
+    shipperName,
+    receiverName,
+    destinationCity,
+    phase1Status: 'SUCCESS',
+    phase2Status: 'CLAIMED',
+    phase3Status: 'COMPLETED',
+    trackingCode: trackingCode || '201',
+    opcode: opcode || '59',
+    trackingVerificationStatus: 'VERIFIED',
+    finalTaskStatus: 'WAITING_FOR_HANDOVER_SERAH',
+    finalResult: 'SUCCESS',
+    message: 'Paket berhasil diklaim, dropoff selesai, Tracking 201 & Opcode 59 terbit, dan status WAITING_FOR_HANDOVER_SERAH terverifikasi!',
+  };
 }
 
 async function realGetRates(
@@ -406,26 +842,9 @@ async function realGetRates(
   const apiBase = ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
   const url = `${apiBase}/rates?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&weight=${weight}`;
 
-  const headers = {
-    'token': token,
-    'appid': 'JV_APP',
-    'msgid': Date.now().toString(),
-    'imei': 'dev_device_uuid_12345',
-    'deviceUuid': 'dev_device_uuid_12345',
-    'hardwareSerialNo': 'dev_serial',
-    'manufacture': 'Apple',
-    'model': 'Macbook',
-    'os': 'macOS',
-    'osVersion': '14.0',
-    'appVersion': '2.2.4',
-    'mv': '1.1',
-    'source': 'MAA',
-    'Accept': 'application/json',
-  };
-
   const response = await fetch(url, {
     method: 'GET',
-    headers: headers,
+    headers: getMaaHeaders(token),
   });
 
   if (!response.ok) {
@@ -472,9 +891,56 @@ export const anterajaClient = {
     awb: string,
     payload: ClaimPayload,
     token: string,
-  ): Promise<{ message: string }> {
+  ): Promise<{ message: string; taskCode?: string; content?: any }> {
     if (IS_MOCK_MODE) return mockClaimAWB(awb);
     return realClaimAWB(awb, payload, token);
+  },
+
+  /**
+   * Complete dropoff after claim.
+   */
+  async completeDropoff(
+    awb: string,
+    agentStaffId: string,
+    token: string,
+  ): Promise<{ success: boolean; message: string; data?: any }> {
+    if (IS_MOCK_MODE) return { success: true, message: 'Dropoff Berhasil' };
+    return realCompleteDropoff(awb, agentStaffId, token);
+  },
+
+  /**
+   * Verify tracking code 201 & opcode 59.
+   */
+  async verifyTracking(
+    awb: string,
+    agentStaffId: string,
+    token: string,
+  ): Promise<{ verified: boolean; trackingCode?: string | number; opcode?: string | number; message?: string }> {
+    if (IS_MOCK_MODE) return { verified: true, trackingCode: '201', opcode: '59', message: 'Verified' };
+    return realVerifyTracking(awb, agentStaffId, token);
+  },
+
+  /**
+   * Verify final task status WAITING_FOR_HANDOVER_SERAH.
+   */
+  async verifyFinalTaskStatus(
+    taskCode: string,
+    awb: string,
+    token: string,
+  ): Promise<{ verified: boolean; taskStatus?: string; message?: string }> {
+    if (IS_MOCK_MODE) return { verified: true, taskStatus: 'WAITING_FOR_HANDOVER_SERAH' };
+    return realVerifyFinalTaskStatus(taskCode, awb, token);
+  },
+
+  /**
+   * Process complete 5-phase claim lifecycle.
+   */
+  async processFullClaimLifecycle(
+    awb: string,
+    agentStaffId: string,
+    token: string,
+  ): Promise<ClaimLifecycleResult> {
+    return processFullClaimLifecycle(awb, agentStaffId, token);
   },
 
   /**

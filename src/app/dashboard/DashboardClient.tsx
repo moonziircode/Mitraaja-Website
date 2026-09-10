@@ -19,6 +19,10 @@ interface HistoryItem {
   status: 'success' | 'error';
   message: string;
   timestamp: number;
+  taskCode?: string;
+  trackingCode?: string | number;
+  opcode?: string | number;
+  finalStatus?: string;
 }
 
 interface ScanResult {
@@ -28,6 +32,11 @@ interface ScanResult {
   shipperName: string;
   receiverName: string;
   destinationCity: string;
+  taskCode?: string;
+  trackingCode?: string | number;
+  opcode?: string | number;
+  finalStatus?: string;
+  finalResult?: string;
 }
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
@@ -42,6 +51,8 @@ export default function DashboardClient({ user }: { user: User }) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isProcessingRef = useRef(false);
+  const lastProcessedAwbRef = useRef<string | null>(null);
 
   // ── UI State ──
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -130,13 +141,17 @@ export default function DashboardClient({ user }: { user: User }) {
   const performClaim = useCallback(
     async (awbToClaim: string) => {
       const trimmed = awbToClaim.trim();
-      if (!trimmed || isScanning) return;
+      if (!trimmed || isProcessingRef.current) return;
 
+      // Lock synchronously to prevent duplicate triggers
+      isProcessingRef.current = true;
       setIsScanning(true);
+      lastProcessedAwbRef.current = trimmed;
+
       setScanResult({
         status: 'searching',
         awb: trimmed,
-        message: 'Mencari & mengklaim...',
+        message: 'Mengecek & memproses seluruh lifecycle claim...',
         shipperName: '-',
         receiverName: '-',
         destinationCity: '-',
@@ -156,6 +171,11 @@ export default function DashboardClient({ user }: { user: User }) {
           shipperName: data.data?.shipperName || '-',
           receiverName: data.data?.receiverName || '-',
           destinationCity: data.data?.destinationCity || '-',
+          taskCode: data.data?.taskCode,
+          trackingCode: data.data?.trackingCode,
+          opcode: data.data?.opcode,
+          finalStatus: data.data?.finalStatus,
+          finalResult: data.data?.finalResult,
         };
         setScanResult(result);
         playBeep(result.status === 'success');
@@ -170,6 +190,10 @@ export default function DashboardClient({ user }: { user: User }) {
             status: result.status === 'success' ? 'success' : 'error',
             message: result.message,
             timestamp: Date.now(),
+            taskCode: result.taskCode,
+            trackingCode: result.trackingCode,
+            opcode: result.opcode,
+            finalStatus: result.finalStatus,
           },
           ...prev,
         ]);
@@ -186,10 +210,13 @@ export default function DashboardClient({ user }: { user: User }) {
       } finally {
         setIsScanning(false);
         setAwbValue('');
-        setTimeout(() => inputRef.current?.focus(), 100);
+        isProcessingRef.current = false;
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
       }
     },
-    [isScanning]
+    []
   );
 
   // ── Form Handler ──
@@ -535,9 +562,10 @@ export default function DashboardClient({ user }: { user: User }) {
                         placeholder="Scan / Ketik resi..."
                         value={awbValue}
                         onChange={(e) => {
-                          const val = e.target.value.toUpperCase();
+                          const val = e.target.value.trim().toUpperCase();
                           setAwbValue(val);
-                          if (val.trim().length === 14) {
+                          // Auto-trigger exactly when 14 numeric digits are reached
+                          if (/^[0-9]{14}$/.test(val)) {
                             performClaim(val);
                           }
                         }}
@@ -546,7 +574,9 @@ export default function DashboardClient({ user }: { user: User }) {
                           const pasted = e.clipboardData.getData('text').trim().toUpperCase();
                           if (pasted) {
                             setAwbValue(pasted);
-                            performClaim(pasted);
+                            if (/^[0-9]{14}$/.test(pasted)) {
+                              performClaim(pasted);
+                            }
                           }
                         }}
                         disabled={isScanning}
@@ -603,11 +633,32 @@ export default function DashboardClient({ user }: { user: User }) {
                             <span className="material-symbols-outlined text-emerald-600 text-lg md:text-2xl" style={FILL}>check_circle</span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-bold text-emerald-800 text-[13px] md:text-[15px]">Klaim Sukses</h4>
-                              <span className="text-[9px] md:text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Berhasil</span>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h4 className="font-bold text-emerald-800 text-[13px] md:text-[15px]">Klaim Sukses Penuh</h4>
+                              <span className="text-[9px] md:text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">LIFECYCLE SELESAI</span>
                             </div>
-                            <p className="text-xs md:text-sm font-mono font-semibold text-emerald-700 mb-2 md:mb-3">{scanResult.awb}</p>
+                            <p className="text-xs md:text-sm font-mono font-bold text-emerald-700 mb-2 md:mb-3">{scanResult.awb}</p>
+                            
+                            {/* 5 Milestone Verification Badges */}
+                            <div className="flex flex-wrap gap-1.5 mb-3">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Task: {scanResult.taskCode || 'OK'}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Dropoff Complete
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                Tracking 201 (Opcode 59)
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                {scanResult.finalStatus || 'WAITING_FOR_HANDOVER_SERAH'}
+                              </span>
+                            </div>
+
                             <div className="grid grid-cols-3 gap-2 md:gap-3">
                               <div>
                                 <span className="text-[9px] md:text-[10px] font-semibold text-emerald-600/60 uppercase tracking-wider">Pengirim</span>

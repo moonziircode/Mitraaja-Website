@@ -13,6 +13,10 @@ interface ClaimItem {
   awb: string;
   status: 'pending' | 'success' | 'error';
   message?: string;
+  taskCode?: string;
+  trackingCode?: string | number;
+  finalStatus?: string;
+  finalResult?: string;
 }
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
@@ -25,20 +29,28 @@ export default function ClaimClient({ user }: { user: User }) {
   const [claimItems, setClaimItems] = useState<ClaimItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Parse input into unique valid AWBs
+  // Parse input into unique valid AWBs (strictly 14 digits)
   const handleParseInput = () => {
     const rawLines = inputText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
-    // Duplicate detection and basic validation
+    // Duplicate detection and strict 14-digit validation
     const uniqueAwbs = new Set<string>();
     const newItems: ClaimItem[] = [];
 
     rawLines.forEach(awb => {
-      // Basic AWB validation (alphanumeric, typical length)
-      const isValidFormat = /^[A-Za-z0-9_-]{5,30}$/.test(awb);
-      if (isValidFormat && !uniqueAwbs.has(awb)) {
+      // Must be exactly 14 digits
+      const isValidFormat = /^[0-9]{14}$/.test(awb);
+      if (!uniqueAwbs.has(awb)) {
         uniqueAwbs.add(awb);
-        newItems.push({ awb, status: 'pending' });
+        if (isValidFormat) {
+          newItems.push({ awb, status: 'pending' });
+        } else {
+          newItems.push({
+            awb,
+            status: 'error',
+            message: 'Format tidak valid (harus tepat 14 digit angka numerik).',
+          });
+        }
       }
     });
 
@@ -46,11 +58,12 @@ export default function ClaimClient({ user }: { user: User }) {
   };
 
   const handleClaimAll = async () => {
-    if (claimItems.length === 0) return;
+    const pendingOrders = claimItems.filter(item => item.status === 'pending');
+    if (pendingOrders.length === 0) return;
     setIsProcessing(true);
 
     try {
-      const ordersToClaim = claimItems.filter(item => item.status === 'pending' || item.status === 'error').map(item => ({ claim_key: item.awb }));
+      const ordersToClaim = pendingOrders.map(item => ({ claim_key: item.awb }));
       
       const res = await fetch('/api/parcels/claim', {
         method: 'POST',
@@ -60,35 +73,48 @@ export default function ClaimClient({ user }: { user: User }) {
       
       const data = await res.json();
       
-      if (data.success) {
+      if (data.success && Array.isArray(data.results)) {
         // Map the results back to claimItems
         const resultItems = claimItems.map(item => {
-          const match = data.content?.orders?.find((o: any) => o.claim_key === item.awb);
+          const match = data.results.find((o: any) => o.awb === item.awb);
           if (match) {
             return {
               ...item,
-              status: match.claim_status === 'SUCCESS' ? 'success' as const : 'error' as const,
-              message: match.claim_message
+              status: match.success ? ('success' as const) : ('error' as const),
+              message: match.claim_message,
+              taskCode: match.task_code,
+              trackingCode: match.tracking_code,
+              finalStatus: match.final_task_status,
+              finalResult: match.final_result,
             };
           }
-          // If the API failed entirely or didn't return this order
-          return { ...item, status: 'error' as const, message: data.info || 'Gagal klaim' };
+          return item;
         });
         setClaimItems(resultItems);
       } else {
         // Entire request failed
-        setClaimItems(prev => prev.map(item => ({
-          ...item,
-          status: 'error',
-          message: data.info || 'Request failed'
-        })));
+        setClaimItems(prev => prev.map(item => {
+          if (item.status === 'pending') {
+            return {
+              ...item,
+              status: 'error',
+              message: data.message || 'Request failed',
+            };
+          }
+          return item;
+        }));
       }
-    } catch (err) {
-      setClaimItems(prev => prev.map(item => ({
-        ...item,
-        status: 'error',
-        message: 'Koneksi terputus'
-      })));
+    } catch {
+      setClaimItems(prev => prev.map(item => {
+        if (item.status === 'pending') {
+          return {
+            ...item,
+            status: 'error',
+            message: 'Koneksi terputus',
+          };
+        }
+        return item;
+      }));
     } finally {
       setIsProcessing(false);
     }
@@ -234,28 +260,51 @@ export default function ClaimClient({ user }: { user: User }) {
 
                     <div className="flex-1 overflow-y-auto max-h-[300px] border border-gray-100 rounded-xl divide-y divide-gray-50">
                       {claimItems.map((item, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 hover:bg-gray-50/50 transition-colors">
-                          <span className="font-mono text-xs font-semibold text-text-primary">{item.awb}</span>
-                          <div className="flex items-center gap-2">
-                            {item.status === 'success' && (
-                              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                <span className="material-symbols-outlined text-[12px]" style={FILL}>check_circle</span>
-                                SUKSES
-                              </span>
-                            )}
-                            {item.status === 'error' && (
-                              <span className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary-light/10 px-2 py-0.5 rounded-full border border-primary-light/20" title={item.message}>
-                                <span className="material-symbols-outlined text-[12px]" style={FILL}>error</span>
-                                GAGAL
-                              </span>
-                            )}
-                            {item.status === 'pending' && (
-                              <span className="flex items-center gap-1 text-[10px] font-bold text-text-secondary bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
-                                <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                PENDING
-                              </span>
-                            )}
+                        <div key={idx} className="p-3 hover:bg-gray-50/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs font-semibold text-text-primary">{item.awb}</span>
+                            <div className="flex items-center gap-2">
+                              {item.status === 'success' && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                  <span className="material-symbols-outlined text-[12px]" style={FILL}>check_circle</span>
+                                  SUKSES
+                                </span>
+                              )}
+                              {item.status === 'error' && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary-light/10 px-2 py-0.5 rounded-full border border-primary-light/20">
+                                  <span className="material-symbols-outlined text-[12px]" style={FILL}>error</span>
+                                  GAGAL
+                                </span>
+                              )}
+                              {item.status === 'pending' && (
+                                <span className="flex items-center gap-1 text-[10px] font-bold text-text-secondary bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                                  <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                  PENDING
+                                </span>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Extra info for success or failure */}
+                          {item.status === 'success' && (
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] text-emerald-700">
+                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-mono">
+                                Task: {item.taskCode || 'OK'}
+                              </span>
+                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-mono">
+                                Tracking 201
+                              </span>
+                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">
+                                {item.finalStatus || 'WAITING_FOR_HANDOVER_SERAH'}
+                              </span>
+                            </div>
+                          )}
+
+                          {item.status === 'error' && item.message && (
+                            <p className="mt-1 text-[10px] text-primary bg-primary/5 px-2 py-1 rounded">
+                              {item.message}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
