@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import { ContactInfo, PackageInfo, ServiceInfo } from '@/lib/types';
 import SearchableDistrictSelect from '@/components/SearchableDistrictSelect';
+import CascadingRegionPicker, { RegionSelection } from '@/components/CascadingRegionPicker';
 
 interface User {
   name: string;
@@ -261,6 +262,38 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [addressBookOpen, setAddressBookOpen] = useState(false);
   const [addressBookTarget, setAddressBookTarget] = useState<'sender' | 'recipient' | null>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+
+  // ── Cascading Bottom Sheet Region Picker States ──
+  const [senderPickerOpen, setSenderPickerOpen] = useState(false);
+  const [recipientPickerOpen, setRecipientPickerOpen] = useState(false);
+
+  const handleSelectSenderRegion = (region: RegionSelection) => {
+    setSenderProvince(region.province.name);
+    setSenderCity(region.city.name);
+    setSenderKecamatan(region.district.name);
+    setSenderKelurahan(region.subdistrict);
+
+    setSender(prev => ({
+      ...prev,
+      district: `Kec. ${region.district.name}, ${region.city.name}, ${region.province.name}`,
+      districtCode: region.subdistrict.districtCode || region.district.code,
+      postalCode: region.subdistrict.postalCode
+    }));
+  };
+
+  const handleSelectRecipientRegion = (region: RegionSelection) => {
+    setRecipientProvince(region.province.name);
+    setRecipientCity(region.city.name);
+    setRecipientKecamatan(region.district.name);
+    setRecipientKelurahan(region.subdistrict);
+
+    setRecipient(prev => ({
+      ...prev,
+      district: `Kec. ${region.district.name}, ${region.city.name}, ${region.province.name}`,
+      districtCode: region.subdistrict.districtCode || region.district.code,
+      postalCode: region.subdistrict.postalCode
+    }));
+  };
 
   const formatPhone = (val: string) => {
     let digits = val.replace(/\D/g, '');
@@ -1109,6 +1142,14 @@ export default function CreateOrderClient({ user }: { user: User }) {
     // Clear states
     setSender({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '' });
     setRecipient({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '' });
+    setSenderProvince('');
+    setSenderCity('');
+    setSenderKecamatan('');
+    setSenderKelurahan(null);
+    setRecipientProvince('');
+    setRecipientCity('');
+    setRecipientKecamatan('');
+    setRecipientKelurahan(null);
     setPackageInfo({ itemName: '', category: '', weight: 0, dimensions: { length: 0, width: 0, height: 0 }, value: 0 });
     localStorage.removeItem('mitraaja_draft_order');
   };
@@ -1227,90 +1268,38 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setSender({ ...sender, phone: formatPhone(e.target.value) })}
                           />
                         </div>
-                        {/* Provinsi */}
+                        {/* Wilayah Pengirim (Hierarchical Bottom Sheet Picker) */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Provinsi {loadingProvinces && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                            Wilayah (Provinsi, Kota, Kecamatan, Kelurahan)
                           </label>
-                          <select
-                            value={senderProvince}
-                            onChange={(e) => {
-                              setSenderProvince(e.target.value);
-                              setSenderCity('');
-                              setSenderKecamatan('');
-                              setSenderKelurahan(null);
-                            }}
-                            disabled={!user.isJabodetabek && !!user.provinceName}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                          <div
+                            onClick={() => setSenderPickerOpen(true)}
+                            className={`w-full min-h-[44px] px-3.5 py-2 bg-gray-50 border rounded-xl flex items-center justify-between cursor-pointer transition-all hover:bg-white hover:border-primary/30 ${
+                              senderProvince && senderKelurahan
+                                ? 'border-primary/20 bg-primary/[0.02]'
+                                : 'border-gray-200'
+                            }`}
                           >
-                            <option value="">Pilih Provinsi</option>
-                            {provinceList.map((p) => (
-                              <option key={p.code} value={p.name}>{p.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Kota/Kabupaten */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Kota / Kabupaten {loadingCities && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
-                          </label>
-                          <select
-                            value={senderCity}
-                            onChange={(e) => {
-                              setSenderCity(e.target.value);
-                              setSenderKecamatan('');
-                              setSenderKelurahan(null);
-                            }}
-                            disabled={(!user.isJabodetabek && !!user.cityName) || !senderProvince}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Pilih Kota/Kabupaten</option>
-                            {cityList.map((c) => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Kecamatan */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Kecamatan {loadingKecamatans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
-                          </label>
-                          <select
-                            value={senderKecamatan}
-                            onChange={(e) => {
-                              setSenderKecamatan(e.target.value);
-                              setSenderKelurahan(null);
-                            }}
-                            disabled={!senderCity}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Pilih Kecamatan</option>
-                            {kecamatanList.map((k) => (
-                              <option key={k.code} value={k.name}>{k.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Kelurahan */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Kelurahan / Desa {loadingKelurahans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
-                          </label>
-                          <select
-                            value={senderKelurahan ? `${senderKelurahan.name}|${senderKelurahan.postalCode}|${senderKelurahan.districtCode}` : ''}
-                            onChange={(e) => handleSelectSenderKelurahan(e.target.value)}
-                            disabled={!senderKecamatan}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Pilih Kelurahan</option>
-                            {kelurahanList.map((k, idx) => (
-                              <option key={idx} value={`${k.name}|${k.postalCode}|${k.districtCode}`}>
-                                {k.name} / {k.postalCode}
-                              </option>
-                            ))}
-                          </select>
+                            <div className="flex items-center gap-2 overflow-hidden mr-2">
+                              <span className="material-symbols-outlined text-primary text-[18px] shrink-0">
+                                explore
+                              </span>
+                              {senderProvince && senderKelurahan ? (
+                                <div className="text-xs font-semibold text-gray-800 leading-tight truncate">
+                                  <span className="font-bold">{senderProvince}</span>, {senderCity}, Kec. {senderKecamatan}, {senderKelurahan.name} <span className="font-mono font-bold text-primary">({senderKelurahan.postalCode})</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs font-semibold text-gray-400">
+                                  Ketuk untuk memilih Provinsi, Kota, Kecamatan & Kelurahan...
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 text-gray-400">
+                              <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Pilih</span>
+                              <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Alamat Lengkap */}
@@ -1378,89 +1367,38 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             onChange={(e) => setRecipient({ ...recipient, phone: formatPhone(e.target.value) })}
                           />
                         </div>
-                        {/* Provinsi Penerima */}
+                        {/* Wilayah Penerima (Hierarchical Bottom Sheet Picker) */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Provinsi {loadingRecipientProvinces && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
+                            Wilayah (Provinsi, Kota, Kecamatan, Kelurahan)
                           </label>
-                          <select
-                            value={recipientProvince}
-                            onChange={(e) => {
-                              setRecipientProvince(e.target.value);
-                              setRecipientCity('');
-                              setRecipientKecamatan('');
-                              setRecipientKelurahan(null);
-                            }}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
+                          <div
+                            onClick={() => setRecipientPickerOpen(true)}
+                            className={`w-full min-h-[44px] px-3.5 py-2 bg-gray-50 border rounded-xl flex items-center justify-between cursor-pointer transition-all hover:bg-white hover:border-primary/30 ${
+                              recipientProvince && recipientKelurahan
+                                ? 'border-primary/20 bg-primary/[0.02]'
+                                : 'border-gray-200'
+                            }`}
                           >
-                            <option value="">Pilih Provinsi</option>
-                            {recipientProvinceList.map((p) => (
-                              <option key={p.code} value={p.name}>{p.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Kota/Kabupaten Penerima */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Kota / Kabupaten {loadingRecipientCities && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
-                          </label>
-                          <select
-                            value={recipientCity}
-                            onChange={(e) => {
-                              setRecipientCity(e.target.value);
-                              setRecipientKecamatan('');
-                              setRecipientKelurahan(null);
-                            }}
-                            disabled={!recipientProvince}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Pilih Kota/Kabupaten</option>
-                            {recipientCityList.map((c) => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Kecamatan Penerima */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Kecamatan {loadingRecipientKecamatans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
-                          </label>
-                          <select
-                            value={recipientKecamatan}
-                            onChange={(e) => {
-                              setRecipientKecamatan(e.target.value);
-                              setRecipientKelurahan(null);
-                            }}
-                            disabled={!recipientCity}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Pilih Kecamatan</option>
-                            {recipientKecamatanList.map((k) => (
-                              <option key={k.code} value={k.name}>{k.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Kelurahan Penerima */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
-                            Kelurahan / Desa {loadingRecipientKelurahans && <span className="animate-pulse text-primary font-normal text-[10px] lowercase">(memuat...)</span>}
-                          </label>
-                          <select
-                            value={recipientKelurahan ? `${recipientKelurahan.name}|${recipientKelurahan.postalCode}|${recipientKelurahan.districtCode}` : ''}
-                            onChange={(e) => handleSelectRecipientKelurahan(e.target.value)}
-                            disabled={!recipientKecamatan}
-                            className="w-full h-11 px-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none disabled:opacity-75 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                          >
-                            <option value="">Pilih Kelurahan</option>
-                            {recipientKelurahanList.map((k, idx) => (
-                              <option key={idx} value={`${k.name}|${k.postalCode}|${k.districtCode}`}>
-                                {k.name} / {k.postalCode}
-                              </option>
-                            ))}
-                          </select>
+                            <div className="flex items-center gap-2 overflow-hidden mr-2">
+                              <span className="material-symbols-outlined text-primary text-[18px] shrink-0">
+                                explore
+                              </span>
+                              {recipientProvince && recipientKelurahan ? (
+                                <div className="text-xs font-semibold text-gray-800 leading-tight truncate">
+                                  <span className="font-bold">{recipientProvince}</span>, {recipientCity}, Kec. {recipientKecamatan}, {recipientKelurahan.name} <span className="font-mono font-bold text-primary">({recipientKelurahan.postalCode})</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs font-semibold text-gray-400">
+                                  Ketuk untuk memilih Provinsi, Kota, Kecamatan & Kelurahan...
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 text-gray-400">
+                              <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">Pilih</span>
+                              <span className="material-symbols-outlined text-[18px]">expand_more</span>
+                            </div>
+                          </div>
                         </div>
 
                         <div>
@@ -2169,6 +2107,41 @@ export default function CreateOrderClient({ user }: { user: User }) {
           </div>
         </div>
       )}
+
+      {/* SENDER CASCADING BOTTOM SHEET PICKER */}
+      <CascadingRegionPicker
+        isOpen={senderPickerOpen}
+        onClose={() => setSenderPickerOpen(false)}
+        onSelect={handleSelectSenderRegion}
+        title="Pilih Wilayah Pengirim"
+        filterJabodetabek={user.isJabodetabek}
+        filterProvince={!user.isJabodetabek ? user.provinceName : undefined}
+        filterCity={!user.isJabodetabek ? user.cityName : undefined}
+        initialSelection={{
+          provinceName: senderProvince,
+          cityName: senderCity,
+          districtName: senderKecamatan,
+          districtCode: sender.districtCode,
+          postalCode: sender.postalCode,
+          subdistrictName: senderKelurahan?.name
+        }}
+      />
+
+      {/* RECIPIENT CASCADING BOTTOM SHEET PICKER */}
+      <CascadingRegionPicker
+        isOpen={recipientPickerOpen}
+        onClose={() => setRecipientPickerOpen(false)}
+        onSelect={handleSelectRecipientRegion}
+        title="Pilih Wilayah Penerima"
+        initialSelection={{
+          provinceName: recipientProvince,
+          cityName: recipientCity,
+          districtName: recipientKecamatan,
+          districtCode: recipient.districtCode,
+          postalCode: recipient.postalCode,
+          subdistrictName: recipientKelurahan?.name
+        }}
+      />
     </div>
   );
 }
