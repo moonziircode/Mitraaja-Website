@@ -832,37 +832,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
   // ── Step 4 State: Payment & Confirmation ──
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
-  // ── Draft System ──
-  const isInitialMount = useRef(true);
-
-  useEffect(() => {
-    try {
-      const draftStr = localStorage.getItem('mitraaja_draft_order');
-      if (draftStr) {
-        const draft = JSON.parse(draftStr);
-        if (window.confirm('Anda memiliki draft order yang belum selesai. Lanjutkan draft ini?')) {
-          if (draft.sender) setSender(draft.sender);
-          if (draft.recipient) setRecipient(draft.recipient);
-          if (draft.packageInfo) setPackageInfo(draft.packageInfo);
-          if (draft.step) setStep(draft.step);
-        } else {
-          localStorage.removeItem('mitraaja_draft_order');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load draft:', err);
-    }
-    isInitialMount.current = false;
-  }, []);
-
-  useEffect(() => {
-    if (isInitialMount.current) return;
-    const timer = setTimeout(() => {
-      const draft = { sender, recipient, packageInfo, step };
-      localStorage.setItem('mitraaja_draft_order', JSON.stringify(draft));
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [sender, recipient, packageInfo, step]);
   const [paymentQrUrl, setPaymentQrUrl] = useState<string | null>(null);
   const [paymentTrxId, setPaymentTrxId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'PENDING' | 'SUCCESS' | 'ERROR' | 'TIMEOUT'>('PENDING');
