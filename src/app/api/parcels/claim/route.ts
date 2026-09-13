@@ -48,8 +48,9 @@ export async function POST(request: NextRequest) {
           awb,
           claim_key: awb,
           success: false,
+          is_already_claimed: false,
           claim_status: 'FAILED',
-          claim_message: 'Format AWB tidak valid (harus tepat 14 digit angka numerik).',
+          claim_message: 'AWB gagal di-claim',
           final_result: 'FAILED',
         });
         continue;
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
         awb: lifecycleResult.awb,
         claim_key: lifecycleResult.awb,
         success: lifecycleResult.success,
+        is_already_claimed: lifecycleResult.isAlreadyClaimed || false,
         claim_status: lifecycleResult.success ? 'SUCCESS' : 'FAILED',
         claim_message: lifecycleResult.message,
         task_code: lifecycleResult.taskCode,
@@ -87,8 +89,7 @@ export async function POST(request: NextRequest) {
       },
     }, { status: 200 });
   } catch (err: any) {
-    const message = err instanceof Error ? err.message : 'Terjadi kesalahan internal server';
-    console.error('[POST /api/parcels/claim] Error:', message);
-    return NextResponse.json({ success: false, message }, { status: 500 });
+    console.error('[POST /api/parcels/claim] Error:', err);
+    return NextResponse.json({ success: false, message: 'AWB gagal di-claim' }, { status: 500 });
   }
 }

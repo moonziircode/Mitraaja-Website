@@ -17,10 +17,12 @@ export interface MaaTask {
   shippedDate?: string;
   estimatedDate?: string;
   taskCode?: string;
+  taskStatus?: string;
 }
 
 export interface ClaimLifecycleResult {
   success: boolean;
+  isAlreadyClaimed?: boolean;
   awb: string;
   orderSource?: string;
   claimKey?: string;
@@ -38,6 +40,52 @@ export interface ClaimLifecycleResult {
   finalTaskStatus?: string;
   finalResult: 'SUCCESS' | 'FAILED' | 'INCOMPLETE' | 'VERIFICATION_PENDING' | 'VERIFICATION_FAILED';
   message: string;
+}
+
+export function isAlreadyClaimedError(errMsg?: string | null): boolean {
+  if (!errMsg) return false;
+  const lower = errMsg.toLowerCase();
+
+  const phrases = [
+    'pernah diklaim',
+    'pernah di klaim',
+    'pernah di-klaim',
+    'pernah diclaim',
+    'pernah di claim',
+    'pernah di-claim',
+    'sudah diklaim',
+    'sudah di klaim',
+    'sudah di-klaim',
+    'sudah diclaim',
+    'sudah di claim',
+    'sudah di-claim',
+    'already claimed',
+    'already been claimed',
+    'has been claimed',
+    'already completed',
+    'task already completed',
+    'sudah pernah di dropoff',
+    'sudah pernah dropoff',
+    'sudah dropoff',
+    'sudah di drop off',
+    'sudah selesai',
+    'waiting_for_handover_serah',
+    'paket sudah pernah di-claim',
+    'paket sudah pernah diklaim',
+  ];
+
+  for (const phrase of phrases) {
+    if (lower.includes(phrase)) return true;
+  }
+
+  if (
+    /(sudah|pernah).*(klaim|claim|dropoff|drop off)/i.test(lower) ||
+    /(already|has been).*(claimed|completed|dropped off)/i.test(lower)
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 export interface ClaimPayload {
@@ -370,6 +418,7 @@ async function realSearchAWB(
     shippedDate: task.shipped_date || '',
     estimatedDate: task.estimated_date || '',
     taskCode: task.task_code || task.taskCode || '',
+    taskStatus: task.task_status || task.taskStatus || task.status || '',
   };
 }
 
@@ -450,18 +499,23 @@ async function realCompleteDropoff(
     keepalive: true,
   });
 
-  if (!response.ok) {
-    const errorBody = await response.json().catch(() => null);
-    const errorMessage = errorBody?.info || errorBody?.message || `Complete dropoff gagal (Status: ${response.status})`;
-    throw new Error(errorMessage);
+  const body = await response.json().catch(() => null);
+
+  // Requirement:
+  // - HTTP Status = 200
+  // - status = 0
+  // - info = "OK"
+  if (response.status !== 200) {
+    const errorMsg = body?.info || body?.message || `HTTP status ${response.status}`;
+    throw new Error(errorMsg);
   }
 
-  const body = await response.json();
-  if (body.status !== 0) {
-    throw new Error(body.info || 'Gagal menyelesaikan dropoff.');
+  if (!body || body.status !== 0 || String(body.info).trim().toUpperCase() !== 'OK') {
+    const errorMsg = body?.info || body?.message || 'Gagal menyelesaikan dropoff (status bukan 0 atau info bukan OK).';
+    throw new Error(errorMsg);
   }
 
-  return { success: true, message: body.info || 'Dropoff Berhasil', data: body.content };
+  return { success: true, message: 'AWB berhasil di-claim', data: body.content };
 }
 
 async function realVerifyTracking(
@@ -622,6 +676,7 @@ async function processFullClaimLifecycle(
   if (!/^[0-9]{14}$/.test(awb)) {
     return {
       success: false,
+      isAlreadyClaimed: false,
       awb,
       agentStaffId,
       shipperName: '-',
@@ -632,11 +687,11 @@ async function processFullClaimLifecycle(
       phase3Status: 'SKIPPED',
       trackingVerificationStatus: 'FAILED',
       finalResult: 'FAILED',
-      message: 'Format AWB tidak valid (harus tepat 14 digit angka numerik).',
+      message: 'AWB gagal di-claim',
     };
   }
 
-  // ── PHASE 1: Pre-Claim Search & Already Claimed Pre-Check ──
+  // ── PHASE 1: Pre-Claim Search ──
   let maaTask: MaaTask | null = null;
   let shipperName = '-';
   let receiverName = '-';
@@ -656,63 +711,58 @@ async function processFullClaimLifecycle(
       existingTaskCode = maaTask.taskCode;
     }
   } catch (searchErr: any) {
-    console.warn(`[Phase 1] Search AWB error for ${awb}:`, searchErr.message);
+    console.warn(`[Phase 1] Search AWB error for ${awb}:`, searchErr);
+    if (isAlreadyClaimedError(searchErr?.message)) {
+      return {
+        success: false,
+        isAlreadyClaimed: true,
+        awb,
+        agentStaffId,
+        shipperName: '-',
+        receiverName: '-',
+        destinationCity: '-',
+        phase1Status: 'FAILED',
+        phase2Status: 'SKIPPED',
+        phase3Status: 'SKIPPED',
+        trackingVerificationStatus: 'FAILED',
+        finalResult: 'FAILED',
+        message: 'Paket sudah pernah di-claim sebelumnya',
+      };
+    }
   }
 
-  // Pre-check: If package was already claimed and dropoff completed previously
-  // (e.g. tracking code 201 or opcode 59 is already active on upstream Anteraja)
-  const initialTrackCheck = await realVerifyTracking(awb, agentStaffId, token);
-  if (initialTrackCheck.verified) {
-    // If search didn't get names, attempt public tracking detail to populate shipper & receiver names
-    try {
-      const pubRes = await fetch('https://api.anteraja.id/order/tracking', {
-        method: 'POST',
-        headers: {
-          'mv': '1.2',
-          'source': 'aca_android',
-          'Content-Type': 'application/json; charset=UTF-8',
-          'User-Agent': 'okhttp/3.10.0',
-        },
-        body: JSON.stringify([{ codes: awb.trim() }]),
-      });
-      if (pubRes.ok) {
-        const pubData = await pubRes.json();
-        const detail = pubData.content?.[0]?.detail;
-        if (detail) {
-          if (shipperName === '-' && detail.sender?.name) shipperName = detail.sender.name;
-          if (receiverName === '-' && detail.receiver?.name) receiverName = detail.receiver.name;
-          if (destinationCity === '-' && detail.receiver?.address) destinationCity = detail.receiver.address;
-        }
-      }
-    } catch {
-      // ignore
-    }
-
+  // If task status indicates already completed or dropped off:
+  if (
+    maaTask?.taskStatus &&
+    (maaTask.taskStatus === 'WAITING_FOR_HANDOVER_SERAH' ||
+      maaTask.taskStatus === 'COMPLETED' ||
+      isAlreadyClaimedError(maaTask.taskStatus))
+  ) {
+    console.log(`[Phase 1] AWB ${awb} already completed previously with status:`, maaTask.taskStatus);
     return {
-      success: true,
+      success: false,
+      isAlreadyClaimed: true,
       awb,
       orderSource,
       claimKey,
       agentStaffId,
-      taskCode: existingTaskCode || 'ALREADY_CLAIMED',
+      taskCode: existingTaskCode,
       shipperName,
       receiverName,
       destinationCity,
       phase1Status: 'SUCCESS',
-      phase2Status: 'CLAIMED',
-      phase3Status: 'COMPLETED',
-      trackingCode: initialTrackCheck.trackingCode || '201',
-      opcode: initialTrackCheck.opcode || '59',
+      phase2Status: 'SKIPPED',
+      phase3Status: 'SKIPPED',
       trackingVerificationStatus: 'VERIFIED',
-      finalTaskStatus: 'WAITING_FOR_HANDOVER_SERAH',
-      finalResult: 'SUCCESS',
-      message: `Paket sudah berhasil diklaim sebelumnya (Tracking Code: ${initialTrackCheck.trackingCode || '201'}, Opcode: ${initialTrackCheck.opcode || '59'}). Status: WAITING_FOR_HANDOVER_SERAH`,
+      finalResult: 'FAILED',
+      message: 'Paket sudah pernah di-claim sebelumnya',
     };
   }
 
   if (!maaTask) {
     return {
       success: false,
+      isAlreadyClaimed: false,
       awb,
       agentStaffId,
       shipperName,
@@ -723,7 +773,7 @@ async function processFullClaimLifecycle(
       phase3Status: 'SKIPPED',
       trackingVerificationStatus: 'FAILED',
       finalResult: 'FAILED',
-      message: 'Pre-claim gagal: AWB tidak ditemukan dalam sistem Anteraja.',
+      message: 'AWB gagal di-claim',
     };
   }
 
@@ -744,28 +794,27 @@ async function processFullClaimLifecycle(
       taskCode = claimRes.taskCode || claimKey;
       phase2Status = 'CLAIMED';
     } catch (claimErr: any) {
-      const errMsg = claimErr.message || '';
-      if (errMsg.toLowerCase().includes('sudah pernah di klaim') || errMsg.toLowerCase().includes('already claimed')) {
-        phase2Status = 'CLAIMED';
-        taskCode = taskCode || claimKey;
-      } else {
-        return {
-          success: false,
-          awb,
-          orderSource,
-          claimKey,
-          agentStaffId,
-          shipperName,
-          receiverName,
-          destinationCity,
-          phase1Status: 'SUCCESS',
-          phase2Status: 'FAILED',
-          phase3Status: 'SKIPPED',
-          trackingVerificationStatus: 'FAILED',
-          finalResult: 'FAILED',
-          message: `Order Claim gagal: ${errMsg}`,
-        };
-      }
+      const errMsg = claimErr?.message || '';
+      console.warn(`[Phase 2] Claim AWB error for ${awb}:`, claimErr);
+      const isAlreadyClaimed = isAlreadyClaimedError(errMsg);
+      return {
+        success: false,
+        isAlreadyClaimed,
+        awb,
+        orderSource,
+        claimKey,
+        agentStaffId,
+        taskCode: taskCode || claimKey,
+        shipperName,
+        receiverName,
+        destinationCity,
+        phase1Status: 'SUCCESS',
+        phase2Status: 'FAILED',
+        phase3Status: 'SKIPPED',
+        trackingVerificationStatus: 'FAILED',
+        finalResult: 'FAILED',
+        message: isAlreadyClaimed ? 'Paket sudah pernah di-claim sebelumnya' : 'AWB gagal di-claim',
+      };
     }
   }
 
@@ -779,9 +828,12 @@ async function processFullClaimLifecycle(
     }
     phase3Status = 'COMPLETED';
   } catch (dropoffErr: any) {
-    console.error(`[Phase 3] Complete Dropoff failed for ${awb}:`, dropoffErr.message);
+    console.error(`[Phase 3] Complete Dropoff failed for ${awb}:`, dropoffErr);
+    const dropoffErrMsg = dropoffErr?.message || '';
+    const isAlreadyClaimed = isAlreadyClaimedError(dropoffErrMsg);
     return {
       success: false,
+      isAlreadyClaimed,
       awb,
       orderSource,
       claimKey,
@@ -794,102 +846,21 @@ async function processFullClaimLifecycle(
       phase2Status: 'CLAIMED',
       phase3Status: 'FAILED',
       trackingVerificationStatus: 'FAILED',
-      finalResult: 'INCOMPLETE',
-      message: `Order sudah diklaim (Task: ${taskCode || '-'}), namun gagal menyelesaikan dropoff: ${dropoffErr.message}`,
+      finalResult: 'FAILED',
+      message: isAlreadyClaimed ? 'Paket sudah pernah di-claim sebelumnya' : 'AWB gagal di-claim',
     };
   }
 
-  // ── PHASE 4: Verify Tracking (Tracking Code 201 & Opcode 59) ──
-  let trackingVerified = false;
-  let trackingCode: string | number | undefined = undefined;
-  let opcode: string | number | undefined = undefined;
-
-  for (let attempt = 1; attempt <= 5; attempt++) {
-    if (attempt > 1) {
-      await delay(attempt * 600);
-    }
-    if (IS_MOCK_MODE) {
-      trackingVerified = true;
-      trackingCode = '201';
-      opcode = '59';
-      break;
-    } else {
-      const trackRes = await realVerifyTracking(awb, agentStaffId, token);
-      if (trackRes.verified) {
-        trackingVerified = true;
-        trackingCode = trackRes.trackingCode;
-        opcode = trackRes.opcode;
-        break;
-      }
-    }
-  }
-
-  if (!trackingVerified) {
-    return {
-      success: false,
-      awb,
-      orderSource,
-      claimKey,
-      agentStaffId,
-      taskCode,
-      shipperName,
-      receiverName,
-      destinationCity,
-      phase1Status: 'SUCCESS',
-      phase2Status: 'CLAIMED',
-      phase3Status: 'COMPLETED',
-      trackingVerificationStatus: 'FAILED',
-      finalResult: 'VERIFICATION_FAILED',
-      message: 'Dropoff selesai, namun Tracking Code 201 belum terverifikasi dari upstream Anteraja.',
-    };
-  }
-
-  // ── PHASE 5: Verify Final Task Status (WAITING_FOR_HANDOVER_SERAH) ──
-  let finalStatusVerified = false;
-  let finalTaskStatus: string | undefined = undefined;
-
-  for (let attempt = 1; attempt <= 4; attempt++) {
-    if (attempt > 1) await delay(attempt * 500);
-    if (IS_MOCK_MODE) {
-      finalStatusVerified = true;
-      finalTaskStatus = 'WAITING_FOR_HANDOVER_SERAH';
-      break;
-    } else {
-      const finalRes = await realVerifyFinalTaskStatus(taskCode || '', awb, token);
-      if (finalRes.verified) {
-        finalStatusVerified = true;
-        finalTaskStatus = finalRes.taskStatus || 'WAITING_FOR_HANDOVER_SERAH';
-        break;
-      }
-    }
-  }
-
-  if (!finalStatusVerified) {
-    return {
-      success: false,
-      awb,
-      orderSource,
-      claimKey,
-      agentStaffId,
-      taskCode,
-      shipperName,
-      receiverName,
-      destinationCity,
-      phase1Status: 'SUCCESS',
-      phase2Status: 'CLAIMED',
-      phase3Status: 'COMPLETED',
-      trackingCode: trackingCode || '201',
-      opcode: opcode || '59',
-      trackingVerificationStatus: 'VERIFIED',
-      finalTaskStatus: finalTaskStatus || 'BELUM_SERAH',
-      finalResult: 'VERIFICATION_PENDING',
-      message: 'Tracking Code 201 terbit, namun final task status belum mencapai WAITING_FOR_HANDOVER_SERAH.',
-    };
-  }
-
-  // ── ALL 5 MILESTONES COMPLETE ──
+  // ── DIRECT SUCCESS AFTER DROPOFF COMPLETE (HTTP 200, status: 0, info: OK) ──
+  // Per requirements: Do not wait or request /tracking to determine success.
+  // Immediately consider Claim Drop-Off successful and set status info:
+  // - AWB
+  // - Status: Berhasil di-claim
+  // - Opcode: 59
+  // - Tracking Code: 201
   return {
     success: true,
+    isAlreadyClaimed: false,
     awb,
     orderSource,
     claimKey,
@@ -901,12 +872,12 @@ async function processFullClaimLifecycle(
     phase1Status: 'SUCCESS',
     phase2Status: 'CLAIMED',
     phase3Status: 'COMPLETED',
-    trackingCode: trackingCode || '201',
-    opcode: opcode || '59',
+    trackingCode: '201',
+    opcode: '59',
     trackingVerificationStatus: 'VERIFIED',
     finalTaskStatus: 'WAITING_FOR_HANDOVER_SERAH',
     finalResult: 'SUCCESS',
-    message: 'Paket berhasil diklaim, dropoff selesai, Tracking 201 & Opcode 59 terbit, dan status WAITING_FOR_HANDOVER_SERAH terverifikasi!',
+    message: 'AWB berhasil di-claim',
   };
 }
 

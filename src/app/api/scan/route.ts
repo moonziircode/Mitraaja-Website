@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
       return Response.json(
         {
           status: 'error',
-          message: 'Nomor AWB tidak valid. Harus tepat 14 digit angka numerik.',
+          isAlreadyClaimed: false,
+          message: 'AWB gagal di-claim',
           data: {
             awb: trimmedAwb,
             shipperName: '-',
@@ -49,12 +50,13 @@ export async function POST(request: NextRequest) {
     const agentStaffId = session.nia;
     const token = session.token || 'mock-token';
 
-    // Execute complete 5-phase claim lifecycle
+    // Execute complete claim lifecycle
     const result = await anterajaClient.processFullClaimLifecycle(trimmedAwb, agentStaffId, token);
 
     return Response.json(
       {
         status: result.success ? 'success' : 'error',
+        isAlreadyClaimed: result.isAlreadyClaimed || false,
         message: result.message,
         data: {
           awb: result.awb,
@@ -73,12 +75,20 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[POST /api/scan]', error);
 
+    const errMsg = error?.message || '';
+    const isAlreadyClaimed =
+      errMsg.toLowerCase().includes('sudah pernah di-claim') ||
+      errMsg.toLowerCase().includes('sudah pernah diklaim') ||
+      errMsg.toLowerCase().includes('sudah pernah di klaim') ||
+      errMsg.toLowerCase().includes('already claimed');
+
     return Response.json(
       {
         status: 'error',
-        message: error.message || 'Terjadi kesalahan pada server.',
+        isAlreadyClaimed,
+        message: isAlreadyClaimed ? 'Paket sudah pernah di-claim sebelumnya' : 'AWB gagal di-claim',
       },
-      { status: 500 },
+      { status: 200 },
     );
   }
 }

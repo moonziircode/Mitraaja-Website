@@ -17,6 +17,7 @@ interface HistoryItem {
   receiverName: string;
   destinationCity: string;
   status: 'success' | 'error';
+  isAlreadyClaimed?: boolean;
   message: string;
   timestamp: number;
   taskCode?: string;
@@ -27,6 +28,7 @@ interface HistoryItem {
 
 interface ScanResult {
   status: 'success' | 'error' | 'searching';
+  isAlreadyClaimed?: boolean;
   awb: string;
   message: string;
   shipperName: string;
@@ -151,7 +153,7 @@ export default function DashboardClient({ user }: { user: User }) {
       setScanResult({
         status: 'searching',
         awb: trimmed,
-        message: 'Mengecek & memproses seluruh lifecycle claim...',
+        message: 'Memproses claim...',
         shipperName: '-',
         receiverName: '-',
         destinationCity: '-',
@@ -164,10 +166,22 @@ export default function DashboardClient({ user }: { user: User }) {
           body: JSON.stringify({ awb: trimmed }),
         });
         const data = await res.json();
+        const isAlreadyClaimed = Boolean(
+          data.isAlreadyClaimed ||
+          (data.message && data.message.toLowerCase().includes('sudah pernah di-claim')) ||
+          (data.message && data.message.toLowerCase().includes('sudah pernah diklaim')) ||
+          (data.message && data.message.toLowerCase().includes('already claimed'))
+        );
+
         const result: ScanResult = {
           status: data.status,
+          isAlreadyClaimed,
           awb: data.data?.awb || trimmed,
-          message: data.message,
+          message: isAlreadyClaimed
+            ? 'Paket sudah pernah di-claim sebelumnya'
+            : data.status === 'success'
+            ? 'AWB berhasil di-claim'
+            : 'AWB gagal di-claim',
           shipperName: data.data?.shipperName || '-',
           receiverName: data.data?.receiverName || '-',
           destinationCity: data.data?.destinationCity || '-',
@@ -188,6 +202,7 @@ export default function DashboardClient({ user }: { user: User }) {
             receiverName: result.receiverName,
             destinationCity: result.destinationCity,
             status: result.status === 'success' ? 'success' : 'error',
+            isAlreadyClaimed: result.isAlreadyClaimed,
             message: result.message,
             timestamp: Date.now(),
             taskCode: result.taskCode,
@@ -197,11 +212,13 @@ export default function DashboardClient({ user }: { user: User }) {
           },
           ...prev,
         ]);
-      } catch {
+      } catch (err) {
+        console.error('[performClaim] Network Error:', err);
         setScanResult({
           status: 'error',
+          isAlreadyClaimed: false,
           awb: trimmed,
-          message: 'Gagal terhubung ke server.',
+          message: 'AWB gagal di-claim',
           shipperName: '-',
           receiverName: '-',
           destinationCity: '-',
@@ -634,28 +651,20 @@ export default function DashboardClient({ user }: { user: User }) {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h4 className="font-bold text-emerald-800 text-[13px] md:text-[15px]">Klaim Sukses Penuh</h4>
-                              <span className="text-[9px] md:text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">LIFECYCLE SELESAI</span>
+                              <h4 className="font-bold text-emerald-800 text-[13px] md:text-[15px]">AWB berhasil di-claim</h4>
+                              <span className="text-[9px] md:text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Berhasil di-claim</span>
                             </div>
                             <p className="text-xs md:text-sm font-mono font-bold text-emerald-700 mb-2 md:mb-3">{scanResult.awb}</p>
                             
-                            {/* 5 Milestone Verification Badges */}
+                            {/* Standardized Tracking & Opcode Badges */}
                             <div className="flex flex-wrap gap-1.5 mb-3">
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Task: {scanResult.taskCode || 'OK'}
+                                Tracking Code: 201
                               </span>
                               <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Dropoff Complete
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                Tracking 201 (Opcode 59)
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-white/80 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                {scanResult.finalStatus || 'WAITING_FOR_HANDOVER_SERAH'}
+                                Opcode: 59
                               </span>
                             </div>
 
@@ -679,15 +688,51 @@ export default function DashboardClient({ user }: { user: User }) {
                     )}
 
                     {scanResult.status === 'error' && (
-                      <div className="bg-rose-50 border border-rose-100 rounded-xl p-4 md:p-5">
+                      <div className={`border rounded-xl p-4 md:p-5 ${
+                        scanResult.isAlreadyClaimed
+                          ? 'bg-amber-50/70 border-amber-200'
+                          : 'bg-rose-50 border-rose-100'
+                      }`}>
                         <div className="flex items-start gap-3 md:gap-4">
-                          <div className="w-8 h-8 md:w-11 md:h-11 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-rose-600 text-lg md:text-2xl" style={FILL}>cancel</span>
+                          <div className={`w-8 h-8 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 ${
+                            scanResult.isAlreadyClaimed
+                              ? 'bg-amber-100'
+                              : 'bg-rose-100'
+                          }`}>
+                            <span className={`material-symbols-outlined text-lg md:text-2xl ${
+                              scanResult.isAlreadyClaimed
+                                ? 'text-amber-600'
+                                : 'text-rose-600'
+                            }`} style={FILL}>
+                              {scanResult.isAlreadyClaimed ? 'info' : 'cancel'}
+                            </span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-rose-800 text-[13px] md:text-[15px] mb-1">Klaim Gagal</h4>
-                            <p className="text-xs md:text-sm font-mono font-semibold text-rose-700 mb-2">{scanResult.awb}</p>
-                            <p className="text-[10px] md:text-xs text-rose-700 bg-rose-100/60 p-2 md:p-3 rounded-lg">{scanResult.message}</p>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h4 className={`font-bold text-[13px] md:text-[15px] ${
+                                scanResult.isAlreadyClaimed
+                                  ? 'text-amber-900'
+                                  : 'text-rose-800'
+                              }`}>
+                                {scanResult.isAlreadyClaimed
+                                  ? 'Paket sudah pernah di-claim sebelumnya'
+                                  : 'AWB gagal di-claim'}
+                              </h4>
+                              <span className={`text-[9px] md:text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                scanResult.isAlreadyClaimed
+                                  ? 'text-amber-800 bg-amber-100 border border-amber-200'
+                                  : 'text-rose-700 bg-rose-100'
+                              }`}>
+                                {scanResult.isAlreadyClaimed ? 'Sudah Di-Claim' : 'Gagal Di-Claim'}
+                              </span>
+                            </div>
+                            <p className={`text-xs md:text-sm font-mono font-semibold ${
+                              scanResult.isAlreadyClaimed
+                                ? 'text-amber-800'
+                                : 'text-rose-700'
+                            }`}>
+                              {scanResult.awb}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -767,11 +812,25 @@ export default function DashboardClient({ user }: { user: User }) {
                                 className={`inline-flex items-center gap-1 px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-full text-[9px] md:text-[10px] font-bold ${
                                   item.status === 'success'
                                     ? 'bg-emerald-50 text-emerald-700'
+                                    : item.isAlreadyClaimed
+                                    ? 'bg-amber-50 text-amber-700'
                                     : 'bg-rose-50 text-rose-700'
                                 }`}
                               >
-                                <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'success' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                <span className="hidden sm:inline">{item.status === 'success' ? 'SUKSES' : 'GAGAL'}</span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  item.status === 'success'
+                                    ? 'bg-emerald-500'
+                                    : item.isAlreadyClaimed
+                                    ? 'bg-amber-500'
+                                    : 'bg-rose-500'
+                                }`} />
+                                <span className="hidden sm:inline">
+                                  {item.status === 'success'
+                                    ? 'SUKSES'
+                                    : item.isAlreadyClaimed
+                                    ? 'SUDAH DI-CLAIM'
+                                    : 'GAGAL'}
+                                </span>
                               </span>
                             </td>
                           </tr>

@@ -12,6 +12,7 @@ interface User {
 interface ClaimItem {
   awb: string;
   status: 'pending' | 'success' | 'error';
+  isAlreadyClaimed?: boolean;
   message?: string;
   taskCode?: string;
   trackingCode?: string | number;
@@ -78,10 +79,20 @@ export default function ClaimClient({ user }: { user: User }) {
         const resultItems = claimItems.map(item => {
           const match = data.results.find((o: any) => o.awb === item.awb);
           if (match) {
+            const isAlreadyClaimed = Boolean(
+              match.is_already_claimed ||
+              (match.claim_message && match.claim_message.toLowerCase().includes('sudah pernah di-claim')) ||
+              (match.claim_message && match.claim_message.toLowerCase().includes('sudah pernah diklaim'))
+            );
             return {
               ...item,
               status: match.success ? ('success' as const) : ('error' as const),
-              message: match.claim_message,
+              isAlreadyClaimed,
+              message: match.success
+                ? 'AWB berhasil di-claim'
+                : isAlreadyClaimed
+                ? 'Paket sudah pernah di-claim sebelumnya'
+                : 'AWB gagal di-claim',
               taskCode: match.task_code,
               trackingCode: match.tracking_code,
               finalStatus: match.final_task_status,
@@ -98,7 +109,8 @@ export default function ClaimClient({ user }: { user: User }) {
             return {
               ...item,
               status: 'error',
-              message: data.message || 'Request failed',
+              isAlreadyClaimed: false,
+              message: 'AWB gagal di-claim',
             };
           }
           return item;
@@ -110,7 +122,8 @@ export default function ClaimClient({ user }: { user: User }) {
           return {
             ...item,
             status: 'error',
-            message: 'Koneksi terputus',
+            isAlreadyClaimed: false,
+            message: 'AWB gagal di-claim',
           };
         }
         return item;
@@ -271,9 +284,15 @@ export default function ClaimClient({ user }: { user: User }) {
                                 </span>
                               )}
                               {item.status === 'error' && (
-                                <span className="flex items-center gap-1 text-[10px] font-bold text-primary bg-primary-light/10 px-2 py-0.5 rounded-full border border-primary-light/20">
-                                  <span className="material-symbols-outlined text-[12px]" style={FILL}>error</span>
-                                  GAGAL
+                                <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  item.isAlreadyClaimed
+                                    ? 'text-amber-700 bg-amber-50 border-amber-200'
+                                    : 'text-primary bg-primary-light/10 border-primary-light/20'
+                                }`}>
+                                  <span className="material-symbols-outlined text-[12px]" style={FILL}>
+                                    {item.isAlreadyClaimed ? 'info' : 'error'}
+                                  </span>
+                                  {item.isAlreadyClaimed ? 'SUDAH DI-CLAIM' : 'GAGAL'}
                                 </span>
                               )}
                               {item.status === 'pending' && (
@@ -285,23 +304,27 @@ export default function ClaimClient({ user }: { user: User }) {
                             </div>
                           </div>
 
-                          {/* Extra info for success or failure */}
+                          {/* Status and Badges */}
                           {item.status === 'success' && (
                             <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[9px] text-emerald-700">
-                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-mono">
-                                Task: {item.taskCode || 'OK'}
+                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-semibold">
+                                Berhasil di-claim
                               </span>
                               <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-mono">
-                                Tracking 201
+                                Tracking Code: 201
                               </span>
-                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded">
-                                {item.finalStatus || 'WAITING_FOR_HANDOVER_SERAH'}
+                              <span className="bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded font-mono">
+                                Opcode: 59
                               </span>
                             </div>
                           )}
 
                           {item.status === 'error' && item.message && (
-                            <p className="mt-1 text-[10px] text-primary bg-primary/5 px-2 py-1 rounded">
+                            <p className={`mt-1 text-[10px] px-2 py-1 rounded font-medium ${
+                              item.isAlreadyClaimed
+                                ? 'text-amber-800 bg-amber-50/80 border border-amber-100'
+                                : 'text-primary bg-primary/5'
+                            }`}>
                               {item.message}
                             </p>
                           )}
