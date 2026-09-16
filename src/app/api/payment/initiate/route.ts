@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { isOrderVoided } from '@/lib/voided-orders-db';
 
 export const preferredRegion = 'sin1';
 
@@ -41,6 +42,13 @@ export async function POST(request: NextRequest) {
     if (!taskCode || !deliveryPrice) {
       return NextResponse.json(
         { success: false, message: 'taskCode dan deliveryPrice wajib diisi.' },
+        { status: 400 }
+      );
+    }
+
+    if (await isOrderVoided(taskCode)) {
+      return NextResponse.json(
+        { success: false, message: 'Pesanan ini telah dibatalkan/dihapus dan tidak dapat dilanjutkan ke pembayaran.' },
         { status: 400 }
       );
     }

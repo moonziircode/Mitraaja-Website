@@ -31,7 +31,7 @@ interface TaskDetailModalProps {
   onClose: () => void;
   tasklist: MaaTaskList | null;
   activeTab: string; // "TERTUNDA" | "RIWAYAT_ORDER"
-  onActionSuccess?: () => void;
+  onActionSuccess?: (code?: string) => void;
 }
 
 export default function TaskDetailModal({ 
@@ -183,7 +183,7 @@ export default function TaskDetailModal({
       if (response.data.success) {
         alert("Pesanan berhasil dibatalkan dan dihapus.");
         onClose();
-        if (onActionSuccess) onActionSuccess();
+        if (onActionSuccess) onActionSuccess(codeToVoid);
       } else {
         alert(response.data.message || "Gagal membatalkan pesanan.");
       }

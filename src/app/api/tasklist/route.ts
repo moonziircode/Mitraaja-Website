@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import axios from "axios";
+import { getVoidedTaskCodes } from "@/lib/voided-orders-db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -103,6 +104,35 @@ export async function GET(request: NextRequest) {
       
       // Sort descending by createdAt
       allTasks.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }
+
+    // Filter out voided and cancelled tasks permanently
+    try {
+      const voidedCodes = await getVoidedTaskCodes(session.nia);
+      allTasks = allTasks.filter(t => {
+        const code = (t.task_code || t.taskCode || t.booking_id || t.bookingId || "").trim();
+        const waybill = (t.waybill_no || t.waybillNo || t.waybill || "").trim();
+
+        // 1. Check if explicitly marked as voided in DB
+        if (code && voidedCodes.has(code)) return false;
+        if (waybill && voidedCodes.has(waybill)) return false;
+
+        // 2. Check task status strings
+        const status = String(t.task_status || t.taskStatus || t.status || "").toUpperCase();
+        if (
+          status.includes("VOID") || 
+          status.includes("CANCEL") || 
+          status.includes("DELETE") || 
+          status.includes("REMOVE") || 
+          status.includes("EXPIRED")
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    } catch (filterErr) {
+      console.error("[GET Tasklist] Filter voided tasks error:", filterErr);
     }
 
     // Regroup if requested

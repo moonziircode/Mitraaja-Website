@@ -104,6 +104,23 @@ export default function OrdersClient({ user }: OrdersClientProps) {
     };
   }, [handleObserver]);
 
+  const handleActionSuccess = (removedCode?: string) => {
+    if (removedCode) {
+      setTasks((prev) => {
+        return prev
+          .map((group) => {
+            const filteredTasks = (group.tasks || []).filter((t: any) => {
+              const code = (t.task_code || t.taskCode || t.booking_id || t.bookingId || t.waybill_no || t.waybillNo || "").trim();
+              return code !== removedCode.trim();
+            });
+            return { ...group, tasks: filteredTasks };
+          })
+          .filter((group) => group.tasks.length > 0);
+      });
+    }
+    fetchTasks(true, true);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar user={user} />
@@ -163,7 +180,7 @@ export default function OrdersClient({ user }: OrdersClientProps) {
                 key={index} 
                 tasklist={task} 
                 onClickDetail={() => openDetail(task)} 
-                onActionSuccess={() => fetchTasks(true)}
+                onActionSuccess={handleActionSuccess}
               />
             ))}
 
@@ -192,7 +209,7 @@ export default function OrdersClient({ user }: OrdersClientProps) {
             onClose={() => setIsModalOpen(false)}
             tasklist={selectedTask}
             activeTab={"RIWAYAT_ORDER"}
-            onActionSuccess={() => fetchTasks(true)}
+            onActionSuccess={handleActionSuccess}
           />
         </div>
       </main>

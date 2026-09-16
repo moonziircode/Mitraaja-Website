@@ -10,7 +10,7 @@ import PaymentModal from "@/components/PaymentModal";
 interface RiwayatOrderCardProps {
   tasklist: MaaTaskList;
   onClickDetail: () => void;
-  onActionSuccess?: () => void;
+  onActionSuccess?: (code?: string) => void;
 }
 
 export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSuccess }: RiwayatOrderCardProps) {
@@ -86,7 +86,7 @@ export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSucc
       });
       if (response.data.success) {
         alert("Berhasil membatalkan kode booking.");
-        if (onActionSuccess) onActionSuccess();
+        if (onActionSuccess) onActionSuccess(bookingCode);
       } else {
         alert(response.data.message || "Gagal membatalkan kode booking.");
       }
