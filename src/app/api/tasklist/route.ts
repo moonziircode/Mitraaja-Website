@@ -82,17 +82,32 @@ export async function GET(request: NextRequest) {
       const activeTasks = await fetchTasks(`${baseUrl}/maa-task/order/v2/task/dropoff`, queryParams);
       const delayTasks = await fetchTasks(`${baseUrl}/maa-task/order/v2/task/dropoff/on-hold`, queryParams);
       
-      // Merge and deduplicate by task_code
+      // Merge and deduplicate by waybill, task_code, or order_code
       const taskMap = new Map();
       [...activeTasks, ...delayTasks].forEach(t => {
-        if (t.task_code && !taskMap.has(t.task_code)) {
-          taskMap.set(t.task_code, t);
+        const key = (t.waybill || t.waybill_no || t.waybillNo || t.order_code || t.task_code || t.taskCode || t.booking_id || "").trim();
+        if (key && !taskMap.has(key)) {
+          taskMap.set(key, t);
+        } else if (!key) {
+          taskMap.set(Math.random().toString(), t);
         }
       });
       allTasks = Array.from(taskMap.values());
       
-      // Sort descending by createdAt
-      allTasks.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      // STRICT FILTER: Menu Tertunda ONLY displays tasks with WAITING_FOR_HANDOVER_SERAH
+      allTasks = allTasks.filter(t => {
+        const status = String(
+          t.order_status || t.orderStatus || t.task_status || t.taskStatus || t.status || ""
+        ).trim().toUpperCase();
+        return status === "WAITING_FOR_HANDOVER_SERAH";
+      });
+
+      // Sort descending by created time
+      allTasks.sort((a, b) => {
+        const timeA = new Date(a.created_timestamp || a.createdAt || a.created_at || a.order_time || 0).getTime();
+        const timeB = new Date(b.created_timestamp || b.createdAt || b.created_at || b.order_time || 0).getTime();
+        return timeB - timeA;
+      });
 
     } else if (state === "RIWAYAT_ORDER") {
       // Fetch history and filter for unpaid bookings
@@ -110,7 +125,7 @@ export async function GET(request: NextRequest) {
     try {
       const voidedCodes = await getVoidedTaskCodes(session.nia);
       allTasks = allTasks.filter(t => {
-        const code = (t.task_code || t.taskCode || t.booking_id || t.bookingId || "").trim();
+        const code = (t.task_code || t.taskCode || t.booking_id || t.bookingId || t.order_code || "").trim();
         const waybill = (t.waybill_no || t.waybillNo || t.waybill || "").trim();
 
         // 1. Check if explicitly marked as voided in DB
@@ -118,7 +133,7 @@ export async function GET(request: NextRequest) {
         if (waybill && voidedCodes.has(waybill)) return false;
 
         // 2. Check task status strings
-        const status = String(t.task_status || t.taskStatus || t.status || "").toUpperCase();
+        const status = String(t.order_status || t.orderStatus || t.task_status || t.taskStatus || t.status || "").toUpperCase();
         if (
           status.includes("VOID") || 
           status.includes("CANCEL") || 
@@ -140,14 +155,15 @@ export async function GET(request: NextRequest) {
     if (grouped === "true") {
       const groupedMap = new Map<string, any>();
       for (const task of allTasks) {
-        const groupKey = task.group || `${task.order_source}-${task.ownership_name || task.client_name}`;
+        const storeName = task.store_name || task.storeName || task.ownership_name || task.client_name || "Mitra";
+        const groupKey = task.group || `${task.order_source || "DROPOFF"}-${storeName}`;
         if (!groupedMap.has(groupKey)) {
           groupedMap.set(groupKey, {
-            client_name: task.client_name,
-            order_source: task.order_source,
-            group: task.group,
-            owner_name: task.ownership_name,
-            owner_phone: task.ownership_phone,
+            client_name: task.client_name || storeName,
+            order_source: task.order_source || "DROPOFF",
+            group: task.group || groupKey,
+            owner_name: storeName,
+            owner_phone: task.ownership_phone || task.shipper_phone || "-",
             tasks: []
           });
         }
