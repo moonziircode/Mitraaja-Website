@@ -151,7 +151,7 @@ export default function TasklistClient({ user }: TasklistClientProps) {
                   Real-time
                 </span>
               </h1>
-              <p className="text-gray-500 mt-1">Daftar paket berstatus WAITING_FOR_HANDOVER_SERAH</p>
+              <p className="text-gray-500 mt-1">Daftar paket tertunda</p>
             </div>
             <button
               onClick={() => fetchTasks(true, false)}
@@ -210,7 +210,7 @@ export default function TasklistClient({ user }: TasklistClientProps) {
                 <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-gray-800">Tidak ada paket tertunda</h3>
                 <p className="text-gray-500 mt-1 max-w-xs mx-auto text-sm">
-                  Saat ini tidak ada paket dengan status WAITING_FOR_HANDOVER_SERAH.
+                  Saat ini tidak ada paket tertunda.
                 </p>
               </div>
             )}

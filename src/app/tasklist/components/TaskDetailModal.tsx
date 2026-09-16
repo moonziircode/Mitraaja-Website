@@ -333,7 +333,11 @@ export default function TaskDetailModal({
                     {getVal(t.service_type || t.serviceType || t.product_code || "REG")}
                   </span>
                   <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs font-bold border border-amber-200">
-                    {getVal(t.order_status || t.orderStatus || t.task_status || "WAITING_FOR_HANDOVER_SERAH")}
+                    {(() => {
+                      const st = t.order_status || t.orderStatus || t.task_status || "";
+                      if (!st || st === "WAITING_FOR_HANDOVER_SERAH") return "Tertunda";
+                      return st;
+                    })()}
                   </span>
                 </div>
               </div>

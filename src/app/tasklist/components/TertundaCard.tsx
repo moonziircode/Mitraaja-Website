@@ -66,7 +66,7 @@ export default function TertundaCard({ tasklist, onClickDetail, onPrint }: Tertu
   ).trim();
   
   // Strict status for Menu Tertunda
-  const status = "WAITING_FOR_HANDOVER_SERAH";
+  const status = "Tertunda";
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
