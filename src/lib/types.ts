@@ -5,20 +5,28 @@ export interface ContactInfo {
   district: string;
   postalCode: string;
   districtCode?: string;
+  province?: string;
+  city?: string;
+  districtName?: string;
+  subdistrict?: string;
   latitude?: number | null;
   longitude?: number | null;
+  geoloc?: string | null;
 }
 
 export interface PackageInfo {
   itemName: string;
   category: string;
+  itemDesc?: string;
   weight: number; // in kg
   dimensions: {
     length: number; // in cm
     width: number;  // in cm
     height: number; // in cm
   };
-  value: number; // item value in IDR
+  value: number; // item value in IDR (declared value)
+  fragile?: boolean;
+  note?: string;
 }
 
 export interface ServiceInfo {
@@ -36,4 +44,8 @@ export interface CreateOrderPayload {
   recipient: ContactInfo;
   package: PackageInfo;
   selectedService: ServiceInfo;
+  note?: string;
+  promoCode?: string;
+  promoAmount?: number;
+  totalPrice?: number;
 }

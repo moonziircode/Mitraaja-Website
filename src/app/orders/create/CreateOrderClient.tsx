@@ -278,11 +278,16 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
     setSender(prev => ({
       ...prev,
+      province: region.province.name,
+      city: region.city.name,
+      districtName: region.district.name,
+      subdistrict: region.subdistrict.name,
       district: `Kec. ${region.district.name}, ${region.city.name}, ${region.province.name}`,
       districtCode: region.subdistrict.districtCode || region.district.code,
       postalCode: region.subdistrict.postalCode,
       latitude: isDifferentDistrict ? null : prev.latitude,
       longitude: isDifferentDistrict ? null : prev.longitude,
+      geoloc: isDifferentDistrict ? null : (prev.latitude && prev.longitude ? `${prev.latitude},${prev.longitude}` : prev.geoloc),
     }));
 
     if (appliedPromo) {
@@ -301,11 +306,16 @@ export default function CreateOrderClient({ user }: { user: User }) {
 
     setRecipient(prev => ({
       ...prev,
+      province: region.province.name,
+      city: region.city.name,
+      districtName: region.district.name,
+      subdistrict: region.subdistrict.name,
       district: `Kec. ${region.district.name}, ${region.city.name}, ${region.province.name}`,
       districtCode: region.subdistrict.districtCode || region.district.code,
       postalCode: region.subdistrict.postalCode,
       latitude: isDifferentDistrict ? null : prev.latitude,
       longitude: isDifferentDistrict ? null : prev.longitude,
+      geoloc: isDifferentDistrict ? null : (prev.latitude && prev.longitude ? `${prev.latitude},${prev.longitude}` : prev.geoloc),
     }));
 
     if (appliedPromo) {
@@ -318,7 +328,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setSender(prev => ({
       ...prev,
       latitude: coords.latitude,
-      longitude: coords.longitude
+      longitude: coords.longitude,
+      geoloc: `${coords.latitude},${coords.longitude}`
     }));
   };
 
@@ -326,7 +337,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setRecipient(prev => ({
       ...prev,
       latitude: coords.latitude,
-      longitude: coords.longitude
+      longitude: coords.longitude,
+      geoloc: `${coords.latitude},${coords.longitude}`
     }));
   };
 
@@ -887,13 +899,16 @@ export default function CreateOrderClient({ user }: { user: User }) {
   const [packageInfo, setPackageInfo] = useState<PackageInfo>({
     itemName: '',
     category: '',
+    itemDesc: '',
     weight: 0, // kg
     dimensions: {
       length: 0, // cm
       width: 0,
       height: 0
     },
-    value: 0 // Rp
+    value: 0, // Rp
+    fragile: false,
+    note: ''
   });
 
   // ── Chargeable Weight Calculation ──
@@ -972,6 +987,24 @@ export default function CreateOrderClient({ user }: { user: User }) {
         return;
       }
 
+      if (sender.name.trim().length < 2) {
+        alert('Nama pengirim terlalu pendek (minimal 2 karakter).');
+        return;
+      }
+      if (recipient.name.trim().length < 2) {
+        alert('Nama penerima terlalu pendek (minimal 2 karakter).');
+        return;
+      }
+
+      if (sender.address.trim().length < 10) {
+        alert('Alamat pengirim terlalu singkat (minimal 10 karakter untuk kejelasan kurir).');
+        return;
+      }
+      if (recipient.address.trim().length < 10) {
+        alert('Alamat penerima terlalu singkat (minimal 10 karakter untuk kejelasan kurir).');
+        return;
+      }
+
       // Duplicate Detection
       if (
         sender.name.toLowerCase().trim() === recipient.name.toLowerCase().trim() &&
@@ -992,7 +1025,6 @@ export default function CreateOrderClient({ user }: { user: User }) {
         return;
       }
 
-
       // Validate phone numbers (must be numeric and between 9 to 14 digits)
       const phoneRegex = /^\d{9,14}$/;
       if (!phoneRegex.test(sender.phone.trim())) {
@@ -1010,6 +1042,11 @@ export default function CreateOrderClient({ user }: { user: User }) {
       if (!packageInfo.itemName.trim() || !packageInfo.category || packageInfo.weight <= 0 ||
           packageInfo.dimensions.length <= 0 || packageInfo.dimensions.width <= 0 || packageInfo.dimensions.height <= 0) {
         alert('Mohon lengkapi seluruh detail paket (berat & dimensi harus lebih dari 0).');
+        return;
+      }
+
+      if (!packageInfo.value || packageInfo.value <= 0) {
+        alert('Mohon isi perkiraan nilai barang (harus lebih dari Rp 0).');
         return;
       }
 
@@ -1146,14 +1183,38 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setOrderError(null);
 
     try {
+      const senderPayload = {
+        ...sender,
+        province: sender.province || senderProvince,
+        city: sender.city || senderCity,
+        districtName: sender.districtName || senderKecamatan,
+        subdistrict: sender.subdistrict || senderKelurahan?.name,
+        geoloc: sender.geoloc || (sender.latitude && sender.longitude ? `${sender.latitude},${sender.longitude}` : undefined),
+      };
+
+      const recipientPayload = {
+        ...recipient,
+        province: recipient.province || recipientProvince,
+        city: recipient.city || recipientCity,
+        districtName: recipient.districtName || recipientKecamatan,
+        subdistrict: recipient.subdistrict || recipientKelurahan?.name,
+        geoloc: recipient.geoloc || (recipient.latitude && recipient.longitude ? `${recipient.latitude},${recipient.longitude}` : undefined),
+      };
+
       const res = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender,
-          recipient,
+          sender: senderPayload,
+          recipient: recipientPayload,
           package: packageInfo,
           selectedService,
+          note: packageInfo.note || undefined,
+          promoCode: appliedPromo ? appliedPromo.promo_code : undefined,
+          promoAmount: appliedPromo ? appliedPromo.total_promo : 0,
+          totalPrice: appliedPromo 
+            ? Math.max(0, (selectedService?.delivery_price || 0) - appliedPromo.total_promo) 
+            : (selectedService?.delivery_price || 0),
         })
       });
 
@@ -1190,8 +1251,8 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setOrderTaskCode(null);
     
     // Clear states
-    setSender({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '' });
-    setRecipient({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '' });
+    setSender({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '', province: '', city: '', districtName: '', subdistrict: '', latitude: null, longitude: null, geoloc: null });
+    setRecipient({ name: '', phone: '', address: '', district: '', postalCode: '', districtCode: '', province: '', city: '', districtName: '', subdistrict: '', latitude: null, longitude: null, geoloc: null });
     setSenderProvince('');
     setSenderCity('');
     setSenderKecamatan('');
@@ -1200,7 +1261,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
     setRecipientCity('');
     setRecipientKecamatan('');
     setRecipientKelurahan(null);
-    setPackageInfo({ itemName: '', category: '', weight: 0, dimensions: { length: 0, width: 0, height: 0 }, value: 0 });
+    setPackageInfo({ itemName: '', category: '', itemDesc: '', weight: 0, dimensions: { length: 0, width: 0, height: 0 }, value: 0, fragile: false, note: '' });
     localStorage.removeItem('mitraaja_draft_order');
   };
 
@@ -1659,6 +1720,45 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           />
                         </div>
                       </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                          Deskripsi / Keterangan Barang (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Kemeja katun ukuran L warna navy"
+                          className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
+                          value={packageInfo.itemDesc || ''}
+                          onChange={(e) => setPackageInfo({ ...packageInfo, itemDesc: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2.5 p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                        <input
+                          type="checkbox"
+                          id="fragile-check"
+                          className="w-4 h-4 text-primary border-gray-200 rounded focus:ring-primary/20 cursor-pointer"
+                          checked={Boolean(packageInfo.fragile)}
+                          onChange={(e) => setPackageInfo({ ...packageInfo, fragile: e.target.checked })}
+                        />
+                        <label htmlFor="fragile-check" className="text-xs font-bold text-amber-900 cursor-pointer select-none">
+                          ⚠️ Tandai sebagai Barang Mudah Pecah (Fragile)
+                        </label>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                          Catatan Pengiriman / Instruksi Khusus (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Contoh: Titipkan di pos satpam jika tidak ada orang"
+                          className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
+                          value={packageInfo.note || ''}
+                          onChange={(e) => setPackageInfo({ ...packageInfo, note: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     {/* LIVE WEIGHT SUMMARY CARDS */}
@@ -1833,29 +1933,71 @@ export default function CreateOrderClient({ user }: { user: User }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* SUMMARY DETAILS */}
                     <div className="space-y-4 text-sm">
-                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-3">
                         <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-1.5 text-xs uppercase tracking-wider text-gray-500">
                           Rincian Rute & Kontak
                         </h4>
-                        <p className="text-gray-800">
-                          <strong>Pengirim:</strong> {sender.name} ({sender.phone}) <br />
-                          <span className="text-xs text-gray-500 font-semibold">{sender.address}, Kec. {sender.district}</span>
-                        </p>
-                        <p className="text-gray-800 pt-1">
-                          <strong>Penerima:</strong> {recipient.name} ({recipient.phone}) <br />
-                          <span className="text-xs text-gray-500 font-semibold">{recipient.address}, Kec. {recipient.district}</span>
-                        </p>
+                        <div>
+                          <p className="text-gray-800">
+                            <strong>Pengirim:</strong> {sender.name} ({sender.phone})
+                          </p>
+                          <p className="text-xs text-gray-600 mt-0.5">{sender.address}</p>
+                          <p className="text-[11px] text-gray-400 font-semibold mt-0.5">
+                            {sender.subdistrict ? `Kel. ${sender.subdistrict}, ` : ''}{sender.districtName ? `Kec. ${sender.districtName}, ` : ''}{sender.city || senderCity}, {sender.province || senderProvince} ({sender.postalCode})
+                          </p>
+                          {(sender.geoloc || (sender.latitude && sender.longitude)) && (
+                            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                              📍 Titik Koordinat GPS Terverifikasi
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-gray-200">
+                          <p className="text-gray-800">
+                            <strong>Penerima:</strong> {recipient.name} ({recipient.phone})
+                          </p>
+                          <p className="text-xs text-gray-600 mt-0.5">{recipient.address}</p>
+                          <p className="text-[11px] text-gray-400 font-semibold mt-0.5">
+                            {recipient.subdistrict ? `Kel. ${recipient.subdistrict}, ` : ''}{recipient.districtName ? `Kec. ${recipient.districtName}, ` : ''}{recipient.city || recipientCity}, {recipient.province || recipientProvince} ({recipient.postalCode})
+                          </p>
+                          {(recipient.geoloc || (recipient.latitude && recipient.longitude)) && (
+                            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                              📍 Titik Koordinat GPS Terverifikasi
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2">
                         <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-1.5 text-xs uppercase tracking-wider text-gray-500">
                           Rincian Paket & Layanan
                         </h4>
-                        <p className="text-gray-800 flex justify-between">
-                          <span>Barang: {packageInfo.itemName}</span>
-                          <span className="font-semibold text-xs bg-gray-200/60 px-2 py-0.5 rounded-lg text-gray-600">{packageInfo.category}</span>
-                        </p>
+                        <div className="flex justify-between items-start gap-2">
+                          <div>
+                            <span className="font-bold text-gray-800 text-sm block">{packageInfo.itemName}</span>
+                            {packageInfo.itemDesc && (
+                              <p className="text-xs text-gray-500">{packageInfo.itemDesc}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="font-semibold text-xs bg-gray-200/60 px-2 py-0.5 rounded-lg text-gray-600">{packageInfo.category}</span>
+                            {packageInfo.fragile && (
+                              <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">⚠️ Fragile</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {packageInfo.note && (
+                          <p className="text-xs text-gray-600 bg-amber-50/60 border border-amber-100 p-2 rounded-lg italic">
+                            <strong>Instruksi Kurir:</strong> &ldquo;{packageInfo.note}&rdquo;
+                          </p>
+                        )}
+
                         <div className="bg-white border border-gray-100 rounded-lg p-3 text-xs space-y-1 mt-2 shadow-sm">
+                          <div className="flex justify-between text-gray-500">
+                            <span>Nilai Barang (Declared Value)</span>
+                            <span className="font-semibold text-gray-800">Rp {(packageInfo.value || 0).toLocaleString('id-ID')}</span>
+                          </div>
                           <div className="flex justify-between text-gray-500">
                             <span>Berat Aktual</span>
                             <span>{packageInfo.weight} kg</span>
@@ -1871,7 +2013,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                         </div>
                         <p className="text-gray-800 mt-3 flex justify-between items-center">
                           <strong>Layanan Terpilih:</strong> 
-                          <span className="font-bold text-sm">{selectedService?.product_name}</span>
+                          <span className="font-bold text-sm text-pink-600">{selectedService?.product_name}</span>
                         </p>
                       </div>
                     </div>
