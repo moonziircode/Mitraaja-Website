@@ -18,6 +18,8 @@ export default async function RatesCheckPage() {
   const user = {
     name: session.name,
     nia: session.nia,
+    districtCode: session.districtCode,
+    storeName: session.storeName,
   };
 
   return <RatesClient user={user} />;

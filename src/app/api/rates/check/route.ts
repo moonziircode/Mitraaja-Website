@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { anterajaClient } from '@/lib/anteraja-client';
 import { getSession } from '@/lib/auth';
+import { getAllActivePromos, getPromoByCode } from '@/lib/promo-db';
+import { calculatePromoDiscount, rankEligiblePromos } from '@/lib/promo-engine';
 
 export const preferredRegion = 'sin1';
 
@@ -9,12 +11,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { origin, destination, weight, originCode, destinationCode } = body as {
+    const { origin, destination, weight, originCode, destinationCode, promoCode } = body as {
       origin: string;
       destination: string;
       weight: number;
       originCode?: string;
       destinationCode?: string;
+      promoCode?: string;
     };
 
     if (!origin || !destination || !weight) {
@@ -39,11 +42,103 @@ export async function POST(request: NextRequest) {
     const originCodeFinal = resolveCode(originCode || origin);
     const destinationCodeFinal = resolveCode(destinationCode || destination);
 
+    // Helper to enrich rates with authoritative promo engine calculations
+    const enrichRatesWithPromos = async (rawRates: any[]) => {
+      const mitraLocation = session.districtCode || undefined;
+      let allActivePromos: any[] = [];
+      try {
+        allActivePromos = await getAllActivePromos();
+      } catch (dbErr) {
+        console.error('[Rates Check] Failed to fetch active promos:', dbErr);
+      }
+
+      let specificPromo: any = null;
+      let promoErrorMsg: string | null = null;
+      const cleanPromoCode = (promoCode || '').trim().toLowerCase();
+
+      if (cleanPromoCode) {
+        try {
+          specificPromo = await getPromoByCode(cleanPromoCode);
+          if (!specificPromo) {
+            promoErrorMsg = `Kode promo "${promoCode}" tidak ditemukan.`;
+          }
+        } catch (err: any) {
+          promoErrorMsg = 'Gagal memvalidasi kode promo.';
+        }
+      }
+
+      const enriched = rawRates.map((rate: any) => {
+        const shippingCost = Number(rate.delivery_price) || 0;
+
+        // Rank eligible promos for this specific service
+        const eligiblePromos = rankEligiblePromos(allActivePromos, {
+          shippingCost,
+          mitraLocation,
+          origin: originCodeFinal,
+          destination: destinationCodeFinal,
+        });
+
+        const recommendedPromo = eligiblePromos.length > 0 ? eligiblePromos[0] : null;
+
+        let appliedPromoData: any = null;
+        let ratePromoError: string | null = promoErrorMsg;
+
+        if (specificPromo) {
+          const calc = calculatePromoDiscount({
+            promo: specificPromo,
+            shippingCost,
+            mitraLocation,
+            origin: originCodeFinal,
+            destination: destinationCodeFinal,
+          });
+
+          if (calc.eligible) {
+            appliedPromoData = {
+              promo_code: specificPromo.code,
+              promo_name: specificPromo.name,
+              discount_amount: calc.finalDiscount,
+              final_price: calc.finalShippingCost,
+              discount_percentage: calc.discountPercentage,
+              max_discount: calc.maxDiscount,
+            };
+            ratePromoError = null;
+          } else {
+            ratePromoError = calc.ineligibleReason || 'Kode promo tidak memenuhi syarat untuk rute ini.';
+          }
+        }
+
+        return {
+          ...rate,
+          applied_promo: appliedPromoData,
+          promo_error: ratePromoError,
+          eligible_promos: eligiblePromos,
+          recommended_promo: recommendedPromo,
+        };
+      });
+
+      const primary = enriched[0] || null;
+      return {
+        rates: enriched,
+        applied_promo: primary?.applied_promo || null,
+        promo_error: primary?.promo_error || promoErrorMsg,
+        eligible_promos: primary?.eligible_promos || [],
+        recommended_promo: primary?.recommended_promo || null,
+      };
+    };
+
     // If active session token is present, fetch real rates
     if (session.isLoggedIn && session.token && !session.token.startsWith('mock-token')) {
       try {
         const rates = await anterajaClient.getRates(originCodeFinal, destinationCodeFinal, weight, session.token);
-        return NextResponse.json({ success: true, content: rates });
+        const promoResult = await enrichRatesWithPromos(rates);
+        return NextResponse.json({
+          success: true,
+          content: promoResult.rates,
+          applied_promo: promoResult.applied_promo,
+          promo_error: promoResult.promo_error,
+          eligible_promos: promoResult.eligible_promos,
+          recommended_promo: promoResult.recommended_promo,
+        });
       } catch (err: any) {
         console.error('Gagal mengambil tarif riil Anteraja:', err.message);
         
@@ -118,7 +213,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, content: mockRates });
+    const promoResult = await enrichRatesWithPromos(mockRates);
+    return NextResponse.json({
+      success: true,
+      content: promoResult.rates,
+      applied_promo: promoResult.applied_promo,
+      promo_error: promoResult.promo_error,
+      eligible_promos: promoResult.eligible_promos,
+      recommended_promo: promoResult.recommended_promo,
+    });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, info: err.message || 'Terjadi kesalahan pada server.' },
@@ -126,3 +229,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
