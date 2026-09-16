@@ -15,7 +15,7 @@ interface SidebarProps {
 
 const FILL = { fontVariationSettings: "'FILL' 1" } as const;
 
-export default function Sidebar({ user = { name: 'Agent Budi Santoso', nia: '50004786' }, isOpen = false }: SidebarProps) {
+export default function Sidebar({ user = { name: '', nia: '' }, isOpen = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);

@@ -576,7 +576,7 @@ export default function DashboardClient({ user }: { user: User }) {
                         ref={inputRef}
                         autoFocus
                         className="w-full h-12 md:h-16 pl-10 md:pl-14 pr-24 md:pr-36 bg-gray-50 border-2 border-gray-100 rounded-[12px] md:rounded-[16px] text-sm md:text-lg font-mono font-bold text-gray-900 uppercase placeholder:text-gray-400 placeholder:normal-case placeholder:font-sans focus:border-primary/40 focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all outline-none"
-                        placeholder="Scan / Ketik resi..."
+                        placeholder=""
                         value={awbValue}
                         onChange={(e) => {
                           const val = e.target.value.trim().toUpperCase();

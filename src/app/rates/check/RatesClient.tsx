@@ -24,7 +24,7 @@ interface ServiceRate {
 export default function RatesClient({ user }: RatesClientProps) {
   const [origin, setOrigin] = useState<any>(null);
   const [destination, setDestination] = useState<any>(null);
-  const [weight, setWeight] = useState<string>("1");
+  const [weight, setWeight] = useState<string>("");
   const [rates, setRates] = useState<ServiceRate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,7 +90,7 @@ export default function RatesClient({ user }: RatesClientProps) {
                   label=""
                   value={origin?.name || ""}
                   onChange={(opt) => setOrigin(opt)}
-                  placeholder="Cari kecamatan asal..."
+                  placeholder=""
                 />
               </div>
               
@@ -117,7 +117,7 @@ export default function RatesClient({ user }: RatesClientProps) {
                   label=""
                   value={destination?.name || ""}
                   onChange={(opt) => setDestination(opt)}
-                  placeholder="Cari kecamatan tujuan..."
+                  placeholder=""
                 />
               </div>
             </div>

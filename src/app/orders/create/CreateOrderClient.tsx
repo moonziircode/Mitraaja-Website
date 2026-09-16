@@ -48,7 +48,7 @@ function SearchableSelect({
   value,
   onChange,
   options,
-  placeholder = 'Pilih...'
+  placeholder = ''
 }: {
   label: string;
   value: string;
@@ -120,7 +120,7 @@ function SearchableSelectObject({
   value,
   onChange,
   options,
-  placeholder = 'Pilih...'
+  placeholder = ''
 }: {
   label: string;
   value: any;
@@ -1318,7 +1318,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Pengirim</label>
                           <input
                             type="text"
-                            placeholder="Contoh: Ahmad Budi"
+                            placeholder=""
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={sender.name}
                             onChange={(e) => setSender({ ...sender, name: e.target.value })}
@@ -1328,7 +1328,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nomor Telepon</label>
                           <input
                             type="text"
-                            placeholder="Contoh: 081234567890"
+                            placeholder=""
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={sender.phone}
                             onChange={(e) => setSender({ ...sender, phone: formatPhone(e.target.value) })}
@@ -1404,7 +1404,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap</label>
                           <textarea
                             rows={3}
-                            placeholder="Nama Jalan, Nomor Rumah, RT/RW, Blok, Gang, dll. (tanpa mengulang Provinsi/Kota/Kecamatan/Kelurahan)"
+                            placeholder=""
                             className="w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
                             value={sender.address}
                             onChange={(e) => setSender({ ...sender, address: e.target.value })}
@@ -1448,7 +1448,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Penerima</label>
                           <input
                             type="text"
-                            placeholder="Contoh: Siti Aminah"
+                            placeholder=""
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={recipient.name}
                             onChange={(e) => setRecipient({ ...recipient, name: e.target.value })}
@@ -1458,7 +1458,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nomor Telepon</label>
                           <input
                             type="text"
-                            placeholder="Contoh: 085712345678"
+                            placeholder=""
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
                             value={recipient.phone}
                             onChange={(e) => setRecipient({ ...recipient, phone: formatPhone(e.target.value) })}
@@ -1533,7 +1533,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Alamat Lengkap</label>
                           <textarea
                             rows={3}
-                            placeholder="Nama Jalan, Blok, RT/RW, No. Rumah"
+                            placeholder=""
                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none resize-none"
                             value={recipient.address}
                             onChange={(e) => setRecipient({ ...recipient, address: e.target.value })}
@@ -1587,6 +1587,7 @@ export default function CreateOrderClient({ user }: { user: User }) {
                             value={packageInfo.category}
                             onChange={(e) => setPackageInfo({ ...packageInfo, category: e.target.value })}
                           >
+                            <option value="">-- Pilih Kategori --</option>
                             <option value="Dokumen">Dokumen</option>
                             <option value="Pakaian">Pakaian</option>
                             <option value="Elektronik">Elektronik</option>
@@ -1598,9 +1599,10 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nilai Barang (Rp)</label>
                           <input
                             type="number"
+                            placeholder=""
                             className="w-full h-11 px-3.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white transition-all outline-none"
-                            value={packageInfo.value}
-                            onChange={(e) => setPackageInfo({ ...packageInfo, value: Number(e.target.value) })}
+                            value={packageInfo.value || ''}
+                            onChange={(e) => setPackageInfo({ ...packageInfo, value: e.target.value === '' ? 0 : Number(e.target.value) })}
                           />
                         </div>
                       </div>
@@ -1611,20 +1613,22 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <input
                             type="number"
                             step="0.1"
+                            placeholder=""
                             className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
-                            value={packageInfo.weight}
-                            onChange={(e) => setPackageInfo({ ...packageInfo, weight: Number(e.target.value) })}
+                            value={packageInfo.weight || ''}
+                            onChange={(e) => setPackageInfo({ ...packageInfo, weight: e.target.value === '' ? 0 : Number(e.target.value) })}
                           />
                         </div>
                         <div>
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">P (cm)</label>
                           <input
                             type="number"
+                            placeholder=""
                             className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
-                            value={packageInfo.dimensions.length}
+                            value={packageInfo.dimensions.length || ''}
                             onChange={(e) => setPackageInfo({
                               ...packageInfo,
-                              dimensions: { ...packageInfo.dimensions, length: Number(e.target.value) }
+                              dimensions: { ...packageInfo.dimensions, length: e.target.value === '' ? 0 : Number(e.target.value) }
                             })}
                           />
                         </div>
@@ -1632,11 +1636,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">L (cm)</label>
                           <input
                             type="number"
+                            placeholder=""
                             className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
-                            value={packageInfo.dimensions.width}
+                            value={packageInfo.dimensions.width || ''}
                             onChange={(e) => setPackageInfo({
                               ...packageInfo,
-                              dimensions: { ...packageInfo.dimensions, width: Number(e.target.value) }
+                              dimensions: { ...packageInfo.dimensions, width: e.target.value === '' ? 0 : Number(e.target.value) }
                             })}
                           />
                         </div>
@@ -1644,11 +1649,12 @@ export default function CreateOrderClient({ user }: { user: User }) {
                           <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">T (cm)</label>
                           <input
                             type="number"
+                            placeholder=""
                             className="w-full h-11 px-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 focus:bg-white outline-none"
-                            value={packageInfo.dimensions.height}
+                            value={packageInfo.dimensions.height || ''}
                             onChange={(e) => setPackageInfo({
                               ...packageInfo,
-                              dimensions: { ...packageInfo.dimensions, height: Number(e.target.value) }
+                              dimensions: { ...packageInfo.dimensions, height: e.target.value === '' ? 0 : Number(e.target.value) }
                             })}
                           />
                         </div>

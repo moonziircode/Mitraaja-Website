@@ -195,7 +195,7 @@ export default function ClaimClient({ user }: { user: User }) {
 
                 <textarea
                   className="w-full flex-1 min-h-[240px] p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-mono text-text-primary focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/10 outline-none resize-none transition-all placeholder:font-sans relative z-10"
-                  placeholder="Contoh:&#10;10008888000123&#10;10008888000124&#10;AWB-12345"
+                  placeholder=""
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                 />

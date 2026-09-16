@@ -130,7 +130,7 @@ export default function PrintClient({ user }: { user: User }) {
                   type="text"
                   value={awb}
                   onChange={(e) => setAwb(e.target.value)}
-                  placeholder="Scan atau ketik nomor AWB..."
+                  placeholder=""
                   className="flex-1 h-12 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase"
                   autoFocus
                 />

@@ -173,7 +173,7 @@ export default function TrackingClient({ user }: { user: User }) {
                     <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-[20px]">search</span>
                     <input
                       className="w-full h-12 pl-11 pr-4 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-text-primary uppercase placeholder:text-gray-400 placeholder:normal-case focus:border-primary/50 focus:ring-4 focus:ring-primary/10 focus:bg-white transition-all outline-none disabled:opacity-50"
-                      placeholder="Masukkan nomor resi AWB..."
+                      placeholder=""
                       value={trackingAwb}
                       onChange={(e) => setTrackingAwb(e.target.value.toUpperCase())}
                       disabled={isTracking}

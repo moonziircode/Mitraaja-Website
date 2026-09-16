@@ -542,15 +542,7 @@ export default function CascadingRegionPicker({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder={
-                currentStep === 'PROVINCE'
-                  ? 'Cari Provinsi...'
-                  : currentStep === 'CITY'
-                  ? `Cari Kota/Kabupaten di ${selectedProvince?.name || ''}...`
-                  : currentStep === 'DISTRICT'
-                  ? `Cari Kecamatan di ${selectedCity || ''}...`
-                  : `Cari Kelurahan atau Kode Pos di ${selectedDistrict?.name || ''}...`
-              }
+              placeholder=""
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 pl-10 pr-9 bg-white border border-gray-200 rounded-xl text-xs font-semibold text-gray-800 focus:border-primary/25 focus:ring-4 focus:ring-primary/5 outline-none transition-all"

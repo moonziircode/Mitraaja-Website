@@ -75,7 +75,7 @@ export default function LoginPage() {
                   className="block w-full pl-10 pr-3 py-3 border-none bg-transparent rounded-lg text-sm text-gray-800 placeholder-gray-400/70 focus:ring-0 outline-none"
                   id="nia"
                   name="nia"
-                  placeholder="Contoh: 50004786"
+                  placeholder=""
                   required
                   type="text"
                   value={nia}
@@ -96,7 +96,7 @@ export default function LoginPage() {
                   className="block w-full pl-10 pr-10 py-3 border-none bg-transparent rounded-lg text-sm text-gray-800 placeholder-gray-400/70 focus:ring-0 outline-none"
                   id="password"
                   name="password"
-                  placeholder="••••••••"
+                  placeholder=""
                   required
                   type={isPasswordVisible ? 'text' : 'password'}
                   value={password}

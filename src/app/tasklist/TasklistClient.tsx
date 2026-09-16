@@ -158,7 +158,7 @@ export default function TasklistClient({ user }: TasklistClientProps) {
         <input
           type="text"
           className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500 transition-shadow shadow-sm"
-          placeholder="Cari nomor AWB atau nama pengirim..."
+          placeholder=""
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />

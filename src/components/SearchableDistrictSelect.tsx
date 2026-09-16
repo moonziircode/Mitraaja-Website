@@ -25,7 +25,7 @@ export default function SearchableDistrictSelect({
   label,
   value,
   onChange,
-  placeholder = 'Cari kecamatan / kelurahan...',
+  placeholder = '',
   filterCity,
   filterJabodetabek,
 }: SearchableDistrictSelectProps) {

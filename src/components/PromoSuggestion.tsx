@@ -272,7 +272,7 @@ export default function PromoSuggestion({
             <form onSubmit={handleManualApply} className="flex gap-2">
               <input
                 type="text"
-                placeholder="Punya kode promo lain? Ketik di sini"
+                placeholder=""
                 value={manualCode}
                 onChange={(e) => {
                   setManualCode(e.target.value.toUpperCase());
