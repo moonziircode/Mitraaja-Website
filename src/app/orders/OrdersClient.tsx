@@ -192,6 +192,7 @@ export default function OrdersClient({ user }: OrdersClientProps) {
             onClose={() => setIsModalOpen(false)}
             tasklist={selectedTask}
             activeTab={"RIWAYAT_ORDER"}
+            onActionSuccess={() => fetchTasks(true)}
           />
         </div>
       </main>

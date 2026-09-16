@@ -14,8 +14,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "taskCode diperlukan." }, { status: 400 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_ANTERAJA_API_URL || "https://api.anteraja.id/maa-task";
-    const endpoint = `${baseUrl}/task/v2/void`;
+    const rawBase = process.env.ANTERAJA_API_BASE_URL || process.env.NEXT_PUBLIC_ANTERAJA_API_URL || "https://api.anteraja.id/maa-task";
+    const apiBase = rawBase.includes('/maa-task') ? rawBase : `${rawBase.replace(/\/$/, '')}/maa-task`;
+    const endpoint = `${apiBase}/task/v2/void`;
 
     const response = await axios.post(
       endpoint,
@@ -46,9 +47,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Sesi kedaluwarsa. Harap login kembali." }, { status: 401 });
     }
 
-    if (response.status >= 400 || (response.data && response.data.status !== 0)) {
+    const resData = response.data;
+    const isSuccess = response.status === 200 && (
+      resData?.status === 0 || 
+      resData?.status === "0" || 
+      resData?.info === "OK" ||
+      resData?.success === true
+    );
+
+    if (!isSuccess) {
       return NextResponse.json(
-        { message: response.data?.message || response.data?.info || "Gagal membatalkan task." },
+        { message: resData?.message || resData?.info || "Gagal membatalkan pesanan." },
         { status: 400 }
       );
     }

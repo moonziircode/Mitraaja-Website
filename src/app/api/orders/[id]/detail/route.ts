@@ -35,12 +35,13 @@ export async function GET(
       return NextResponse.json({ success: false, message: 'Tidak terautentikasi' }, { status: 401 });
     }
 
-    const apiBase = process.env.ANTERAJA_API_BASE_URL || 'https://api.anteraja.id/maa-task';
+    const rawBase = process.env.ANTERAJA_API_BASE_URL || process.env.NEXT_PUBLIC_ANTERAJA_API_URL || 'https://api.anteraja.id/maa-task';
+    const apiBase = rawBase.includes('/maa-task') ? rawBase : `${rawBase.replace(/\/$/, '')}/maa-task`;
 
     // If active session token is present and not mock, fetch real detail
     if (!session.token.startsWith('mock-token')) {
       try {
-        const detailUrl = `${apiBase}/order/v2/task/dropoff/detail?task_code=${id}`;
+        const detailUrl = `${apiBase}/order/v2/task/dropoff/detail?task_code=${encodeURIComponent(id)}&booking_id=${encodeURIComponent(id)}`;
         const res = await fetch(detailUrl, {
           method: 'GET',
           headers: makeMaaHeaders(session.token)
@@ -48,8 +49,9 @@ export async function GET(
 
         if (res.ok) {
           const body = await res.json();
-          if (body.status === 0 && body.content) {
-            return NextResponse.json({ success: true, data: body.content });
+          if ((body.status === 0 || body.status === '0' || body.info === 'OK') && body.content) {
+            const detailData = Array.isArray(body.content) ? body.content[0] : body.content;
+            return NextResponse.json({ success: true, data: detailData });
           }
         }
       } catch (err: any) {
@@ -60,10 +62,9 @@ export async function GET(
     // Determine product based on prefix/suffix or default to REG
     let productCode = 'REG';
     let productName = 'Anteraja Regular';
-    let duration = '1-2 Day';
     let price = 11500;
 
-    // Simulate details for mock orders
+    // Simulate details for mock orders without placeholder names
     const mockDetail = {
       waybill_no: id.startsWith('MAA') ? '1000' + id.replace(/\D/g, '').padEnd(8, '0').substring(0, 8) : id,
       booking_id: id,
@@ -73,40 +74,40 @@ export async function GET(
       product_name: productName,
       delivery_price: price,
       shipper_info: {
-        name: 'Aqsa Muflihan',
-        phone: '081234567890',
-        address: 'Jl. Margonda Raya No. 100, RT 02/RW 03, Beji',
-        district_code: '32.76.01',
-        postcode: '16424',
-        district_name: 'Beji',
-        city_name: 'Depok',
-        provice_name: 'Jawa Barat',
-        zip: '16424'
+        name: '',
+        phone: '',
+        address: '',
+        district_code: '',
+        postcode: '',
+        district_name: '',
+        city_name: '',
+        provice_name: '',
+        zip: ''
       },
       receiver_info: {
-        name: 'Budi Santoso',
-        phone: '089876543210',
-        address: 'Jl. Palmerah Barat No. 29, RT 01/RW 02, Gelora',
-        district_code: '31.73.06',
-        postcode: '10270',
-        district_name: 'Palmerah',
-        city_name: 'Jakarta Barat',
-        provice_name: 'DKI Jakarta',
-        zip: '10270'
+        name: '',
+        phone: '',
+        address: '',
+        district_code: '',
+        postcode: '',
+        district_name: '',
+        city_name: '',
+        provice_name: '',
+        zip: ''
       },
       items: [
         {
-          item_name: 'Beras Ramos Premium 25 Kg',
-          declared_value: 300000,
+          item_name: 'Paket Pengiriman',
+          declared_value: 100000,
           weight: 1.0,
           width: 10,
           length: 10,
           height: 10,
-          item_category: 'Makanan'
+          item_category: 'Lainnya'
         }
       ],
-      payment_status: 'PAID',
-      task_status: 'WAITING_FOR_DROPOFF',
+      payment_status: 'NOT_PAID',
+      task_status: 'WAITING_FOR_PAYMENT',
       expired_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
 

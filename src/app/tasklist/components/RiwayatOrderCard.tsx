@@ -22,10 +22,10 @@ export default function RiwayatOrderCard({ tasklist, onClickDetail, onActionSucc
 
   // For Riwayat Order, it is mostly NOT_PAID tasks. We use the first task as representative.
   const firstTask: any = tasklist.tasks?.[0] || {};
-  const bookingCode = firstTask.task_code || "-";
+  const bookingCode = firstTask.task_code || firstTask.taskCode || firstTask.booking_id || firstTask.bookingId || "-";
   
-  const senderName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist.owner_name || "-";
-  const recipientName = firstTask.recipientInfo?.name || firstTask.recipient_info?.name || "-";
+  const senderName = firstTask.shipper_info?.name || firstTask.shipperInfo?.name || firstTask.shipperName || tasklist.owner_name || "-";
+  const recipientName = firstTask.receiver_info?.name || firstTask.receiverInfo?.name || firstTask.recipient_info?.name || firstTask.recipientInfo?.name || firstTask.receiverName || firstTask.recipientName || "-";
   
   const createdAt = new Date(firstTask.createdAt || firstTask.created_at || Date.now());
   const dateStr = createdAt.toLocaleDateString("id-ID", { day: '2-digit', month: 'short', year: 'numeric' });
