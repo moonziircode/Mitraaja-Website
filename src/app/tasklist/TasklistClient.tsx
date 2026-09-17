@@ -73,12 +73,18 @@ export default function TasklistClient({ user }: TasklistClientProps) {
 
       const rawTasks: any[] = response.data?.content || [];
       
-      // Strict client-side filter: only keep tasks with WAITING_FOR_HANDOVER_SERAH
+      // Strict client-side filter: only keep tasks with order_status = WAITING_FOR_HANDOVER_SERAH and state = ACTIVE
       const filteredTasks = rawTasks.map((group: any) => {
         if (!group.tasks) return null;
         const validSubTasks = group.tasks.filter((t: any) => {
           const st = String(t.order_status || t.orderStatus || t.task_status || t.taskStatus || t.status || "").trim().toUpperCase();
-          return st === "WAITING_FOR_HANDOVER_SERAH";
+          const state = String(t.order_state || t.orderState || t.state || "ACTIVE").trim().toUpperCase();
+          
+          if (st === "HANDED_OVER_SERAH" || st === "HANDED_OVER" || st === "COMPLETED") {
+            return false;
+          }
+
+          return st === "WAITING_FOR_HANDOVER_SERAH" && state === "ACTIVE";
         });
         if (validSubTasks.length === 0) return null;
         return { ...group, tasks: validSubTasks };

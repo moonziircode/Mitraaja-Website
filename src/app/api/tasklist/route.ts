@@ -58,9 +58,14 @@ export async function GET(request: NextRequest) {
         return []; // Return empty instead of failing the whole request
       }
 
-      let rawContent = Array.isArray(res.data?.content) 
-        ? res.data.content 
-        : (res.data?.content?.tasks || []);
+      let rawContent: any[] = [];
+      if (Array.isArray(res.data?.content)) {
+        rawContent = res.data.content;
+      } else if (Array.isArray(res.data?.content?.tasks)) {
+        rawContent = res.data.content.tasks;
+      } else if (Array.isArray(res.data?.tasks)) {
+        rawContent = res.data.tasks;
+      }
       
       let flatTasks: any[] = [];
       for (const item of rawContent) {
@@ -78,13 +83,24 @@ export async function GET(request: NextRequest) {
     if (searchKey) queryParams.key = searchKey;
 
     if (state === "TERTUNDA") {
-      // Fetch both ACTIVE and DELAY
+      // 1. Fetch Serah Terima list (the official endpoint where packages land after Complete Dropoff)
+      // GET task/dropoff?status=WAITING_FOR_HANDOVER_SERAH&state=ACTIVE
+      const serahParams: any = {
+        status: "WAITING_FOR_HANDOVER_SERAH",
+        state: "ACTIVE",
+        page,
+        size,
+      };
+      if (searchKey) serahParams.key = searchKey;
+      const serahTasks = await fetchTasks(`${baseUrl}/maa-task/task/dropoff`, serahParams);
+
+      // 2. Also fetch dropoff active and on-hold tasks for comprehensive coverage
       const activeTasks = await fetchTasks(`${baseUrl}/maa-task/order/v2/task/dropoff`, queryParams);
       const delayTasks = await fetchTasks(`${baseUrl}/maa-task/order/v2/task/dropoff/on-hold`, queryParams);
       
       // Merge and deduplicate by waybill, task_code, or order_code
       const taskMap = new Map();
-      [...activeTasks, ...delayTasks].forEach(t => {
+      [...serahTasks, ...activeTasks, ...delayTasks].forEach(t => {
         const key = (t.waybill || t.waybill_no || t.waybillNo || t.order_code || t.task_code || t.taskCode || t.booking_id || "").trim();
         if (key && !taskMap.has(key)) {
           taskMap.set(key, t);
@@ -94,12 +110,27 @@ export async function GET(request: NextRequest) {
       });
       allTasks = Array.from(taskMap.values());
       
-      // STRICT FILTER: Menu Tertunda ONLY displays tasks with WAITING_FOR_HANDOVER_SERAH
+      // STRICT FILTER: Menu Tertunda ONLY displays tasks with:
+      // order_status = WAITING_FOR_HANDOVER_SERAH AND order_state = ACTIVE
       allTasks = allTasks.filter(t => {
-        const status = String(
+        const orderStatus = String(
           t.order_status || t.orderStatus || t.task_status || t.taskStatus || t.status || ""
         ).trim().toUpperCase();
-        return status === "WAITING_FOR_HANDOVER_SERAH";
+
+        const orderState = String(
+          t.order_state || t.orderState || t.state || "ACTIVE"
+        ).trim().toUpperCase();
+
+        // Must be WAITING_FOR_HANDOVER_SERAH and ACTIVE
+        const isWaitingSerah = orderStatus === "WAITING_FOR_HANDOVER_SERAH";
+        const isActive = orderState === "ACTIVE";
+
+        // Exclude any handed over, completed, or inactive tasks
+        if (orderStatus === "HANDED_OVER_SERAH" || orderStatus === "HANDED_OVER" || orderStatus === "COMPLETED") {
+          return false;
+        }
+
+        return isWaitingSerah && isActive;
       });
 
       // Sort descending by created time
