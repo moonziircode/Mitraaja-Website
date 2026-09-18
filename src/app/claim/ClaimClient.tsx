@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import Sidebar from '@/components/Sidebar';
 import { useRouter } from 'next/navigation';
+import { getStrictAccurateLocation, type VerifiedLocation } from '@/lib/geo-security';
 
 interface User {
   name: string;
@@ -29,6 +30,32 @@ export default function ClaimClient({ user }: { user: User }) {
   const [inputText, setInputText] = useState('');
   const [claimItems, setClaimItems] = useState<ClaimItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // ── GPS State ──
+  const [gpsLocation, setGpsLocation] = useState<VerifiedLocation | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [isGpsLoading, setIsGpsLoading] = useState<boolean>(false);
+
+  const refreshGps = useCallback(async () => {
+    setIsGpsLoading(true);
+    setGpsError(null);
+    try {
+      const loc = await getStrictAccurateLocation(150);
+      setGpsLocation(loc);
+      setGpsError(null);
+      return loc;
+    } catch (err: any) {
+      setGpsError(err.message || 'Gagal mengunci GPS');
+      setGpsLocation(null);
+      return null;
+    } finally {
+      setIsGpsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshGps();
+  }, [refreshGps]);
 
   // Parse input into unique valid AWBs (strictly 14 digits)
   const handleParseInput = () => {
@@ -63,13 +90,35 @@ export default function ClaimClient({ user }: { user: User }) {
     if (pendingOrders.length === 0) return;
     setIsProcessing(true);
 
+    // ── Verifikasi Geolocation & Anti-Fake GPS ──
+    let loc = gpsLocation;
+    try {
+      loc = await getStrictAccurateLocation(150);
+      setGpsLocation(loc);
+      setGpsError(null);
+    } catch (geoErr: any) {
+      const errMsg = geoErr.message || 'Akses lokasi GPS akurat wajib diaktifkan. Dilarang keras menggunakan Fake GPS!';
+      setGpsError(errMsg);
+      alert(errMsg);
+      setIsProcessing(false);
+      return;
+    }
+
     try {
       const ordersToClaim = pendingOrders.map(item => ({ claim_key: item.awb }));
       
       const res = await fetch('/api/parcels/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orders: ordersToClaim })
+        body: JSON.stringify({
+          orders: ordersToClaim,
+          coordinates: {
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            accuracy: loc.accuracy,
+            isMockDetected: loc.isMockDetected,
+          },
+        })
       });
       
       const data = await res.json();
@@ -173,6 +222,26 @@ export default function ClaimClient({ user }: { user: User }) {
               <h2 className="text-lg font-bold text-text-primary tracking-tight">Klaim Paket Terdaftar</h2>
               <p className="text-[11px] text-text-secondary font-medium hidden sm:block">Bulk Claim System</p>
             </div>
+          </div>
+
+          <div className="flex items-center gap-2 relative z-10">
+            {gpsLocation ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Lat: ${gpsLocation.latitude.toFixed(5)}, Lng: ${gpsLocation.longitude.toFixed(5)}`}>
+                <span className="material-symbols-outlined text-[15px]">my_location</span>
+                <span className="hidden sm:inline">GPS Akurat</span>
+                <span>(±{Math.round(gpsLocation.accuracy)}m)</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={refreshGps}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors animate-pulse"
+                title="Klik untuk menyalakan/memeriksa GPS"
+              >
+                <span className="material-symbols-outlined text-[15px]">location_disabled</span>
+                <span>{isGpsLoading ? 'Cek GPS...' : 'GPS Wajib Aktif'}</span>
+              </button>
+            )}
           </div>
         </header>
 

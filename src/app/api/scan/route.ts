@@ -19,13 +19,63 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { awb } = body as { awb?: string };
+    const { awb, coordinates } = body as {
+      awb?: string;
+      coordinates?: {
+        latitude?: number;
+        longitude?: number;
+        accuracy?: number;
+        isMockDetected?: boolean;
+      };
+    };
 
     const trimmedAwb = awb?.trim() || '';
 
     if (!trimmedAwb) {
       return Response.json(
         { status: 'error', message: 'Nomor AWB harus diisi.' },
+        { status: 400 },
+      );
+    }
+
+    // ── Validasi penegakan koordinat GPS riil & pelarangan Fake GPS ──
+    if (
+      !coordinates ||
+      coordinates.latitude == null ||
+      coordinates.longitude == null ||
+      isNaN(coordinates.latitude) ||
+      isNaN(coordinates.longitude) ||
+      coordinates.latitude < -90 ||
+      coordinates.latitude > 90 ||
+      coordinates.longitude < -180 ||
+      coordinates.longitude > 180 ||
+      (coordinates.latitude === 0 && coordinates.longitude === 0)
+    ) {
+      return Response.json(
+        {
+          status: 'error',
+          message: 'Titik koordinat lokasi GPS wajib aktif untuk melakukan scan paket. Mohon aktifkan GPS.',
+        },
+        { status: 400 },
+      );
+    }
+
+    if (coordinates.isMockDetected || coordinates.accuracy === 0) {
+      return Response.json(
+        {
+          status: 'error',
+          message: 'Terdeteksi penggunaan Mock Location / Fake GPS. Sistem melarang keras manipulasi lokasi!',
+        },
+        { status: 403 },
+      );
+    }
+
+    if (coordinates.accuracy && coordinates.accuracy > 150) {
+      return Response.json(
+        {
+          status: 'error',
+          message: `Akurasi sinyal GPS terlalu rendah (±${Math.round(coordinates.accuracy)}m). Pastikan GPS perangkat aktif dalam mode Akurasi Tinggi (< 150m).`,
+        },
         { status: 400 },
       );
     }
@@ -80,6 +130,7 @@ export async function POST(request: NextRequest) {
               destinationCity: result.destinationCity,
               opcode: result.opcode,
               trackingCode: result.trackingCode,
+              coordinates,
             },
           })
         );
@@ -95,6 +146,12 @@ export async function POST(request: NextRequest) {
           storeName: session.storeName || session.name || 'Mitra',
           errorMessage: result.success ? undefined : result.message,
           userAgent: browserInfo,
+          coordinates: {
+            latitude: coordinates.latitude,
+            longitude: coordinates.longitude,
+            accuracy: coordinates.accuracy,
+            isMockDetected: coordinates.isMockDetected || false,
+          },
           metadata: {
             taskCode: result.taskCode,
             phase1: result.phase1Status,
@@ -102,6 +159,7 @@ export async function POST(request: NextRequest) {
             phase3: result.phase3Status,
             trackingCode: result.trackingCode,
             opcode: result.opcode,
+            coordinates,
           },
         })
       );

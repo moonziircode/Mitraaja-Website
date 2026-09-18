@@ -15,6 +15,47 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json().catch(() => ({}));
+    const { coordinates } = body as {
+      coordinates?: {
+        latitude?: number;
+        longitude?: number;
+        accuracy?: number;
+        isMockDetected?: boolean;
+      };
+    };
+
+    if (
+      !coordinates ||
+      coordinates.latitude == null ||
+      coordinates.longitude == null ||
+      isNaN(coordinates.latitude) ||
+      isNaN(coordinates.longitude) ||
+      coordinates.latitude < -90 ||
+      coordinates.latitude > 90 ||
+      coordinates.longitude < -180 ||
+      coordinates.longitude > 180 ||
+      (coordinates.latitude === 0 && coordinates.longitude === 0)
+    ) {
+      return NextResponse.json(
+        { success: false, message: 'Titik koordinat lokasi GPS wajib aktif untuk melakukan klaim paket.' },
+        { status: 400 }
+      );
+    }
+
+    if (coordinates.isMockDetected || coordinates.accuracy === 0) {
+      return NextResponse.json(
+        { success: false, message: 'Terdeteksi penggunaan Mock Location / Fake GPS. Sistem melarang keras manipulasi lokasi!' },
+        { status: 403 }
+      );
+    }
+
+    if (coordinates.accuracy && coordinates.accuracy > 150) {
+      return NextResponse.json(
+        { success: false, message: `Akurasi sinyal GPS terlalu rendah (±${Math.round(coordinates.accuracy)}m). Gunakan GPS akurasi tinggi.` },
+        { status: 400 }
+      );
+    }
+
     const awbList: string[] = [];
 
     if (typeof body.awb === 'string' && body.awb.trim()) {
@@ -79,6 +120,7 @@ export async function POST(request: NextRequest) {
                 destinationCity: lifecycleResult.destinationCity,
                 opcode: lifecycleResult.opcode,
                 trackingCode: lifecycleResult.trackingCode,
+                coordinates,
               },
             })
           );
@@ -93,10 +135,17 @@ export async function POST(request: NextRequest) {
             userName: session.name,
             storeName: session.storeName || session.name || 'Mitra',
             errorMessage: lifecycleResult.success ? undefined : lifecycleResult.message,
+            coordinates: {
+              latitude: coordinates.latitude,
+              longitude: coordinates.longitude,
+              accuracy: coordinates.accuracy,
+              isMockDetected: coordinates.isMockDetected || false,
+            },
             metadata: {
               taskCode: lifecycleResult.taskCode,
               trackingCode: lifecycleResult.trackingCode,
               opcode: lifecycleResult.opcode,
+              coordinates,
             },
           })
         );

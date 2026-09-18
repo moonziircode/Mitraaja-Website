@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback, type FormEvent } fro
 import Sidebar from '@/components/Sidebar';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { getStrictAccurateLocation, type VerifiedLocation } from '@/lib/geo-security';
 
 interface User {
   name: string;
@@ -55,6 +56,33 @@ export default function DashboardClient({ user }: { user: User }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
   const lastProcessedAwbRef = useRef<string | null>(null);
+
+  // ── GPS Security & Geolocation State ──
+  const [gpsLocation, setGpsLocation] = useState<VerifiedLocation | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [isGpsLoading, setIsGpsLoading] = useState<boolean>(true);
+
+  const refreshGps = useCallback(async () => {
+    setIsGpsLoading(true);
+    setGpsError(null);
+    try {
+      const loc = await getStrictAccurateLocation(150);
+      setGpsLocation(loc);
+      setGpsError(null);
+      return loc;
+    } catch (err: any) {
+      const msg = err.message || 'Gagal mengunci titik koordinat GPS';
+      setGpsError(msg);
+      setGpsLocation(null);
+      return null;
+    } finally {
+      setIsGpsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshGps();
+  }, [refreshGps]);
 
   // ── UI State ──
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -195,17 +223,48 @@ export default function DashboardClient({ user }: { user: User }) {
       setScanResult({
         status: 'searching',
         awb: trimmed,
-        message: 'Memproses claim...',
+        message: 'Mengunci koordinat GPS & memproses claim...',
         shipperName: '-',
         receiverName: '-',
         destinationCity: '-',
       });
 
+      // ── 1. Verifikasi Geolocation & Anti-Fake GPS secara ketat ──
+      let loc = gpsLocation;
+      try {
+        loc = await getStrictAccurateLocation(150);
+        setGpsLocation(loc);
+        setGpsError(null);
+      } catch (geoErr: any) {
+        const errorMsg = geoErr.message || 'GPS wajib aktif & dilarang keras menggunakan Fake GPS.';
+        setGpsError(errorMsg);
+        setScanResult({
+          status: 'error',
+          awb: trimmed,
+          message: errorMsg,
+          shipperName: '-',
+          receiverName: '-',
+          destinationCity: '-',
+        });
+        playBeep(false);
+        isProcessingRef.current = false;
+        setIsScanning(false);
+        return;
+      }
+
       try {
         const res = await fetch('/api/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ awb: trimmed }),
+          body: JSON.stringify({
+            awb: trimmed,
+            coordinates: {
+              latitude: loc.latitude,
+              longitude: loc.longitude,
+              accuracy: loc.accuracy,
+              isMockDetected: loc.isMockDetected,
+            },
+          }),
         });
         const data = await res.json();
         const isAlreadyClaimed = Boolean(
@@ -632,14 +691,51 @@ export default function DashboardClient({ user }: { user: User }) {
                       <p className="text-[9px] md:text-[11px] text-gray-500 font-medium mt-0 md:mt-0.5 hidden sm:block">Arahkan scanner atau ketik nomor resi di bawah</p>
                     </div>
                   </div>
-                  <div className={`flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[11px] font-bold px-2.5 py-1 md:px-3 md:py-1.5 rounded-full ${isFocused ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}>
-                    <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shrink-0 ${isFocused ? 'bg-emerald-500 animate-pulse-ring' : 'bg-gray-300'}`} />
-                    {isFocused ? 'Scanner Aktif' : 'Standby'}
+                  <div className="flex items-center gap-2">
+                    {/* GPS Status Indicator */}
+                    {gpsLocation ? (
+                      <div className="flex items-center gap-1 text-[9px] md:text-[11px] font-bold px-2 md:px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Lat: ${gpsLocation.latitude.toFixed(5)}, Lng: ${gpsLocation.longitude.toFixed(5)}`}>
+                        <span className="material-symbols-outlined text-[13px]">my_location</span>
+                        <span>GPS Akurat (±{Math.round(gpsLocation.accuracy)}m)</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={refreshGps}
+                        className="flex items-center gap-1 text-[9px] md:text-[11px] font-bold px-2 md:px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors animate-pulse"
+                        title="Klik untuk menyalakan/memeriksa GPS"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">location_disabled</span>
+                        <span>{isGpsLoading ? 'Cek GPS...' : 'GPS Wajib Aktif (Klik)'}</span>
+                      </button>
+                    )}
+
+                    <div className={`flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[11px] font-bold px-2.5 py-1 md:px-3 md:py-1.5 rounded-full ${isFocused ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-50 text-gray-400'}`}>
+                      <span className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full shrink-0 ${isFocused ? 'bg-emerald-500 animate-pulse-ring' : 'bg-gray-300'}`} />
+                      {isFocused ? 'Scanner Aktif' : 'Standby'}
+                    </div>
                   </div>
                 </div>
 
                 {/* Input Field */}
                 <div className="p-4 md:p-8 flex-1 flex flex-col justify-center">
+                  {gpsError && (
+                    <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-start gap-2">
+                      <span className="material-symbols-outlined text-rose-600 shrink-0 text-base">location_disabled</span>
+                      <div className="flex-1">
+                        <p className="font-bold">GPS Wajib Diaktifkan & Anti-Fake GPS</p>
+                        <p className="text-[11px] mt-0.5">{gpsError}</p>
+                        <p className="text-[10px] text-rose-700 mt-1 font-semibold">Sistem melarang keras manipulasi koordinat/Fake GPS saat scan paket.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={refreshGps}
+                        className="px-2.5 py-1 bg-rose-600 text-white font-bold rounded-lg text-[10px] hover:bg-rose-700 shrink-0"
+                      >
+                        Coba Lagi
+                      </button>
+                    </div>
+                  )}
                   <form onSubmit={handleScanSubmit}>
                     <div className="relative group">
                       <span className={`material-symbols-outlined absolute left-3 md:left-5 top-1/2 -translate-y-1/2 transition-colors ${isFocused ? 'text-primary' : 'text-gray-400'} text-[18px] md:text-[24px]`}>barcode_scanner</span>

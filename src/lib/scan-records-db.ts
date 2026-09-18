@@ -76,6 +76,10 @@ export async function ensureScanTables(): Promise<void> {
         browser_info TEXT,
         coordinates JSONB,
         technical_info JSONB,
+        latitude NUMERIC(10, 7),
+        longitude NUMERIC(10, 7),
+        accuracy NUMERIC(10, 2),
+        is_mock_detected BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_internal_scan_logs_awb ON internal_scan_logs(awb);
@@ -94,12 +98,28 @@ export async function ensureScanTables(): Promise<void> {
         description TEXT,
         ip_address VARCHAR(50),
         user_agent TEXT,
+        coordinates JSONB,
+        latitude NUMERIC(10, 7),
+        longitude NUMERIC(10, 7),
+        accuracy NUMERIC(10, 2),
+        is_mock_detected BOOLEAN DEFAULT FALSE,
         metadata JSONB
       );
       CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
       CREATE INDEX IF NOT EXISTS idx_activity_logs_awb ON activity_logs(awb);
       CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
       CREATE INDEX IF NOT EXISTS idx_activity_logs_user_nia ON activity_logs(user_nia);
+
+      ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS coordinates JSONB;
+      ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7);
+      ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
+      ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS accuracy NUMERIC(10, 2);
+      ALTER TABLE activity_logs ADD COLUMN IF NOT EXISTS is_mock_detected BOOLEAN DEFAULT FALSE;
+
+      ALTER TABLE internal_scan_logs ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7);
+      ALTER TABLE internal_scan_logs ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
+      ALTER TABLE internal_scan_logs ADD COLUMN IF NOT EXISTS accuracy NUMERIC(10, 2);
+      ALTER TABLE internal_scan_logs ADD COLUMN IF NOT EXISTS is_mock_detected BOOLEAN DEFAULT FALSE;
     `);
     isScanTableInitialized = true;
   } catch (err) {
@@ -170,6 +190,13 @@ export async function saveScanRecord(input: SaveScanRecordInput): Promise<boolea
   }
 }
 
+export interface CoordinateData {
+  latitude?: number | null;
+  longitude?: number | null;
+  accuracy?: number | null;
+  isMockDetected?: boolean;
+}
+
 export interface ActivityLogInput {
   action: string;
   status: 'SUCCESS' | 'FAILED' | 'ALREADY_CLAIMED' | 'WARNING' | 'INFO' | string;
@@ -181,6 +208,7 @@ export interface ActivityLogInput {
   errorMessage?: string;
   ipAddress?: string;
   userAgent?: string;
+  coordinates?: CoordinateData | null;
   metadata?: any;
 }
 
@@ -198,12 +226,20 @@ export async function logActivity(input: ActivityLogInput): Promise<boolean> {
     const cleanUser = (input.userName || '').trim();
     const desc = input.description || input.errorMessage || null;
 
+    const coords = input.coordinates || null;
+    const lat = coords?.latitude != null ? coords.latitude : null;
+    const lng = coords?.longitude != null ? coords.longitude : null;
+    const accuracy = coords?.accuracy != null ? coords.accuracy : null;
+    const isMock = coords?.isMockDetected != null ? Boolean(coords.isMockDetected) : false;
+    const coordsJson = coords ? JSON.stringify(coords) : null;
+
     // Insert into activity_logs
     const insertActivity = pool.query(
       `
       INSERT INTO activity_logs (
-        created_at, user_nia, user_name, store_name, action, awb, status, description, ip_address, user_agent, metadata
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        created_at, user_nia, user_name, store_name, action, awb, status, description,
+        ip_address, user_agent, coordinates, latitude, longitude, accuracy, is_mock_detected, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       `,
       [
         timestamp,
@@ -216,6 +252,11 @@ export async function logActivity(input: ActivityLogInput): Promise<boolean> {
         desc,
         input.ipAddress || null,
         input.userAgent || null,
+        coordsJson,
+        lat,
+        lng,
+        accuracy,
+        isMock,
         input.metadata ? JSON.stringify(input.metadata) : null,
       ]
     );
@@ -225,8 +266,8 @@ export async function logActivity(input: ActivityLogInput): Promise<boolean> {
       `
       INSERT INTO internal_scan_logs (
         timestamp, nia, store_name, awb, action, status, error_message,
-        device_type, browser_info, technical_info, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+        device_type, browser_info, technical_info, coordinates, latitude, longitude, accuracy, is_mock_detected, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
       `,
       [
         timestamp,
@@ -239,6 +280,11 @@ export async function logActivity(input: ActivityLogInput): Promise<boolean> {
         input.userAgent && /mobile|android|iphone/i.test(input.userAgent) ? 'Mobile' : 'Web Browser',
         input.userAgent || null,
         input.metadata ? JSON.stringify(input.metadata) : null,
+        coordsJson,
+        lat,
+        lng,
+        accuracy,
+        isMock,
       ]
     );
 
@@ -261,7 +307,7 @@ export type InternalScanLogInput = {
   deviceType?: string;
   imei?: string;
   browserInfo?: string;
-  coordinates?: { latitude?: number; longitude?: number } | null;
+  coordinates?: CoordinateData | null;
   technicalInfo?: any;
 };
 
@@ -278,6 +324,7 @@ export async function saveInternalScanLog(input: InternalScanLogInput): Promise<
     storeName: input.storeName,
     errorMessage: input.errorMessage,
     userAgent: input.browserInfo,
+    coordinates: input.coordinates,
     metadata: {
       deviceType: input.deviceType,
       imei: input.imei,
