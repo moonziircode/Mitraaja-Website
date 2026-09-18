@@ -50,14 +50,22 @@ export default function TertundaCard({
   if (tasks.length === 0) return null;
 
   const firstTask = tasks[0] || {};
-  const storeName = (
-    tasklist.owner_name || 
+  let rawStoreName = (
     tasklist.client_name || 
+    tasklist.owner_name || 
+    firstTask.client_name || 
+    firstTask.owner_name || 
+    firstTask.shipper_name || 
+    firstTask.ownership_name || 
     firstTask.store_name || 
     firstTask.storeName || 
-    firstTask.ownership_name || 
     "Mitra"
   ).trim();
+
+  if (rawStoreName === "Pengusaha Tandes") {
+    rawStoreName = "E***********r";
+  }
+  const storeName = rawStoreName;
 
   const totalAwb = tasks.length;
 

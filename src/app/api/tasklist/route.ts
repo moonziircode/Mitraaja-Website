@@ -198,7 +198,7 @@ export async function GET(request: NextRequest) {
               t.scan_time = formatToWibString(sr.scan_time);
               t.scanTime = formatToWibString(sr.scan_time);
             }
-            if (sr.store_name && !t.store_name) {
+            if (sr.store_name && sr.store_name !== 'Pengusaha Tandes' && !t.store_name) {
               t.store_name = sr.store_name;
               t.storeName = sr.store_name;
             }
@@ -280,10 +280,15 @@ export async function GET(request: NextRequest) {
                     t.parcel_total_weight = t.weight;
                   }
 
+                  if (tc.shipper_name) {
+                    t.store_name = tc.shipper_name;
+                    t.storeName = tc.shipper_name;
+                  }
+
                   // Cache in Supabase scan_records
                   saveScanRecord({
                     awb: w,
-                    storeName: t.store_name || t.storeName || session.storeName || 'Mitra',
+                    storeName: tc.shipper_name || t.client_name || t.owner_name || (t.store_name !== 'Pengusaha Tandes' ? t.store_name : null) || 'Mitra',
                     serviceType: t.service_type || tc.service_code || 'REG',
                     scanTime: scanTimestamp || new Date(),
                     weight: t.weight || (tc.weight ? tc.weight / 1000 : 0.5),
@@ -327,7 +332,20 @@ export async function GET(request: NextRequest) {
     if (grouped === "true") {
       const groupedMap = new Map<string, any>();
       for (const task of allTasks) {
-        const storeName = (task.store_name || task.storeName || task.ownership_name || task.client_name || "Mitra").trim();
+        let storeName = (
+          task.client_name || 
+          task.owner_name || 
+          task.ownership_name || 
+          task.shipper_name || 
+          task.store_name || 
+          task.storeName || 
+          "Mitra"
+        ).trim();
+
+        if (storeName === "Pengusaha Tandes") {
+          storeName = "E***********r";
+        }
+
         const groupKey = storeName;
         if (!groupedMap.has(groupKey)) {
           groupedMap.set(groupKey, {

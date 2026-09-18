@@ -151,17 +151,29 @@ export default function TaskDetailModal({
 
   const displayScanTime = formatWibDate(rawScanTime);
 
-  const storeName = 
+  let rawStoreName = 
+    orderDetail?.shipper_name ||
+    orderDetail?.client_name ||
+    orderDetail?.owner_name ||
     orderDetail?.store_name ||
     orderDetail?.storeName ||
+    firstTask.client_name ||
+    firstTask.owner_name ||
+    firstTask.shipper_name ||
+    firstTask.ownership_name ||
     firstTask.store_name ||
     firstTask.storeName ||
-    firstTask.ownership_name ||
-    tasklist?.owner_name ||
     tasklist?.client_name ||
+    tasklist?.owner_name ||
+    t.client_name ||
     t.store_name ||
     t.ownership_name ||
     "-";
+
+  if (rawStoreName === "Pengusaha Tandes") {
+    rawStoreName = "E***********r";
+  }
+  const storeName = rawStoreName;
 
   const rawWeight = 
     orderDetail?.weight ??

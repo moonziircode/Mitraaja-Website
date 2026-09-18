@@ -92,6 +92,7 @@ export async function GET(
               const scanTimestamp = ev201?.timestamp || history[0]?.timestamp || null;
               const formattedScanTime = formatToWibString(scanRec?.scan_time || scanTimestamp);
 
+              const realStoreName = tc.shipper_name || tc.client_name || scanRec?.store_name || session.storeName || session.name || 'Mitra';
               const trackingDetail = {
                 waybill_no: tc.waybill || cleanId,
                 booking_id: tc.booking_id || cleanId,
@@ -103,8 +104,8 @@ export async function GET(
                 weight: tc.weight ? tc.weight / 1000 : (scanRec?.weight ? Number(scanRec.weight) : 1.0),
                 scan_time: formattedScanTime,
                 scanTime: formattedScanTime,
-                store_name: scanRec?.store_name || session.storeName || session.name || 'Mitra',
-                storeName: scanRec?.store_name || session.storeName || session.name || 'Mitra',
+                store_name: realStoreName,
+                storeName: realStoreName,
                 item_name: scanRec?.item_name || (tc.items?.[0]?.name) || 'Paket Pengiriman',
                 items: tc.items && tc.items.length > 0 ? tc.items.map((it: any) => ({
                   item_name: it.name || it.item_name || scanRec?.item_name || 'Paket Pengiriman',
@@ -140,10 +141,10 @@ export async function GET(
     let productName = `Anteraja ${productCode}`;
     let price = 11500;
 
-    const formattedScanTime = formatToWibString(scanRec?.scan_time || (cleanId === '11004385407467' ? '2026-09-18T02:08:35.036Z' : new Date()));
-    const storeName = scanRec?.store_name || (cleanId === '11004385407467' ? 'Pengusaha Tandes' : (session.storeName || session.name || 'Mitra'));
-    const itemName = scanRec?.item_name || (cleanId === '11004385407467' ? 'Thermal Pad THERMALRIGHT EXTREME ODYSSEY 12.8 W/mK' : 'Paket Pengiriman');
-    const weight = scanRec?.weight ? Number(scanRec.weight) : (cleanId === '11004385407467' ? 0.05 : 1.0);
+    const formattedScanTime = formatToWibString(scanRec?.scan_time || new Date());
+    const storeName = (scanRec?.store_name && scanRec.store_name !== 'Pengusaha Tandes') ? scanRec.store_name : (session.storeName || session.name || 'Mitra');
+    const itemName = scanRec?.item_name || 'Paket Pengiriman';
+    const weight = scanRec?.weight ? Number(scanRec.weight) : 1.0;
 
     const mockDetail = {
       waybill_no: cleanId.startsWith('MAA') ? '1000' + cleanId.replace(/\D/g, '').padEnd(8, '0').substring(0, 8) : cleanId,
