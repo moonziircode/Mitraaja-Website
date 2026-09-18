@@ -16,7 +16,28 @@ interface PrintAWBModalProps {
 export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBModalProps) {
   const printRef = useRef<HTMLDivElement>(null);
 
-  const [extraData, setExtraData] = useState<{ shipperName?: string, recipientName?: string, recipientAddress?: string } | null>(null);
+  const [extraData, setExtraData] = useState<{
+    shipperName?: string;
+    shipperPhone?: string;
+    shipperAddress?: string;
+    shipperCity?: string;
+    shipperZip?: string;
+    recipientName?: string;
+    recipientPhone?: string;
+    recipientAddress?: string;
+    recipientCity?: string;
+    recipientZip?: string;
+    serviceCode?: string;
+    weight?: number;
+    bookingId?: string;
+    sourceOrderNo?: string;
+    orderSource?: string;
+    invoice?: string;
+    itemName?: string;
+    itemQty?: number;
+    codAmount?: number;
+    routingCode?: string;
+  } | null>(null);
   const [loadingExtra, setLoadingExtra] = useState(false);
 
   // Focus lock or escape key to close can be added here
@@ -37,7 +58,7 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
 
   const firstTask: any = tasklist?.tasks?.[0] || {};
   const awb = firstTask.waybill_no || firstTask.waybillNo || firstTask.task_code || "-";
-  const serviceType = firstTask.product_code || firstTask.productCode || firstTask.service || "SD";
+  const serviceType = firstTask.product_code || firstTask.productCode || firstTask.service || "REG";
   
   const initialShipperName = firstTask.shipperInfo?.name || firstTask.shipper_info?.name || tasklist?.owner_name || tasklist?.client_name || "-";
   const initialShipperPhone = firstTask.shipperInfo?.phone || firstTask.shipper_info?.phone || tasklist?.owner_phone || "-";
@@ -49,29 +70,58 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
   const weight = tasklist?.tasks?.reduce((acc, t: any) => acc + (t.parcel_total_weight || t.parcelTotalWeight || 0), 0) || 900; // default 0.9kg
 
   useEffect(() => {
-    if (isOpen && awb !== "-" && (initialShipperName === "-" || initialRecipientName === "-")) {
+    if (isOpen && awb !== "-") {
       setLoadingExtra(true);
-      axios.post('/api/track', { awb })
+      fetch(`/api/awb/${awb}`)
+        .then(res => res.json())
         .then(res => {
-          if (res.data) {
+          if (res.success && res.data) {
+            const d = res.data;
             setExtraData({
-              shipperName: res.data.sender !== '-' ? res.data.sender : undefined,
-              recipientName: res.data.receiver !== '-' ? res.data.receiver : undefined,
-              recipientAddress: res.data.destination !== '-' ? res.data.destination : undefined,
+              shipperName: d.shipperInfo?.name || d.shipperName,
+              shipperPhone: d.shipperInfo?.phone,
+              shipperAddress: d.shipperInfo?.address,
+              shipperCity: d.shipperInfo?.city_name || d.shipperInfo?.city,
+              shipperZip: d.shipperInfo?.zip || d.shipperInfo?.postcode,
+              recipientName: d.receiverInfo?.name || d.receiverName,
+              recipientPhone: d.receiverInfo?.phone,
+              recipientAddress: d.receiverInfo?.address || d.destinationCity,
+              recipientCity: d.receiverInfo?.city_name || d.receiverInfo?.city,
+              recipientZip: d.receiverInfo?.zip || d.receiverInfo?.postcode,
+              serviceCode: d.serviceCode,
+              weight: d.weight,
+              bookingId: d.sourceOrderNo || d.invoice || d.waybill,
+              sourceOrderNo: d.sourceOrderNo,
+              orderSource: d.orderSource,
+              invoice: d.invoice,
+              itemName: d.items?.[0]?.item_name || d.items?.[0]?.itemName || d.items?.[0]?.description,
+              itemQty: d.items?.[0]?.quantity || d.items?.[0]?.qty || 1,
+              codAmount: d.codAmount,
+            });
+          } else {
+            return axios.post('/api/track', { awb }).then(trackRes => {
+              if (trackRes.data) {
+                setExtraData({
+                  shipperName: trackRes.data.sender !== '-' ? trackRes.data.sender : undefined,
+                  recipientName: trackRes.data.receiver !== '-' ? trackRes.data.receiver : undefined,
+                  recipientAddress: trackRes.data.destination !== '-' ? trackRes.data.destination : undefined,
+                  serviceCode: trackRes.data.service !== '-' ? trackRes.data.service : undefined,
+                });
+              }
             });
           }
         })
-        .catch(err => console.error("Gagal load tracking detail:", err))
+        .catch(err => console.error("Gagal load detail AWB:", err))
         .finally(() => setLoadingExtra(false));
     }
-  }, [isOpen, awb, initialShipperName, initialRecipientName]);
+  }, [isOpen, awb]);
 
   if (!tasklist || !isOpen) return null;
 
   const shipperName = extraData?.shipperName || initialShipperName;
-  const shipperPhone = initialShipperPhone;
+  const shipperPhone = extraData?.shipperPhone || initialShipperPhone;
   const recipientName = extraData?.recipientName || initialRecipientName;
-  const recipientPhone = initialRecipientPhone;
+  const recipientPhone = extraData?.recipientPhone || initialRecipientPhone;
   const recipientAddress = extraData?.recipientAddress || initialRecipientAddress;
 
   const handlePrint = () => {
@@ -115,20 +165,29 @@ export default function PrintAWBModal({ isOpen, onClose, tasklist }: PrintAWBMod
               <AWBLabel
                 ref={printRef}
                 awb={awb}
-                serviceType={serviceType}
+                serviceType={extraData?.serviceCode || serviceType}
                 shipperName={shipperName}
                 shipperPhone={shipperPhone}
+                shipperAddress={extraData?.shipperAddress || firstTask.shipperInfo?.address}
+                shipperCity={extraData?.shipperCity || firstTask.shipperInfo?.city || firstTask.shipperInfo?.city_name}
+                shipperZip={extraData?.shipperZip || firstTask.shipperInfo?.zipCode || firstTask.shipperInfo?.postcode}
                 recipientName={recipientName}
                 recipientPhone={recipientPhone}
                 recipientAddress={recipientAddress}
-                weight={weight}
-                routingCode="33.10" // Default for now, as we don't have routing code in MaaTask
+                recipientCity={extraData?.recipientCity || firstTask.recipientInfo?.city || firstTask.recipientInfo?.city_name}
+                recipientZip={extraData?.recipientZip || firstTask.recipientInfo?.zipCode || firstTask.recipientInfo?.postcode}
+                weight={extraData?.weight || weight}
+                bookingId={extraData?.bookingId || firstTask.source_order_no || firstTask.sourceOrderNo || firstTask.task_code || firstTask.taskCode}
+                sourceOrderNo={extraData?.sourceOrderNo || firstTask.source_order_no || firstTask.sourceOrderNo}
+                orderSource={extraData?.orderSource || firstTask.order_source || firstTask.orderSource || tasklist.order_source || tasklist.client_name || "Mitraaja"}
+                invoice={extraData?.invoice || firstTask.invoice_no || firstTask.invoiceNo}
+                itemName={extraData?.itemName || firstTask.items?.[0]?.itemDesc || firstTask.item_name || "Barang Kiriman"}
+                itemQty={extraData?.itemQty || firstTask.items?.[0]?.qty || 1}
+                codAmount={extraData?.codAmount || firstTask.payment?.amount || firstTask.cod_amount || 0}
+                notes={firstTask.note}
+                routingCode={extraData?.routingCode || firstTask.routing_code || "0001"}
               />
             </div>
-            {/* The actual element used for printing if we only want to print this.
-                However, since we use global window.print(), we can just use CSS media queries
-                to hide everything else on the page during print. 
-            */}
           </div>
 
           {/* Footer UI (Hidden in Print) */}
