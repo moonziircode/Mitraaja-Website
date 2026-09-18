@@ -12,13 +12,29 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isLocationDenied, setIsLocationDenied] = useState(false);
 
   // Minta izin lokasi di awal halaman dibuka agar koordinat siap saat tombol login ditekan
   useEffect(() => {
     if (typeof window !== 'undefined' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
+      navigator.geolocation.getCurrentPosition(
+        () => setIsLocationDenied(false),
+        () => {},
+        { enableHighAccuracy: true }
+      );
     }
   }, []);
+
+  const handleQuickEnableLocation = async () => {
+    try {
+      await getStrictAccurateLocation(200);
+      setIsLocationDenied(false);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Izin lokasi belum diberikan. Pastikan klik "Izinkan" pada dialog browser.');
+      setIsLocationDenied(true);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,7 +46,9 @@ export default function LoginPage() {
       let location;
       try {
         location = await getStrictAccurateLocation(200);
+        setIsLocationDenied(false);
       } catch (geoErr: any) {
+        setIsLocationDenied(true);
         setError(geoErr.message || 'Akses lokasi GPS akurasi tinggi wajib diaktifkan.');
         setIsLoading(false);
         return;
@@ -142,7 +160,28 @@ export default function LoginPage() {
               </div>
             </div>
             
-            {error && <p className="text-xs text-red-600 text-center font-medium bg-red-50 p-2.5 rounded-lg border border-red-200">{error}</p>}
+            {/* Quick Button hanya muncul jika izin akses lokasi ditolak/mati */}
+            {isLocationDenied ? (
+              <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-xl space-y-2.5 animate-fade-in text-center">
+                <div className="flex items-center justify-center gap-1.5 text-amber-900 font-bold text-xs">
+                  <span className="material-symbols-outlined text-base text-amber-600">location_disabled</span>
+                  <span>Akses Lokasi Ditolak / Belum Aktif</span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-tight">
+                  {error || 'Sistem memerlukan izin lokasi untuk mencatat titik koordinat saat login.'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleQuickEnableLocation}
+                  className="w-full py-2.5 px-3 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-sm">my_location</span>
+                  <span>Izinkan / Nyalakan Lokasi</span>
+                </button>
+              </div>
+            ) : error ? (
+              <p className="text-xs text-red-600 text-center font-medium bg-red-50 p-2.5 rounded-lg border border-red-200">{error}</p>
+            ) : null}
 
             <div className="pt-2 space-y-4">
               <button

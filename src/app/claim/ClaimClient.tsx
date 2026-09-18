@@ -34,22 +34,34 @@ export default function ClaimClient({ user }: { user: User }) {
   // ── GPS State ──
   const [gpsLocation, setGpsLocation] = useState<VerifiedLocation | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [isLocationDenied, setIsLocationDenied] = useState<boolean>(false);
   const [isGpsLoading, setIsGpsLoading] = useState<boolean>(false);
 
-  const refreshGps = useCallback(async () => {
+  const handleQuickEnableLocation = async () => {
     setIsGpsLoading(true);
-    setGpsError(null);
+    try {
+      const loc = await getStrictAccurateLocation(150);
+      setGpsLocation(loc);
+      setIsLocationDenied(false);
+      setGpsError(null);
+    } catch (err: any) {
+      setGpsError(err.message || 'Izin lokasi belum aktif. Pastikan klik "Izinkan" pada dialog browser.');
+      setIsLocationDenied(true);
+    } finally {
+      setIsGpsLoading(false);
+    }
+  };
+
+  const refreshGps = useCallback(async () => {
     try {
       const loc = await getStrictAccurateLocation(150);
       setGpsLocation(loc);
       setGpsError(null);
+      setIsLocationDenied(false);
       return loc;
     } catch (err: any) {
-      setGpsError(err.message || 'Gagal mengunci GPS');
       setGpsLocation(null);
       return null;
-    } finally {
-      setIsGpsLoading(false);
     }
   }, []);
 
@@ -96,10 +108,11 @@ export default function ClaimClient({ user }: { user: User }) {
       loc = await getStrictAccurateLocation(150);
       setGpsLocation(loc);
       setGpsError(null);
+      setIsLocationDenied(false);
     } catch (geoErr: any) {
       const errMsg = geoErr.message || 'Akses lokasi GPS akurat wajib diaktifkan. Dilarang keras menggunakan Fake GPS!';
       setGpsError(errMsg);
-      alert(errMsg);
+      setIsLocationDenied(true);
       setIsProcessing(false);
       return;
     }
@@ -228,6 +241,27 @@ export default function ClaimClient({ user }: { user: User }) {
         {/* Scrollable Main Area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto space-y-6">
+            {/* Quick Button hanya muncul ketika izin akses lokasi ditolak/mati */}
+            {isLocationDenied && (
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl text-xs text-amber-900 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-amber-600 text-xl">location_disabled</span>
+                  <div>
+                    <p className="font-bold">Akses Lokasi Ditolak / Belum Aktif</p>
+                    <p className="text-[11px] text-amber-800">{gpsError || 'Sistem memerlukan akses lokasi aktif untuk memproses klaim paket.'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleQuickEnableLocation}
+                  disabled={isGpsLoading}
+                  className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm disabled:opacity-60"
+                >
+                  <span className="material-symbols-outlined text-sm">my_location</span>
+                  <span>{isGpsLoading ? 'Memeriksa...' : 'Izinkan / Nyalakan Lokasi'}</span>
+                </button>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Input Panel */}

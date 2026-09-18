@@ -60,23 +60,34 @@ export default function DashboardClient({ user }: { user: User }) {
   // ── GPS Security & Geolocation State ──
   const [gpsLocation, setGpsLocation] = useState<VerifiedLocation | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [isGpsLoading, setIsGpsLoading] = useState<boolean>(true);
+  const [isLocationDenied, setIsLocationDenied] = useState<boolean>(false);
+  const [isGpsLoading, setIsGpsLoading] = useState<boolean>(false);
+
+  const handleQuickEnableLocation = async () => {
+    setIsGpsLoading(true);
+    try {
+      const loc = await getStrictAccurateLocation(150);
+      setGpsLocation(loc);
+      setIsLocationDenied(false);
+      setGpsError(null);
+    } catch (err: any) {
+      setGpsError(err.message || 'Izin lokasi belum aktif. Pastikan klik "Izinkan" pada browser.');
+      setIsLocationDenied(true);
+    } finally {
+      setIsGpsLoading(false);
+    }
+  };
 
   const refreshGps = useCallback(async () => {
-    setIsGpsLoading(true);
-    setGpsError(null);
     try {
       const loc = await getStrictAccurateLocation(150);
       setGpsLocation(loc);
       setGpsError(null);
+      setIsLocationDenied(false);
       return loc;
     } catch (err: any) {
-      const msg = err.message || 'Gagal mengunci titik koordinat GPS';
-      setGpsError(msg);
       setGpsLocation(null);
       return null;
-    } finally {
-      setIsGpsLoading(false);
     }
   }, []);
 
@@ -235,9 +246,11 @@ export default function DashboardClient({ user }: { user: User }) {
         loc = await getStrictAccurateLocation(150);
         setGpsLocation(loc);
         setGpsError(null);
+        setIsLocationDenied(false);
       } catch (geoErr: any) {
         const errorMsg = geoErr.message || 'GPS wajib aktif & dilarang keras menggunakan Fake GPS.';
         setGpsError(errorMsg);
+        setIsLocationDenied(true);
         setScanResult({
           status: 'error',
           awb: trimmed,
@@ -699,6 +712,28 @@ export default function DashboardClient({ user }: { user: User }) {
 
                 {/* Input Field */}
                 <div className="p-4 md:p-8 flex-1 flex flex-col justify-center">
+                  {/* Quick Button hanya muncul ketika izin akses lokasi ditolak/mati */}
+                  {isLocationDenied && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-900 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-amber-600 text-lg">location_disabled</span>
+                        <div>
+                          <p className="font-bold">Akses Lokasi Ditolak / Belum Aktif</p>
+                          <p className="text-[11px] text-amber-800">{gpsError || 'Sistem mewajibkan akses lokasi GPS aktif untuk scan paket.'}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleQuickEnableLocation}
+                        disabled={isGpsLoading}
+                        className="w-full sm:w-auto px-4 py-2 bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm disabled:opacity-60"
+                      >
+                        <span className="material-symbols-outlined text-sm">my_location</span>
+                        <span>{isGpsLoading ? 'Memeriksa...' : 'Izinkan / Nyalakan Lokasi'}</span>
+                      </button>
+                    </div>
+                  )}
+
                   <form onSubmit={handleScanSubmit}>
                     <div className="relative group">
                       <span className={`material-symbols-outlined absolute left-3 md:left-5 top-1/2 -translate-y-1/2 transition-colors ${isFocused ? 'text-primary' : 'text-gray-400'} text-[18px] md:text-[24px]`}>barcode_scanner</span>
