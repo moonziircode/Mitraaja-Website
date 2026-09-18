@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server';
 import { anterajaClient } from '@/lib/anteraja-client';
 import { getSession } from '@/lib/auth';
-import { saveScanRecord, saveInternalScanLog } from '@/lib/scan-records-db';
+import { saveScanRecord, logActivity } from '@/lib/scan-records-db';
 
 export const preferredRegion = 'sin1';
 
@@ -60,47 +60,56 @@ export async function POST(request: NextRequest) {
     // Execute complete claim lifecycle
     const result = await anterajaClient.processFullClaimLifecycle(trimmedAwb, agentStaffId, token);
 
-    // 1. Save scan record to Supabase (temporary 48h storage)
-    if (result.success || result.isAlreadyClaimed) {
-      saveScanRecord({
-        awb: result.awb,
-        storeName: session.storeName || session.name || 'Mitra',
-        serviceType: 'REG',
-        scanTime: new Date(),
-        weight: 0,
-        itemName: '-',
-        status: result.finalTaskStatus || (result.success ? 'WAITING_FOR_HANDOVER_SERAH' : 'ALREADY_CLAIMED'),
-        packageDetails: {
-          taskCode: result.taskCode,
-          shipperName: result.shipperName,
-          receiverName: result.receiverName,
-          destinationCity: result.destinationCity,
-          opcode: result.opcode,
-          trackingCode: result.trackingCode,
-        }
-      }).catch((err) => console.error('[saveScanRecord] async error:', err));
-    }
-
-    // 2. Save internal audit scan log
-    saveInternalScanLog({
-      timestamp: new Date(),
-      nia: session.nia,
-      storeName: session.storeName || session.name || 'Mitra',
-      awb: result.awb,
-      action: 'CLAIM_AND_DROP_OFF',
-      status: result.success ? 'SUCCESS' : (result.isAlreadyClaimed ? 'ALREADY_CLAIMED' : 'FAILED'),
-      errorMessage: result.success ? undefined : result.message,
-      deviceType,
-      browserInfo,
-      technicalInfo: {
-        taskCode: result.taskCode,
-        phase1: result.phase1Status,
-        phase2: result.phase2Status,
-        phase3: result.phase3Status,
-        trackingCode: result.trackingCode,
-        opcode: result.opcode,
+    // 1. Save scan record to Supabase and log activity reliably
+    try {
+      const logPromises = [];
+      if (result.success || result.isAlreadyClaimed) {
+        logPromises.push(
+          saveScanRecord({
+            awb: result.awb,
+            storeName: session.storeName || session.name || 'Mitra',
+            serviceType: 'REG',
+            scanTime: new Date(),
+            weight: 0,
+            itemName: '-',
+            status: result.finalTaskStatus || (result.success ? 'WAITING_FOR_HANDOVER_SERAH' : 'ALREADY_CLAIMED'),
+            packageDetails: {
+              taskCode: result.taskCode,
+              shipperName: result.shipperName,
+              receiverName: result.receiverName,
+              destinationCity: result.destinationCity,
+              opcode: result.opcode,
+              trackingCode: result.trackingCode,
+            },
+          })
+        );
       }
-    }).catch((err) => console.error('[saveInternalScanLog] async error:', err));
+
+      logPromises.push(
+        logActivity({
+          action: 'CLAIM_AND_DROP_OFF',
+          status: result.success ? 'SUCCESS' : (result.isAlreadyClaimed ? 'ALREADY_CLAIMED' : 'FAILED'),
+          awb: result.awb,
+          userNia: session.nia,
+          userName: session.name,
+          storeName: session.storeName || session.name || 'Mitra',
+          errorMessage: result.success ? undefined : result.message,
+          userAgent: browserInfo,
+          metadata: {
+            taskCode: result.taskCode,
+            phase1: result.phase1Status,
+            phase2: result.phase2Status,
+            phase3: result.phase3Status,
+            trackingCode: result.trackingCode,
+            opcode: result.opcode,
+          },
+        })
+      );
+
+      await Promise.allSettled(logPromises);
+    } catch (dbErr) {
+      console.error('[POST /api/scan] DB logging error:', dbErr);
+    }
 
     return Response.json(
       {
@@ -132,17 +141,18 @@ export async function POST(request: NextRequest) {
       errMsg.toLowerCase().includes('already claimed');
 
     // Log internal failure
-    saveInternalScanLog({
-      timestamp: new Date(),
-      nia: session?.nia || '',
-      storeName: session?.storeName || session?.name || 'Mitra',
-      awb: '',
-      action: 'CLAIM_AND_DROP_OFF',
-      status: isAlreadyClaimed ? 'ALREADY_CLAIMED' : 'FAILED',
-      errorMessage: errMsg,
-      deviceType: 'Web Browser',
-      browserInfo: request.headers.get('user-agent') || 'Unknown',
-    }).catch(() => {});
+    try {
+      await logActivity({
+        action: 'CLAIM_AND_DROP_OFF',
+        status: isAlreadyClaimed ? 'ALREADY_CLAIMED' : 'FAILED',
+        awb: (request as any).awb || '',
+        userNia: session?.nia || '',
+        userName: session?.name || '',
+        storeName: session?.storeName || session?.name || 'Mitra',
+        errorMessage: errMsg,
+        userAgent: request.headers.get('user-agent') || 'Unknown',
+      });
+    } catch {}
 
     return Response.json(
       {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { anterajaClient } from '@/lib/anteraja-client';
+import { logActivity } from '@/lib/scan-records-db';
 
 export const preferredRegion = 'sin1';
 
@@ -121,11 +122,36 @@ export async function GET(
     }
 
     if (!maaTask) {
+      try {
+        await logActivity({
+          action: 'SEARCH_AWB',
+          status: 'FAILED',
+          awb,
+          userNia: session.nia,
+          userName: session.name,
+          storeName: session.storeName,
+          description: `AWB ${awb} tidak ditemukan`,
+        });
+      } catch {}
+
       return NextResponse.json({ 
         success: false, 
         message: 'Nomor AWB tidak ditemukan di sistem maupun di tracking publik.' 
       }, { status: 404 });
     }
+
+    try {
+      await logActivity({
+        action: 'SEARCH_AWB',
+        status: 'SUCCESS',
+        awb,
+        userNia: session.nia,
+        userName: session.name,
+        storeName: session.storeName,
+        description: `Pencarian detail AWB ${awb}`,
+        metadata: { isFallback, serviceCode: maaTask.serviceCode }
+      });
+    } catch {}
 
     return NextResponse.json({ 
       success: true, 

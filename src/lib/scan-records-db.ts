@@ -41,7 +41,7 @@ export function formatToWibString(dateInput?: Date | string | number | null): st
 }
 
 /**
- * Pastikan tabel scan_records dan internal_scan_logs tersedia di database.
+ * Pastikan tabel scan_records, internal_scan_logs, dan activity_logs tersedia di database Supabase.
  */
 export async function ensureScanTables(): Promise<void> {
   if (isScanTableInitialized) return;
@@ -81,6 +81,25 @@ export async function ensureScanTables(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_internal_scan_logs_awb ON internal_scan_logs(awb);
       CREATE INDEX IF NOT EXISTS idx_internal_scan_logs_nia ON internal_scan_logs(nia);
       CREATE INDEX IF NOT EXISTS idx_internal_scan_logs_timestamp ON internal_scan_logs(timestamp);
+
+      CREATE TABLE IF NOT EXISTS activity_logs (
+        id BIGSERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        user_nia VARCHAR(100),
+        user_name VARCHAR(150),
+        store_name VARCHAR(150),
+        action VARCHAR(100) NOT NULL,
+        awb VARCHAR(50),
+        status VARCHAR(50) NOT NULL,
+        description TEXT,
+        ip_address VARCHAR(50),
+        user_agent TEXT,
+        metadata JSONB
+      );
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_awb ON activity_logs(awb);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_activity_logs_user_nia ON activity_logs(user_nia);
     `);
     isScanTableInitialized = true;
   } catch (err) {
@@ -123,7 +142,6 @@ export async function saveScanRecord(input: SaveScanRecordInput): Promise<boolea
   if (!input.awb) return false;
   try {
     await ensureScanTables();
-    // Jalankan pembersihan data kedaluwarsa 48 jam di background
     cleanupExpiredScanRecords().catch(() => {});
 
     const scanTime = input.scanTime ? new Date(input.scanTime) : new Date();
@@ -152,7 +170,87 @@ export async function saveScanRecord(input: SaveScanRecordInput): Promise<boolea
   }
 }
 
-export interface InternalScanLogInput {
+export interface ActivityLogInput {
+  action: string;
+  status: 'SUCCESS' | 'FAILED' | 'ALREADY_CLAIMED' | 'WARNING' | 'INFO' | string;
+  awb?: string;
+  userNia?: string;
+  userName?: string;
+  storeName?: string;
+  description?: string;
+  errorMessage?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: any;
+}
+
+/**
+ * Catat aktivitas ke Supabase (menulis ke tabel activity_logs DAN internal_scan_logs secara bersamaan).
+ */
+export async function logActivity(input: ActivityLogInput): Promise<boolean> {
+  try {
+    await ensureScanTables();
+
+    const timestamp = new Date();
+    const cleanAwb = (input.awb || '').trim();
+    const cleanNia = (input.userNia || '').trim();
+    const cleanStore = (input.storeName || '').trim();
+    const cleanUser = (input.userName || '').trim();
+    const desc = input.description || input.errorMessage || null;
+
+    // Insert into activity_logs
+    const insertActivity = pool.query(
+      `
+      INSERT INTO activity_logs (
+        created_at, user_nia, user_name, store_name, action, awb, status, description, ip_address, user_agent, metadata
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `,
+      [
+        timestamp,
+        cleanNia || null,
+        cleanUser || null,
+        cleanStore || null,
+        input.action,
+        cleanAwb || null,
+        input.status,
+        desc,
+        input.ipAddress || null,
+        input.userAgent || null,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+      ]
+    );
+
+    // Insert into internal_scan_logs for dual-table compatibility
+    const insertInternalScan = pool.query(
+      `
+      INSERT INTO internal_scan_logs (
+        timestamp, nia, store_name, awb, action, status, error_message,
+        device_type, browser_info, technical_info, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+      `,
+      [
+        timestamp,
+        cleanNia,
+        cleanStore,
+        cleanAwb,
+        input.action,
+        input.status,
+        input.errorMessage || null,
+        input.userAgent && /mobile|android|iphone/i.test(input.userAgent) ? 'Mobile' : 'Web Browser',
+        input.userAgent || null,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+      ]
+    );
+
+    await Promise.all([insertActivity, insertInternalScan]);
+    return true;
+  } catch (err) {
+    console.error('[logActivity] error:', err);
+    return false;
+  }
+}
+
+export type InternalScanLogInput = {
   timestamp?: Date | string | number;
   nia?: string;
   storeName?: string;
@@ -165,45 +263,28 @@ export interface InternalScanLogInput {
   browserInfo?: string;
   coordinates?: { latitude?: number; longitude?: number } | null;
   technicalInfo?: any;
-}
+};
 
 /**
  * Catat internal scan log untuk keperluan audit dan troubleshooting.
- * Pastikan password TIDAK PERNAH disimpan.
+ * Memanggil logActivity secara otomatis.
  */
 export async function saveInternalScanLog(input: InternalScanLogInput): Promise<boolean> {
-  try {
-    await ensureScanTables();
-
-    const timestamp = input.timestamp ? new Date(input.timestamp) : new Date();
-
-    await pool.query(
-      `
-      INSERT INTO internal_scan_logs (
-        timestamp, nia, store_name, awb, action, status, error_message,
-        device_type, imei, browser_info, coordinates, technical_info, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
-      `,
-      [
-        timestamp,
-        input.nia || '',
-        input.storeName || '',
-        input.awb || '',
-        input.action,
-        input.status,
-        input.errorMessage || null,
-        input.deviceType || 'Web Browser',
-        input.imei || null,
-        input.browserInfo || null,
-        input.coordinates ? JSON.stringify(input.coordinates) : null,
-        input.technicalInfo ? JSON.stringify(input.technicalInfo) : null,
-      ]
-    );
-    return true;
-  } catch (err) {
-    console.error('[saveInternalScanLog] error:', err);
-    return false;
-  }
+  return logActivity({
+    action: input.action,
+    status: input.status,
+    awb: input.awb,
+    userNia: input.nia,
+    storeName: input.storeName,
+    errorMessage: input.errorMessage,
+    userAgent: input.browserInfo,
+    metadata: {
+      deviceType: input.deviceType,
+      imei: input.imei,
+      coordinates: input.coordinates,
+      technicalInfo: input.technicalInfo,
+    },
+  });
 }
 
 /**
@@ -257,3 +338,4 @@ export async function getScanRecordsByAwbs(awbs: string[]): Promise<Map<string, 
     return map;
   }
 }
+

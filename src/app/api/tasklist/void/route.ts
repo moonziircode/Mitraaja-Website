@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import axios from "axios";
 import { markOrderAsVoided } from "@/lib/voided-orders-db";
+import { logActivity } from "@/lib/scan-records-db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,6 +60,20 @@ export async function POST(request: NextRequest) {
     } catch (apiErr: any) {
       console.warn("[POST Tasklist Void] Upstream call warning:", apiErr?.message);
     }
+
+    // Catat pembatalan task ke Supabase
+    try {
+      await logActivity({
+        action: 'VOID_TASK',
+        status: 'SUCCESS',
+        awb: cleanTaskCode,
+        userNia: session.nia,
+        userName: session.name,
+        storeName: session.storeName,
+        description: `Membatalkan / void AWB ${cleanTaskCode}: ${voidReason}`,
+        metadata: { taskCode: cleanTaskCode, reason: voidReason }
+      });
+    } catch {}
 
     return NextResponse.json({ 
       success: true, 

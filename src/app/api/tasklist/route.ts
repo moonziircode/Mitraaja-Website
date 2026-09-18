@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import axios from "axios";
 import { getVoidedTaskCodes } from "@/lib/voided-orders-db";
-import { getScanRecordsByAwbs, formatToWibString, saveScanRecord } from "@/lib/scan-records-db";
+import { getScanRecordsByAwbs, formatToWibString, saveScanRecord, logActivity } from "@/lib/scan-records-db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -377,6 +377,19 @@ export async function GET(request: NextRequest) {
       }
       finalContent = Array.from(groupedMap.values());
     }
+
+    // Catat log view tasklist ke Supabase
+    try {
+      await logActivity({
+        action: 'VIEW_TASKLIST',
+        status: 'SUCCESS',
+        userNia: session.nia,
+        userName: session.name,
+        storeName: session.storeName,
+        description: `Melihat tasklist (state: ${state}, total tasks: ${allTasks.length})`,
+        metadata: { state, page, size, grouped, totalTasks: allTasks.length }
+      });
+    } catch {}
 
     return NextResponse.json({
       status: 0,

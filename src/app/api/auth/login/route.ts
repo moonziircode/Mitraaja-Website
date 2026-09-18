@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { anterajaClient } from '@/lib/anteraja-client';
+import { logActivity } from '@/lib/scan-records-db';
 
 export const preferredRegion = 'sin1';
 
@@ -28,6 +29,21 @@ export async function POST(request: NextRequest) {
     session.postalCode = result.user.postalCode;
     await session.save();
 
+    // Catat log sukses login ke Supabase
+    try {
+      await logActivity({
+        action: 'USER_LOGIN',
+        status: 'SUCCESS',
+        userNia: result.user.agentStaffId,
+        userName: result.user.name,
+        storeName: result.user.storeName,
+        description: `User ${result.user.name} (${result.user.agentStaffId}) berhasil login ke toko ${result.user.storeName}`,
+        userAgent: request.headers.get('user-agent') || 'Unknown',
+      });
+    } catch (logErr) {
+      console.error('[login log error]:', logErr);
+    }
+
     return NextResponse.json({
       message: 'Login berhasil',
       token: result.token,
@@ -41,6 +57,21 @@ export async function POST(request: NextRequest) {
     }, { status: 200 });
   } catch (err: any) {
     console.error('[POST /api/auth/login] Error:', err);
+
+    // Catat log gagal login ke Supabase
+    try {
+      await logActivity({
+        action: 'USER_LOGIN',
+        status: 'FAILED',
+        userNia: nia,
+        description: `Percobaan login gagal untuk NIA: ${nia}`,
+        errorMessage: err.message || 'Login gagal',
+        userAgent: request.headers.get('user-agent') || 'Unknown',
+      });
+    } catch (logErr) {
+      console.error('[login fail log error]:', logErr);
+    }
+
     return NextResponse.json({ 
       message: err.message || 'Login gagal. Periksa kembali NIA dan password Anda.' 
     }, { status: 401 });

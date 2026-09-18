@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { anterajaClient } from '@/lib/anteraja-client';
-import { saveScanRecord, saveInternalScanLog } from '@/lib/scan-records-db';
+import { saveScanRecord, logActivity } from '@/lib/scan-records-db';
 
 export const preferredRegion = 'sin1';
 
@@ -59,43 +59,52 @@ export async function POST(request: NextRequest) {
 
       const lifecycleResult = await anterajaClient.processFullClaimLifecycle(awb, agentStaffId, token);
       
-      // 1. Save scan record to Supabase (temporary 48h storage)
-      if (lifecycleResult.success || lifecycleResult.isAlreadyClaimed) {
-        saveScanRecord({
-          awb: lifecycleResult.awb,
-          storeName: session.storeName || session.name || 'Mitra',
-          serviceType: 'REG',
-          scanTime: new Date(),
-          weight: 0,
-          itemName: '-',
-          status: lifecycleResult.finalTaskStatus || (lifecycleResult.success ? 'WAITING_FOR_HANDOVER_SERAH' : 'ALREADY_CLAIMED'),
-          packageDetails: {
-            taskCode: lifecycleResult.taskCode,
-            shipperName: lifecycleResult.shipperName,
-            receiverName: lifecycleResult.receiverName,
-            destinationCity: lifecycleResult.destinationCity,
-            opcode: lifecycleResult.opcode,
-            trackingCode: lifecycleResult.trackingCode,
-          }
-        }).catch((err) => console.error('[saveScanRecord] async error in parcels/claim:', err));
-      }
-
-      // 2. Save internal audit log
-      saveInternalScanLog({
-        timestamp: new Date(),
-        nia: session.nia,
-        storeName: session.storeName || session.name || 'Mitra',
-        awb: lifecycleResult.awb,
-        action: 'BATCH_CLAIM_DROP_OFF',
-        status: lifecycleResult.success ? 'SUCCESS' : (lifecycleResult.isAlreadyClaimed ? 'ALREADY_CLAIMED' : 'FAILED'),
-        errorMessage: lifecycleResult.success ? undefined : lifecycleResult.message,
-        deviceType: 'Web Browser',
-        technicalInfo: {
-          taskCode: lifecycleResult.taskCode,
-          trackingCode: lifecycleResult.trackingCode,
-          opcode: lifecycleResult.opcode,
+      // 1. Save scan record and log activity reliably to Supabase
+      try {
+        const logTasks = [];
+        if (lifecycleResult.success || lifecycleResult.isAlreadyClaimed) {
+          logTasks.push(
+            saveScanRecord({
+              awb: lifecycleResult.awb,
+              storeName: session.storeName || session.name || 'Mitra',
+              serviceType: 'REG',
+              scanTime: new Date(),
+              weight: 0,
+              itemName: '-',
+              status: lifecycleResult.finalTaskStatus || (lifecycleResult.success ? 'WAITING_FOR_HANDOVER_SERAH' : 'ALREADY_CLAIMED'),
+              packageDetails: {
+                taskCode: lifecycleResult.taskCode,
+                shipperName: lifecycleResult.shipperName,
+                receiverName: lifecycleResult.receiverName,
+                destinationCity: lifecycleResult.destinationCity,
+                opcode: lifecycleResult.opcode,
+                trackingCode: lifecycleResult.trackingCode,
+              },
+            })
+          );
         }
-      }).catch((err) => console.error('[saveInternalScanLog] async error in parcels/claim:', err));
+
+        logTasks.push(
+          logActivity({
+            action: 'BATCH_CLAIM_DROP_OFF',
+            status: lifecycleResult.success ? 'SUCCESS' : (lifecycleResult.isAlreadyClaimed ? 'ALREADY_CLAIMED' : 'FAILED'),
+            awb: lifecycleResult.awb,
+            userNia: session.nia,
+            userName: session.name,
+            storeName: session.storeName || session.name || 'Mitra',
+            errorMessage: lifecycleResult.success ? undefined : lifecycleResult.message,
+            metadata: {
+              taskCode: lifecycleResult.taskCode,
+              trackingCode: lifecycleResult.trackingCode,
+              opcode: lifecycleResult.opcode,
+            },
+          })
+        );
+
+        await Promise.allSettled(logTasks);
+      } catch (dbErr) {
+        console.error('[POST /api/parcels/claim] DB logging error:', dbErr);
+      }
 
       results.push({
         awb: lifecycleResult.awb,

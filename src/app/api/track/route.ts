@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
+import { logActivity } from '@/lib/scan-records-db';
 
 export const preferredRegion = 'sin1';
 
@@ -117,6 +118,20 @@ export async function POST(request: NextRequest) {
         return mapEvent(ev.tracking_code, ev.timestamp, msg);
       });
 
+      // Log private tracking
+      try {
+        await logActivity({
+          action: 'TRACK_AWB',
+          status: 'SUCCESS',
+          awb: cleanAwb,
+          userNia: session.nia,
+          userName: session.name,
+          storeName: session.storeName,
+          description: `Tracking AWB ${cleanAwb} via Private API: ${trackingResult.status === '255' ? 'Delivered' : 'In Transit'}`,
+          metadata: { isPrivate: true, status: trackingResult.status }
+        });
+      } catch {}
+
       return NextResponse.json({
         awb: trackingResult.waybill || cleanAwb,
         status: trackingResult.status === '255' ? 'Delivered' : 'In Transit',
@@ -159,6 +174,20 @@ export async function POST(request: NextRequest) {
     const mappedHistory = (trackingResult.history || []).map((ev: RawEvent) => 
       mapEvent(ev.tracking_code, ev.timestamp, ev.message.id)
     );
+
+    // Log public tracking
+    try {
+      await logActivity({
+        action: 'TRACK_AWB',
+        status: 'SUCCESS',
+        awb: cleanAwb,
+        userNia: session?.nia || undefined,
+        userName: session?.name || undefined,
+        storeName: session?.storeName || undefined,
+        description: `Tracking AWB ${cleanAwb} via Public API: ${trackingResult.detail.final_status === '255' ? 'Delivered' : 'In Transit'}`,
+        metadata: { isPrivate: false, finalStatus: trackingResult.detail.final_status }
+      });
+    } catch {}
 
     return NextResponse.json({
       awb: trackingResult.awb,
