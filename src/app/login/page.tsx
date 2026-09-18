@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
 
+  // Minta izin lokasi di awal halaman dibuka agar koordinat siap saat tombol login ditekan
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(() => {}, () => {}, { enableHighAccuracy: true });
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -22,7 +29,7 @@ export default function LoginPage() {
       // Dapatkan koordinat akurat dan deteksi Fake GPS di background untuk dicatat di log
       let location;
       try {
-        location = await getStrictAccurateLocation(150);
+        location = await getStrictAccurateLocation(200);
       } catch (geoErr: any) {
         setError(geoErr.message || 'Akses lokasi GPS akurasi tinggi wajib diaktifkan.');
         setIsLoading(false);
