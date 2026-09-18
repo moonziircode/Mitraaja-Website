@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import axios from "axios";
 import { getVoidedTaskCodes } from "@/lib/voided-orders-db";
-import { getScanRecordsByAwbs, formatToWibString } from "@/lib/scan-records-db";
+import { getScanRecordsByAwbs, formatToWibString, saveScanRecord } from "@/lib/scan-records-db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -212,6 +212,26 @@ export async function GET(request: NextRequest) {
             }
           }
 
+          // Fallback parsing from good_description or items if item_name is missing
+          if (!t.item_name || t.item_name === '-') {
+            if (t.good_description) {
+              try {
+                const parsed = typeof t.good_description === 'string' ? JSON.parse(t.good_description) : t.good_description;
+                const firstItem = Array.isArray(parsed) ? parsed[0] : parsed;
+                if (firstItem?.item_name || firstItem?.name) {
+                  t.item_name = firstItem.item_name || firstItem.name;
+                  t.itemName = t.item_name;
+                }
+              } catch {}
+            } else if (t.items && Array.isArray(t.items) && t.items[0]) {
+              t.item_name = t.items[0].item_name || t.items[0].name || t.item_name;
+              t.itemName = t.item_name;
+            } else if (t.parcel_content && t.parcel_content !== '-') {
+              t.item_name = t.parcel_content;
+              t.itemName = t.item_name;
+            }
+          }
+
           // Fallback scan_time formatting if not populated from scan_records
           if (!t.scan_time) {
             const rawTime = t.updated_timestamp || t.updated_at || t.created_timestamp || t.created_at || t.order_time;
@@ -221,9 +241,85 @@ export async function GET(request: NextRequest) {
             }
           }
         }
+
+        // For tasks still missing item_name or scan_time, query tracking API in parallel
+        const missingTasks = allTasks.filter(t => {
+          const w = (t.waybill || t.waybill_no || t.waybillNo || "").trim();
+          return w && (!t.item_name || t.item_name === '-');
+        }).slice(0, 25);
+
+        if (missingTasks.length > 0 && session.token && !session.token.startsWith('mock-token')) {
+          await Promise.allSettled(missingTasks.map(async (t) => {
+            try {
+              const w = (t.waybill || t.waybill_no || t.waybillNo || "").trim();
+              const trackUrl = `${baseUrl}/maa-task/tracking?waybill=${encodeURIComponent(w)}&agent_staff_id=${encodeURIComponent(session.nia || '')}`;
+              const trackRes = await fetch(trackUrl, {
+                headers: baseHeaders,
+              });
+              if (trackRes.ok) {
+                const trackBody = await trackRes.json();
+                if (trackBody.status === 0 && trackBody.content) {
+                  const tc = trackBody.content;
+                  const history = tc.history || [];
+                  const ev201 = history.find((h: any) => h.tracking_code === 201 || h.tracking_code === '201');
+                  const scanTimestamp = ev201?.timestamp || history[0]?.timestamp || null;
+
+                  if (scanTimestamp && (!t.scan_time || t.scan_time === '-')) {
+                    t.scan_time = formatToWibString(scanTimestamp);
+                    t.scanTime = t.scan_time;
+                  }
+
+                  const fetchedItemName = tc.items?.[0]?.name || tc.items?.[0]?.item_name || null;
+                  if (fetchedItemName) {
+                    t.item_name = fetchedItemName;
+                    t.itemName = fetchedItemName;
+                  }
+
+                  if (tc.weight && (!t.weight || !t.parcel_total_weight)) {
+                    t.weight = tc.weight / 1000;
+                    t.parcel_total_weight = t.weight;
+                  }
+
+                  // Cache in Supabase scan_records
+                  saveScanRecord({
+                    awb: w,
+                    storeName: t.store_name || t.storeName || session.storeName || 'Mitra',
+                    serviceType: t.service_type || tc.service_code || 'REG',
+                    scanTime: scanTimestamp || new Date(),
+                    weight: t.weight || (tc.weight ? tc.weight / 1000 : 0.5),
+                    itemName: t.item_name || 'Paket Pengiriman',
+                    status: 'WAITING_FOR_HANDOVER_SERAH',
+                    packageDetails: tc
+                  }).catch(() => {});
+                }
+              }
+            } catch (e) {
+              // Ignore tracking fetch error
+            }
+          }));
+        }
       }
     } catch (enrichErr) {
       console.error("[GET Tasklist] Enrich scan records error:", enrichErr);
+    }
+
+    // Absolute guarantee: barang is never "-" in allTasks
+    for (const t of allTasks) {
+      let itName = (t.item_name || t.itemName || t.items?.[0]?.name || t.items?.[0]?.item_name || t.parcel_content || "").trim();
+      if ((!itName || itName === '-') && t.good_description) {
+        try {
+          const parsed = typeof t.good_description === 'string' ? JSON.parse(t.good_description) : t.good_description;
+          const firstItem = Array.isArray(parsed) ? parsed[0] : parsed;
+          if (firstItem?.item_name || firstItem?.name) {
+            itName = firstItem.item_name || firstItem.name;
+          }
+        } catch {}
+      }
+      if (!itName || itName === '-' || itName === 'null' || itName === 'undefined') {
+        itName = 'Paket Pengiriman';
+      }
+      t.item_name = itName;
+      t.itemName = itName;
     }
 
     // Regroup by Store Name if requested

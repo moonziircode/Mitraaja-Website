@@ -32,6 +32,13 @@ export default function TasklistClient({ user }: TasklistClientProps) {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [taskToPrint, setTaskToPrint] = useState<any | null>(null);
 
+  // Accordion state: default closed (null), radio behavior (opening one closes others)
+  const [expandedStoreKey, setExpandedStoreKey] = useState<string | null>(null);
+
+  const handleToggleStore = (storeKey: string) => {
+    setExpandedStoreKey((prev) => (prev === storeKey ? null : storeKey));
+  };
+
   const openDetail = (task: any) => {
     setSelectedTask(task);
     setIsModalOpen(true);
@@ -202,14 +209,19 @@ export default function TasklistClient({ user }: TasklistClientProps) {
           )}
 
           <div className="flex flex-col">
-            {tasks.map((task, index) => (
-              <TertundaCard 
-                key={task.group || index} 
-                tasklist={task} 
-                onClickDetail={(subTask) => openDetail(subTask || task)} 
-                onPrint={(subTask) => openPrint(subTask || task)}
-              />
-            ))}
+            {tasks.map((task, index) => {
+              const storeKey = task.group || task.owner_name || task.client_name || `store-${index}`;
+              return (
+                <TertundaCard 
+                  key={storeKey} 
+                  tasklist={task} 
+                  isOpen={expandedStoreKey === storeKey}
+                  onToggle={() => handleToggleStore(storeKey)}
+                  onClickDetail={(subTask) => openDetail(subTask || task)} 
+                  onPrint={(subTask) => openPrint(subTask || task)}
+                />
+              );
+            })}
 
             {!isLoading && tasks.length === 0 && !isError && (
               <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200 mt-4">

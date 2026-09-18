@@ -8,16 +8,17 @@ import {
   Check, 
   ChevronDown, 
   Clock, 
-  Truck, 
-  Package, 
-  Scale, 
   Eye, 
-  Printer 
+  Printer,
+  Scale,
+  Package
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface TertundaCardProps {
   tasklist: MaaTaskList;
+  isOpen: boolean;
+  onToggle: () => void;
   onClickDetail: (task: any) => void;
   onPrint?: (task: any) => void;
 }
@@ -36,8 +37,13 @@ function formatWibDate(val: any): string {
   return `${wibDate.getUTCFullYear()}-${pad(wibDate.getUTCMonth() + 1)}-${pad(wibDate.getUTCDate())} ${pad(wibDate.getUTCHours())}:${pad(wibDate.getUTCMinutes())}:${pad(wibDate.getUTCSeconds())}`;
 }
 
-export default function TertundaCard({ tasklist, onClickDetail, onPrint }: TertundaCardProps) {
-  const [isOpen, setIsOpen] = useState(true);
+export default function TertundaCard({ 
+  tasklist, 
+  isOpen, 
+  onToggle, 
+  onClickDetail, 
+  onPrint 
+}: TertundaCardProps) {
   const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
 
   const tasks: any[] = tasklist.tasks || [];
@@ -68,7 +74,7 @@ export default function TertundaCard({ tasklist, onClickDetail, onPrint }: Tertu
     <div className="mb-4">
       {/* Accordion Header: Store Name — Total AWB */}
       <div 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onToggle}
         className="w-full bg-white rounded-2xl p-4 sm:p-5 border border-gray-100 shadow-xs hover:shadow-md hover:border-pink-200 transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 group select-none"
       >
         <div className="flex items-center gap-3 min-w-0">
@@ -98,7 +104,7 @@ export default function TertundaCard({ tasklist, onClickDetail, onPrint }: Tertu
         </div>
       </div>
 
-      {/* Accordion Content: List of AWBs under this Store */}
+      {/* Accordion Content: Table Layout styled to match reference UI */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -108,125 +114,304 @@ export default function TertundaCard({ tasklist, onClickDetail, onPrint }: Tertu
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="pt-2.5 space-y-2.5 sm:pl-3">
-              {tasks.map((task: any, index: number) => {
-                const waybill = (
-                  task.waybill || 
-                  task.waybill_no || 
-                  task.waybillNo || 
-                  task.order_code || 
-                  task.task_code || 
-                  "-"
-                ).trim();
+            <div className="pt-2">
+              {/* Desktop Table View (Styled matching reference UI) */}
+              <div className="hidden md:block bg-white rounded-2xl border border-gray-200/90 shadow-xs overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50/80 border-b border-gray-200/80 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-4">Waybill / AWB</th>
+                      <th className="py-3.5 px-3">Layanan</th>
+                      <th className="py-3.5 px-4">Waktu Scan</th>
+                      <th className="py-3.5 px-3">Berat</th>
+                      <th className="py-3.5 px-4">Nama Barang</th>
+                      <th className="py-3.5 px-3 text-center">Status</th>
+                      <th className="py-3.5 px-4 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 text-xs">
+                    {tasks.map((task: any, index: number) => {
+                      const waybill = (
+                        task.waybill || 
+                        task.waybill_no || 
+                        task.waybillNo || 
+                        task.order_code || 
+                        task.task_code || 
+                        "-"
+                      ).trim();
 
-                const serviceType = (
-                  task.service_type || 
-                  task.serviceType || 
-                  task.product_code || 
-                  task.productCode || 
-                  "REG"
-                ).trim();
+                      const serviceType = (
+                        task.service_type || 
+                        task.serviceType || 
+                        task.product_code || 
+                        task.productCode || 
+                        "REG"
+                      ).trim();
 
-                const rawScanTime = 
-                  task.scan_time || 
-                  task.scanTime || 
-                  task.updated_timestamp || 
-                  task.created_timestamp;
+                      const rawScanTime = 
+                        task.scan_time || 
+                        task.scanTime || 
+                        task.updated_timestamp || 
+                        task.created_timestamp;
 
-                const scanTime = formatWibDate(rawScanTime);
+                      const scanTime = formatWibDate(rawScanTime);
 
-                const rawWeight = task.weight ?? task.parcel_total_weight;
-                const weightDisplay = rawWeight !== undefined && rawWeight !== null && !isNaN(Number(rawWeight))
-                  ? `${Number(rawWeight)} kg`
-                  : "-";
+                      const rawWeight = task.weight ?? task.parcel_total_weight;
+                      const weightDisplay = rawWeight !== undefined && rawWeight !== null && !isNaN(Number(rawWeight))
+                        ? `${Number(rawWeight)} kg`
+                        : "-";
 
-                const itemName = (task.item_name || task.itemName || task.parcel_content || "-").trim();
+                      // Never show '-' for item name
+                      let itemName = (
+                        task.item_name || 
+                        task.itemName || 
+                        task.items?.[0]?.name || 
+                        task.items?.[0]?.item_name || 
+                        task.parcel_content || 
+                        ""
+                      ).trim();
 
-                return (
-                  <div 
-                    key={task.task_code || task.waybill || index}
-                    onClick={() => onClickDetail(task)}
-                    className="bg-white rounded-xl p-3.5 sm:p-4 border border-gray-100 hover:border-pink-200 hover:shadow-sm transition-all duration-150 cursor-pointer group/item"
-                  >
-                    {/* Header Item: Waybill & Status Badges */}
-                    <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-gray-900 text-sm sm:text-base group-hover/item:text-pink-600 transition-colors">
-                          {waybill}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopy(e, waybill)}
-                          className="p-1 rounded-md text-gray-400 hover:text-pink-600 hover:bg-pink-50 transition-colors"
-                          title="Salin AWB"
+                      if (typeof task.good_description === "string" && (!itemName || itemName === "-")) {
+                        try {
+                          const p = JSON.parse(task.good_description);
+                          if (Array.isArray(p) && p[0]?.item_name) itemName = p[0].item_name;
+                          else if (p?.item_name) itemName = p.item_name;
+                        } catch {}
+                      }
+
+                      if (!itemName || itemName === "-" || itemName === "null" || itemName === "undefined") {
+                        itemName = "Paket Pengiriman";
+                      }
+
+                      return (
+                        <tr 
+                          key={task.task_code || task.waybill || index}
+                          onClick={() => onClickDetail(task)}
+                          className="hover:bg-pink-50/20 transition-colors cursor-pointer group/row"
                         >
-                          {copiedAwb === waybill ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
+                          {/* 1. Waybill / AWB */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-gray-900 group-hover/row:text-pink-600 transition-colors">
+                                {waybill}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopy(e, waybill)}
+                                className="p-1 rounded-md text-gray-400 hover:text-pink-600 hover:bg-pink-50 transition-colors"
+                                title="Salin AWB"
+                              >
+                                {copiedAwb === waybill ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </div>
+                          </td>
+
+                          {/* 2. Layanan */}
+                          <td className="py-3.5 px-3 whitespace-nowrap">
+                            <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-pink-50 text-pink-600 border border-pink-100">
+                              {serviceType}
+                            </span>
+                          </td>
+
+                          {/* 3. Waktu Scan */}
+                          <td className="py-3.5 px-4 whitespace-nowrap font-mono text-gray-700">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                              <span>{scanTime}</span>
+                            </div>
+                          </td>
+
+                          {/* 4. Berat */}
+                          <td className="py-3.5 px-3 whitespace-nowrap font-semibold text-gray-800">
+                            {weightDisplay}
+                          </td>
+
+                          {/* 5. Nama Barang */}
+                          <td className="py-3.5 px-4">
+                            <div className="max-w-[200px] lg:max-w-[320px] font-medium text-gray-900 truncate" title={itemName}>
+                              {itemName}
+                            </div>
+                          </td>
+
+                          {/* 6. Status */}
+                          <td className="py-3.5 px-3 whitespace-nowrap text-center">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200">
+                              Tertunda
+                            </span>
+                          </td>
+
+                          {/* 7. Aksi */}
+                          <td className="py-3.5 px-4 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {onPrint && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPrint(task);
+                                  }}
+                                  className="p-1.5 rounded-lg text-gray-500 hover:text-pink-600 hover:bg-pink-50 border border-gray-200 hover:border-pink-200 transition-colors"
+                                  title="Cetak AWB"
+                                >
+                                  <Printer className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onClickDetail(task);
+                                }}
+                                className="px-3 py-1 rounded-lg text-xs font-semibold text-pink-600 hover:bg-pink-50 border border-pink-100 transition-colors flex items-center gap-1"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Detail</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View: Modern Card List for Small Screens */}
+              <div className="md:hidden space-y-2.5">
+                {tasks.map((task: any, index: number) => {
+                  const waybill = (
+                    task.waybill || 
+                    task.waybill_no || 
+                    task.waybillNo || 
+                    task.order_code || 
+                    task.task_code || 
+                    "-"
+                  ).trim();
+
+                  const serviceType = (
+                    task.service_type || 
+                    task.serviceType || 
+                    task.product_code || 
+                    task.productCode || 
+                    "REG"
+                  ).trim();
+
+                  const rawScanTime = 
+                    task.scan_time || 
+                    task.scanTime || 
+                    task.updated_timestamp || 
+                    task.created_timestamp;
+
+                  const scanTime = formatWibDate(rawScanTime);
+
+                  const rawWeight = task.weight ?? task.parcel_total_weight;
+                  const weightDisplay = rawWeight !== undefined && rawWeight !== null && !isNaN(Number(rawWeight))
+                    ? `${Number(rawWeight)} kg`
+                    : "-";
+
+                  let itemName = (
+                    task.item_name || 
+                    task.itemName || 
+                    task.items?.[0]?.name || 
+                    task.items?.[0]?.item_name || 
+                    task.parcel_content || 
+                    ""
+                  ).trim();
+
+                  if (typeof task.good_description === "string" && (!itemName || itemName === "-")) {
+                    try {
+                      const p = JSON.parse(task.good_description);
+                      if (Array.isArray(p) && p[0]?.item_name) itemName = p[0].item_name;
+                      else if (p?.item_name) itemName = p.item_name;
+                    } catch {}
+                  }
+
+                  if (!itemName || itemName === "-" || itemName === "null" || itemName === "undefined") {
+                    itemName = "Paket Pengiriman";
+                  }
+
+                  return (
+                    <div 
+                      key={task.task_code || task.waybill || index}
+                      onClick={() => onClickDetail(task)}
+                      className="bg-white rounded-xl p-3.5 border border-gray-100 hover:border-pink-200 shadow-xs transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-gray-900 text-sm">
+                            {waybill}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopy(e, waybill)}
+                            className="p-1 rounded-md text-gray-400 hover:text-pink-600 hover:bg-pink-50 transition-colors"
+                          >
+                            {copiedAwb === waybill ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-pink-50 text-pink-600 border border-pink-100">
+                            {serviceType}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                            Tertunda
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-600 border border-pink-100">
-                          {serviceType}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          Tertunda
-                        </span>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50/70 rounded-lg p-2 mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="font-mono text-gray-800">{scanTime}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <Scale className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span className="font-semibold text-gray-800">{weightDisplay}</span>
+                        </div>
+                        <div className="col-span-2 flex items-center gap-1.5 pt-1 border-t border-gray-100">
+                          <Package className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span className="font-medium text-gray-800 truncate">{itemName}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Quick Detail: Scan Time, Weight, Item Name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-gray-600 bg-gray-50/70 rounded-lg p-2.5 mb-2.5">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                        <span className="text-gray-400">Scan:</span>
-                        <span className="font-medium text-gray-800 font-mono truncate">{scanTime}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Scale className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="text-gray-400">Berat:</span>
-                        <span className="font-medium text-gray-800 truncate">{weightDisplay}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <Package className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                        <span className="text-gray-400">Barang:</span>
-                        <span className="font-medium text-gray-800 truncate">{itemName}</span>
-                      </div>
-                    </div>
-
-                    {/* Actions: Detail & Cetak */}
-                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-50">
-                      {onPrint && (
+                      <div className="flex items-center justify-end gap-1.5 pt-1">
+                        {onPrint && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onPrint(task);
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-600 hover:text-pink-600 hover:bg-pink-50 border border-gray-200"
+                          >
+                            <Printer className="w-3.5 h-3.5 inline mr-1" />
+                            Cetak
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            onPrint(task);
+                            onClickDetail(task);
                           }}
-                          className="px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-600 hover:text-pink-600 hover:bg-pink-50 border border-gray-200 hover:border-pink-200 transition-colors flex items-center gap-1"
+                          className="px-3 py-1 rounded-lg text-xs font-semibold text-pink-600 hover:bg-pink-50 border border-pink-100"
                         >
-                          <Printer className="w-3.5 h-3.5" />
-                          <span>Cetak</span>
+                          <Eye className="w-3.5 h-3.5 inline mr-1" />
+                          Detail
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onClickDetail(task);
-                        }}
-                        className="px-3 py-1 rounded-lg text-xs font-semibold text-pink-600 hover:bg-pink-50 border border-pink-100 transition-colors flex items-center gap-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Detail</span>
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </motion.div>
         )}
@@ -234,3 +419,4 @@ export default function TertundaCard({ tasklist, onClickDetail, onPrint }: Tertu
     </div>
   );
 }
+

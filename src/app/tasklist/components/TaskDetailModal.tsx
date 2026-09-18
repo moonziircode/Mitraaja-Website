@@ -176,7 +176,7 @@ export default function TaskDetailModal({
     ? `${Number(rawWeight)} kg`
     : "-";
 
-  const itemName = 
+  let rawItemName = 
     orderDetail?.item_name ||
     orderDetail?.itemName ||
     firstTask.item_name ||
@@ -185,8 +185,24 @@ export default function TaskDetailModal({
     orderDetail?.items?.[0]?.name ||
     firstTask.parcel_content ||
     t.item_name ||
+    t.itemName ||
     t.parcel_content ||
-    "-";
+    "";
+
+  if ((!rawItemName || rawItemName === "-") && (firstTask.good_description || t.good_description || orderDetail?.good_description)) {
+    const gd = firstTask.good_description || t.good_description || orderDetail?.good_description;
+    try {
+      const parsed = typeof gd === "string" ? JSON.parse(gd) : gd;
+      const first = Array.isArray(parsed) ? parsed[0] : parsed;
+      if (first?.item_name || first?.name) {
+        rawItemName = first.item_name || first.name;
+      }
+    } catch {}
+  }
+
+  const itemName = (!rawItemName || rawItemName === "-" || rawItemName === "null" || rawItemName === "undefined")
+    ? "Paket Pengiriman"
+    : rawItemName;
 
   // Fetch detailed data whenever modal opens
   useEffect(() => {
