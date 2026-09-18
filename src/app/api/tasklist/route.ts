@@ -378,18 +378,7 @@ export async function GET(request: NextRequest) {
       finalContent = Array.from(groupedMap.values());
     }
 
-    // Catat log view tasklist ke Supabase
-    try {
-      await logActivity({
-        action: 'VIEW_TASKLIST',
-        status: 'SUCCESS',
-        userNia: session.nia,
-        userName: session.name,
-        storeName: session.storeName,
-        description: `Melihat tasklist (state: ${state}, total tasks: ${allTasks.length})`,
-        metadata: { state, page, size, grouped, totalTasks: allTasks.length }
-      });
-    } catch {}
+
 
     return NextResponse.json({
       status: 0,

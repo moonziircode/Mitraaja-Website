@@ -49,15 +49,7 @@ export default function TasklistClient({ user }: TasklistClientProps) {
     setIsPrintModalOpen(true);
   };
 
-  // Auto refresh interval for real-time updates (every 5 seconds)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchTasks(true, true); // reset=true, isBackground=true
-    }, 5000);
 
-    return () => clearInterval(intervalId);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
 
   const fetchTasks = async (reset: boolean = false, isBackground: boolean = false) => {
     if ((isLoading && !isBackground) || (!hasMore && !reset)) return;
@@ -157,12 +149,8 @@ export default function TasklistClient({ user }: TasklistClientProps) {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32">
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
                 Tertunda
-                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-pink-50 border border-pink-100 text-xs font-semibold text-pink-600">
-                  <span className="w-1.5 h-1.5 rounded-full bg-pink-500 animate-pulse"></span>
-                  Real-time
-                </span>
               </h1>
               <p className="text-gray-500 mt-1">Daftar paket tertunda</p>
             </div>

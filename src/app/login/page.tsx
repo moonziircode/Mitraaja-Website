@@ -12,21 +12,6 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [gpsStatus, setGpsStatus] = useState<'checking' | 'active' | 'error'>('checking');
-  const [gpsMessage, setGpsMessage] = useState('Memeriksa sinyal GPS...');
-
-  useEffect(() => {
-    // Cek ketersediaan GPS sejak awal halaman dibuka
-    getStrictAccurateLocation()
-      .then((loc) => {
-        setGpsStatus('active');
-        setGpsMessage(`GPS Akurasi Tinggi Aktif (±${Math.round(loc.accuracy)}m)`);
-      })
-      .catch((err) => {
-        setGpsStatus('error');
-        setGpsMessage(err.message || 'GPS belum aktif');
-      });
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,15 +19,11 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // 1. Dapatkan koordinat akurat dan deteksi Fake GPS secara ketat
+      // Dapatkan koordinat akurat dan deteksi Fake GPS di background untuk dicatat di log
       let location;
       try {
         location = await getStrictAccurateLocation(150);
-        setGpsStatus('active');
-        setGpsMessage(`GPS Akurasi Tinggi Aktif (±${Math.round(location.accuracy)}m)`);
       } catch (geoErr: any) {
-        setGpsStatus('error');
-        setGpsMessage(geoErr.message || 'Gagal mengunci lokasi');
         setError(geoErr.message || 'Akses lokasi GPS akurasi tinggi wajib diaktifkan.');
         setIsLoading(false);
         return;
@@ -154,25 +135,6 @@ export default function LoginPage() {
               </div>
             </div>
             
-            {/* GPS Security Indicator */}
-            <div className={`p-2.5 rounded-lg text-xs flex items-center gap-2 border transition-colors ${
-              gpsStatus === 'active'
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                : gpsStatus === 'error'
-                ? 'bg-amber-50 text-amber-800 border-amber-200'
-                : 'bg-gray-50 text-gray-700 border-gray-200'
-            }`}>
-              <span className={`material-symbols-outlined text-base ${
-                gpsStatus === 'active' ? 'text-emerald-600' : gpsStatus === 'error' ? 'text-amber-600' : 'text-gray-500 animate-spin'
-              }`}>
-                {gpsStatus === 'active' ? 'my_location' : gpsStatus === 'error' ? 'location_disabled' : 'sync'}
-              </span>
-              <div className="flex-1">
-                <p className="font-semibold">{gpsMessage}</p>
-                <p className="text-[10px] text-gray-500">Sistem mewajibkan GPS akurat & melarang keras Fake GPS</p>
-              </div>
-            </div>
-
             {error && <p className="text-xs text-red-600 text-center font-medium bg-red-50 p-2.5 rounded-lg border border-red-200">{error}</p>}
 
             <div className="pt-2 space-y-4">
@@ -180,7 +142,7 @@ export default function LoginPage() {
                 className="w-full bg-primary text-white font-semibold text-base py-3 rounded-lg shadow-sm hover:shadow-md hover:bg-primary-light transition-all duration-200 flex justify-center items-center relative overflow-hidden group disabled:bg-gray-400"
                 id="submitBtn"
                 type="submit"
-                disabled={isLoading || gpsStatus === 'checking'}
+                disabled={isLoading}
               >
                 <span className={`transition-opacity duration-200 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
                   Masuk Sekarang

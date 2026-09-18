@@ -223,26 +223,6 @@ export default function ClaimClient({ user }: { user: User }) {
               <p className="text-[11px] text-text-secondary font-medium hidden sm:block">Bulk Claim System</p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 relative z-10">
-            {gpsLocation ? (
-              <div className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Lat: ${gpsLocation.latitude.toFixed(5)}, Lng: ${gpsLocation.longitude.toFixed(5)}`}>
-                <span className="material-symbols-outlined text-[15px]">my_location</span>
-                <span className="hidden sm:inline">GPS Akurat</span>
-                <span>(±{Math.round(gpsLocation.accuracy)}m)</span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={refreshGps}
-                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors animate-pulse"
-                title="Klik untuk menyalakan/memeriksa GPS"
-              >
-                <span className="material-symbols-outlined text-[15px]">location_disabled</span>
-                <span>{isGpsLoading ? 'Cek GPS...' : 'GPS Wajib Aktif'}</span>
-              </button>
-            )}
-          </div>
         </header>
 
         {/* Scrollable Main Area */}
