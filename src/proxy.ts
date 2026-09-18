@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const COOKIE_NAME = process.env.COOKIE_NAME || 'anteraja_session';
+const COOKIE_NAME = process.env.COOKIE_NAME ? `${process.env.COOKIE_NAME}_v2` : 'mitraaja_session_v2';
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
