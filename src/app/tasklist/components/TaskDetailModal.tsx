@@ -343,22 +343,23 @@ export default function TaskDetailModal({
     <AnimatePresence>
       {isOpen && (
         <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 transition-opacity"
+            className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
           />
 
-          {/* Modal Container */}
+          {/* Centered Modal Container */}
           <motion.div
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 max-h-[92vh] bg-white rounded-t-3xl z-50 overflow-hidden flex flex-col shadow-2xl max-w-4xl mx-auto border border-gray-100"
+            initial={{ scale: 0.95, opacity: 0, y: 15 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 15 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className={`relative w-full ${isTertunda ? "max-w-2xl" : "max-w-4xl"} bg-white rounded-3xl z-10 overflow-hidden flex flex-col shadow-2xl border border-gray-100 max-h-[90vh] my-auto`}
           >
             {/* Modal Header */}
             <div className="sticky top-0 bg-white/95 backdrop-blur-md z-10 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -764,6 +765,7 @@ export default function TaskDetailModal({
               </div>
             </div>
           </motion.div>
+        </div>
 
           {/* Payment Modal for Checkout & QRIS */}
           <PaymentModal 
