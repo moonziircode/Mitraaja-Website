@@ -27,17 +27,17 @@ export default function TasklistClient({ user }: TasklistClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch] = useDebounce(searchQuery, 800);
 
-  const [selectedTask, setSelectedTask] = useState<MaaTaskList | null>(null);
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [taskToPrint, setTaskToPrint] = useState<MaaTaskList | null>(null);
+  const [taskToPrint, setTaskToPrint] = useState<any | null>(null);
 
-  const openDetail = (task: MaaTaskList) => {
+  const openDetail = (task: any) => {
     setSelectedTask(task);
     setIsModalOpen(true);
   };
 
-  const openPrint = (task: MaaTaskList) => {
+  const openPrint = (task: any) => {
     setTaskToPrint(task);
     setIsPrintModalOpen(true);
   };
@@ -206,8 +206,8 @@ export default function TasklistClient({ user }: TasklistClientProps) {
               <TertundaCard 
                 key={task.group || index} 
                 tasklist={task} 
-                onClickDetail={() => openDetail(task)} 
-                onPrint={() => openPrint(task)}
+                onClickDetail={(subTask) => openDetail(subTask || task)} 
+                onPrint={(subTask) => openPrint(subTask || task)}
               />
             ))}
 

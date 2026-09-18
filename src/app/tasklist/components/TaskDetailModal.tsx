@@ -21,7 +21,8 @@ import {
   Compass, 
   ArrowRight,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Scale
 } from "lucide-react";
 import axios from "axios";
 import PaymentModal from "@/components/PaymentModal";
@@ -29,9 +30,23 @@ import PaymentModal from "@/components/PaymentModal";
 interface TaskDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tasklist: MaaTaskList | null;
+  tasklist: any | null;
   activeTab: string; // "TERTUNDA" | "RIWAYAT_ORDER"
   onActionSuccess?: (code?: string) => void;
+}
+
+function formatWibDate(val: any): string {
+  if (!val || val === "-" || val === "null" || val === "undefined") return "-";
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(val.trim())) {
+    return val.trim();
+  }
+  const d = new Date(val);
+  if (isNaN(d.getTime())) return String(val);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const utcMs = d.getTime();
+  const wibMs = utcMs + 7 * 3600 * 1000;
+  const wibDate = new Date(wibMs);
+  return `${wibDate.getUTCFullYear()}-${pad(wibDate.getUTCMonth() + 1)}-${pad(wibDate.getUTCDate())} ${pad(wibDate.getUTCHours())}:${pad(wibDate.getUTCMinutes())}:${pad(wibDate.getUTCSeconds())}`;
 }
 
 function getVal(val: any, fallback: string = "-"): string {
@@ -100,7 +115,7 @@ export default function TaskDetailModal({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
 
-  const firstTask: any = tasklist?.tasks?.[0] || {};
+  const firstTask: any = tasklist?.tasks?.[0] || (tasklist?.waybill || tasklist?.waybill_no || tasklist?.task_code ? tasklist : {}) || {};
   const isTertunda = activeTab === "TERTUNDA";
 
   // Merge tasklist task object with optional orderDetail API
@@ -111,6 +126,67 @@ export default function TaskDetailModal({
   const displayCode = isTertunda 
     ? (waybillNo || taskCode || "-") 
     : (taskCode || waybillNo || "-");
+
+  // 5 Essential Fields for Tertunda
+  const serviceType = 
+    orderDetail?.product_code ||
+    orderDetail?.service_type ||
+    firstTask.service_type ||
+    firstTask.serviceType ||
+    firstTask.product_code ||
+    firstTask.productCode ||
+    t.product_code ||
+    t.service_type ||
+    "REG";
+
+  const rawScanTime = 
+    orderDetail?.scan_time ||
+    orderDetail?.scanTime ||
+    firstTask.scan_time ||
+    firstTask.scanTime ||
+    t.scan_time ||
+    t.scanTime ||
+    firstTask.updated_timestamp ||
+    firstTask.created_timestamp;
+
+  const displayScanTime = formatWibDate(rawScanTime);
+
+  const storeName = 
+    orderDetail?.store_name ||
+    orderDetail?.storeName ||
+    firstTask.store_name ||
+    firstTask.storeName ||
+    firstTask.ownership_name ||
+    tasklist?.owner_name ||
+    tasklist?.client_name ||
+    t.store_name ||
+    t.ownership_name ||
+    "-";
+
+  const rawWeight = 
+    orderDetail?.weight ??
+    orderDetail?.parcel_total_weight ??
+    firstTask.weight ??
+    firstTask.parcel_total_weight ??
+    t.weight ??
+    t.parcel_total_weight ??
+    (orderDetail?.items?.[0]?.weight);
+
+  const displayWeight = rawWeight !== undefined && rawWeight !== null && !isNaN(Number(rawWeight))
+    ? `${Number(rawWeight)} kg`
+    : "-";
+
+  const itemName = 
+    orderDetail?.item_name ||
+    orderDetail?.itemName ||
+    firstTask.item_name ||
+    firstTask.itemName ||
+    orderDetail?.items?.[0]?.item_name ||
+    orderDetail?.items?.[0]?.name ||
+    firstTask.parcel_content ||
+    t.item_name ||
+    t.parcel_content ||
+    "-";
 
   // Fetch detailed data whenever modal opens
   useEffect(() => {
@@ -295,7 +371,9 @@ export default function TaskDetailModal({
                     Detail Order: <span className="font-mono text-pink-600">{displayCode}</span>
                     {isLoadingDetail && <Loader2 className="w-4 h-4 animate-spin text-pink-500" />}
                   </h2>
-                  <p className="text-xs text-gray-500">Informasi detail lengkap pesanan sesuai data sistem</p>
+                  <p className="text-xs text-gray-500">
+                    {isTertunda ? "Informasi ringkas paket tertunda" : "Informasi detail lengkap pesanan sesuai data sistem"}
+                  </p>
                 </div>
               </div>
               <button 
@@ -342,259 +420,311 @@ export default function TaskDetailModal({
                 </div>
               </div>
 
-              {/* [A. INFORMASI ORDER] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-pink-600">
-                  <FileText className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    A. Informasi Order
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="order_code" value={t.order_code || t.orderCode} isMono />
-                  <InfoField label="waybill" value={t.waybill || t.waybill_no || t.waybillNo} isMono />
-                  <InfoField label="client_code" value={t.client_code || t.clientCode} />
-                  <InfoField label="client_name" value={t.client_name || t.clientName || tasklist.client_name} />
-                  <InfoField label="client_order_code" value={t.client_order_code || t.clientOrderCode || t.source_order_no} isMono />
-                  <InfoField label="client_invoice_number" value={t.client_invoice_number || t.clientInvoiceNumber || t.invoice_no} isMono />
-                  <InfoField label="order_type" value={t.order_type || t.orderType || t.task_type} />
-                  <InfoField label="order_tab_menu" value={t.order_tab_menu || t.orderTabMenu} />
-                  <InfoField label="order_state" value={t.order_state || t.orderState} />
-                  <InfoField label="order_source" value={t.order_source || t.orderSource || tasklist.order_source} />
-                  <InfoField label="service_type" value={t.service_type || t.serviceType || t.product_code} />
-                  <InfoField label="order_status" value={t.order_status || t.orderStatus || t.task_status} />
-                  <InfoField label="payment_status" value={t.payment_status || t.paymentStatus} />
-                  <InfoField label="created_timestamp" value={t.created_timestamp || t.createdTimestamp || t.createdAt || t.created_at} />
-                  <InfoField label="updated_timestamp" value={t.updated_timestamp || t.updatedTimestamp || t.updatedAt || t.updated_at} />
-                  <InfoField label="request_pickup_time" value={t.request_pickup_time || t.requestPickupTime} />
-                  <InfoField label="expiry_timestamp" value={t.expiry_timestamp || t.expiryTimestamp} />
-                </div>
-              </div>
-
-              {/* [B. INFORMASI PENGUSAHA / TOKO] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-purple-600">
-                  <Store className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    B. Informasi Pengusaha / Toko
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="nia" value={t.nia || t.agent_nik} isMono />
-                  <InfoField label="store_name" value={t.store_name || t.storeName || tasklist.owner_name} />
-                  <InfoField label="main_business" value={t.main_business || t.mainBusiness} />
-                  <InfoField label="customer_code" value={t.customer_code || t.customerCode} isMono />
-                  <InfoField label="ownership_name" value={t.ownership_name || t.ownershipName || tasklist.owner_name} />
-                  <InfoField label="ownership_phone" value={t.ownership_phone || t.ownershipPhone || tasklist.owner_phone} />
-                  <InfoField label="ownership_id" value={t.ownership_id || t.ownershipId} isMono />
-                  <InfoField label="agent_nik" value={t.agent_nik || t.agentNik} isMono />
-                  <InfoField label="agent_staff_id" value={t.agent_staff_id || t.agentStaffId} isMono />
-                  <InfoField label="shipper_shop_id" value={t.shipper_shop_id || t.shipperShopId} isMono />
-                </div>
-              </div>
-
-              {/* [C. INFORMASI PENGIRIM (SHIPPER)] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-blue-600">
-                  <User className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    C. Informasi Pengirim (Shipper)
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="shipper_name" value={t.shipper_name || t.shipperName || t.shipperInfo?.name} />
-                  <InfoField label="shipper_phone" value={t.shipper_phone || t.shipperPhone || t.shipperInfo?.phone} />
-                  <InfoField label="shipper_province" value={t.shipper_province || t.shipperProvince || t.shipperInfo?.province} />
-                  <InfoField label="shipper_city" value={t.shipper_city || t.shipperCity || t.shipperInfo?.city} />
-                  <InfoField label="shipper_district_code" value={t.shipper_district_code || t.shipperDistrictCode || t.shipperInfo?.districtCode} />
-                  <InfoField label="shipper_subdistrict" value={t.shipper_subdistrict || t.shipperSubdistrict || t.shipperInfo?.district} />
-                  <InfoField label="shipper_postal_code" value={t.shipper_postal_code || t.shipperPostalCode || t.shipperInfo?.zipCode} />
-                  <InfoField label="shipper_geoloc" value={t.shipper_geoloc || t.shipperGeoloc} />
-                  <InfoField 
-                    label="shipper_address" 
-                    value={t.shipper_address || t.shipperAddress || t.shipperInfo?.address} 
-                    fullWidth 
-                  />
-                </div>
-              </div>
-
-              {/* [D. INFORMASI PENERIMA (RECEIVER)] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-emerald-600">
-                  <MapPin className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    D. Informasi Penerima (Receiver)
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="receiver_customer_id" value={t.receiver_customer_id || t.receiverCustomerId} isMono />
-                  <InfoField label="receiver_name" value={t.receiver_name || t.receiverName || t.recipientInfo?.name} />
-                  <InfoField label="receiver_phone" value={t.receiver_phone || t.receiverPhone || t.recipientInfo?.phone} />
-                  <InfoField label="receiver_province" value={t.receiver_province || t.receiverProvince || t.recipientInfo?.province} />
-                  <InfoField label="receiver_city" value={t.receiver_city || t.receiverCity || t.recipientInfo?.city} />
-                  <InfoField label="receiver_district_code" value={t.receiver_district_code || t.receiverDistrictCode || t.recipientInfo?.districtCode} />
-                  <InfoField label="receiver_subdistrict" value={t.receiver_subdistrict || t.receiverSubdistrict || t.recipientInfo?.district} />
-                  <InfoField label="receiver_postal_code" value={t.receiver_postal_code || t.receiverPostalCode || t.recipientInfo?.zipCode} />
-                  <InfoField label="receiver_geoloc" value={t.receiver_geoloc || t.receiverGeoloc} />
-                  <InfoField 
-                    label="receiver_address" 
-                    value={t.receiver_address || t.receiverAddress || t.recipientInfo?.address} 
-                    fullWidth 
-                  />
-                </div>
-              </div>
-
-              {/* [E. PEMBAYARAN & TARIF] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-amber-600">
-                  <CreditCard className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    E. Pembayaran & Tarif
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="base_price" value={formatPrice(t.base_price ?? t.basePrice)} />
-                  <InfoField label="weight" value={getVal(t.weight ?? t.parcel_total_weight ?? t.parcelTotalWeight ? `${t.weight ?? t.parcel_total_weight ?? t.parcelTotalWeight} kg` : "-")} />
-                  <InfoField label="promo_amount" value={formatPrice(t.promo_amount ?? t.promoAmount)} />
-                  <InfoField label="total_price" value={formatPrice(t.total_price ?? t.totalPrice ?? t.delivery_price ?? t.total_delivery_price)} />
-                  <InfoField label="commision" value={formatPrice(t.commision ?? t.commission)} />
-                  <InfoField label="promo_code" value={t.promo_code || t.promoCode} />
-                  <InfoField label="payment_status" value={t.payment_status || t.paymentStatus} />
-                  <InfoField label="Payment Name" value={t["Payment Name"] || t.payment_name || t.paymentName} />
-                  <InfoField label="ba_transaction_no" value={t.ba_transaction_no || t.baTransactionNo} isMono />
-                </div>
-              </div>
-
-              {/* [F. INFORMASI BARANG / PAKET] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
-                  <div className="flex items-center gap-2 text-orange-600">
-                    <Package className="w-4 h-4" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                      F. Informasi Barang / Paket
-                    </h3>
-                  </div>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200">
-                    {parsedItems.length} Item
-                  </span>
-                </div>
-
-                {/* Raw good_description string if available */}
-                <div className="mb-3">
-                  <InfoField 
-                    label="good_description (raw)" 
-                    value={typeof t.good_description === "string" ? t.good_description : (t.good_description ? JSON.stringify(t.good_description) : "-")} 
-                    fullWidth 
-                  />
-                </div>
-
-                {/* Render each item detail */}
-                <div className="space-y-3">
-                  {parsedItems.map((item: any, idx: number) => {
-                    const itemName = item.item_name || item.itemName || item.name || "-";
-                    const itemDesc = item.item_desc || item.itemDesc || item.desc || "-";
-                    const itemCategory = item.item_category || item.itemCategory || item.category || "-";
-                    const declaredVal = item.declared_value ?? item.declaredValue ?? item.item_value ?? 0;
-                    const weightVal = item.weight ? `${item.weight} kg` : "-";
-                    const widthVal = item.width ? `${item.width} cm` : "-";
-                    const heightVal = item.height ? `${item.height} cm` : "-";
-                    const lengthVal = item.length ? `${item.length} cm` : "-";
-                    const fragileVal = item.fragile === true ? "Ya (Fragile)" : (item.fragile === false ? "Tidak" : "-");
-
-                    return (
-                      <div 
-                        key={idx} 
-                        className="p-3.5 bg-orange-50/40 rounded-xl border border-orange-100"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-orange-700">
-                            Item #{idx + 1}: {itemName}
-                          </span>
-                          {item.fragile && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-600 border border-red-200">
-                              Fragile
-                            </span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-                          <InfoField label="item_name" value={itemName} />
-                          <InfoField label="item_desc" value={itemDesc} />
-                          <InfoField label="item_category" value={itemCategory} />
-                          <InfoField label="declared_value" value={declaredVal > 0 ? formatPrice(declaredVal) : "-"} />
-                          <InfoField label="weight" value={weightVal} />
-                          <InfoField label="width" value={widthVal} />
-                          <InfoField label="height" value={heightVal} />
-                          <InfoField label="length" value={lengthVal} />
-                          <InfoField label="fragile" value={fragileVal} />
-                        </div>
+              {isTertunda ? (
+                /* Simplified Detail for Tertunda - EXACTLY 5 Required Fields */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* 1. Service Type */}
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-pink-100 text-pink-600 flex items-center justify-center shrink-0">
+                        <Truck className="w-5 h-5" />
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
+                          Service Type
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 truncate block">
+                          {serviceType}
+                        </span>
+                      </div>
+                    </div>
 
-              {/* [G. INFORMASI OPERASIONAL & TRACKING] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-indigo-600">
-                  <Truck className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    G. Informasi Operasional & Tracking
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="pickup" value={t.pickup} />
-                  <InfoField label="pickup_sla" value={t.pickup_sla || t.pickupSla} />
-                  <InfoField label="delivery_sla" value={t.delivery_sla || t.deliverySla} />
-                  <InfoField label="jabatan_54" value={t.jabatan_54 || t.jabatan54} />
-                  <InfoField label="54_id" value={t["54_id"] || t["54Id"]} isMono />
-                  <InfoField label="52_tm" value={t["52_tm"] || t["52Tm"]} />
-                  <InfoField label="56_tm" value={t["56_tm"] || t["56Tm"]} />
-                  <InfoField label="59_tm" value={t["59_tm"] || t["59Tm"]} />
-                  <InfoField label="order_time" value={t.order_time || t.orderTime} />
-                  <InfoField label="expect_finish_tm" value={t.expect_finish_tm || t.expectFinishTm} />
-                  <InfoField label="staging_origin" value={t.staging_origin || t.stagingOrigin} isMono />
-                  <InfoField label="staging_delivery" value={t.staging_delivery || t.stagingDelivery} isMono />
-                  <InfoField label="flag_drop_off" value={t.flag_drop_off || t.flagDropOff} />
-                  <InfoField label="exception_remark" value={t.exception_remark || t.exceptionRemark} />
-                  <InfoField label="exception_info" value={t.exception_info || t.exceptionInfo} />
-                  <InfoField label="retrieval_code" value={t.retrieval_code || t.retrievalCode} isMono />
-                  <InfoField label="op80" value={t.op80} />
-                  <InfoField label="op90" value={t.op90} />
-                </div>
-              </div>
+                    {/* 2. Waktu Scan */}
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
+                          Waktu Scan
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 font-mono truncate block">
+                          {displayScanTime}
+                        </span>
+                      </div>
+                    </div>
 
-              {/* [H. LOKASI & TRACKING TAMBAHAN] */}
-              <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-cyan-600">
-                  <Compass className="w-4 h-4" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    H. Lokasi & Tracking Tambahan
-                  </h3>
+                    {/* 3. Store Name */}
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                        <Store className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
+                          Store Name
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 truncate block">
+                          {storeName}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 4. Weight */}
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 flex items-center gap-3.5">
+                      <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                        <Scale className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
+                          Weight
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 truncate block">
+                          {displayWeight}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 5. Item Name */}
+                    <div className="p-4 bg-gray-50/90 rounded-2xl border border-gray-100 flex items-start gap-3.5 sm:col-span-2">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                        <Package className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider block">
+                          Item Name
+                        </span>
+                        <span className="text-sm font-bold text-gray-900 leading-snug break-words block">
+                          {itemName}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  <InfoField label="latitude_59" value={t.latitude_59 || t.latitude59} isMono />
-                  <InfoField label="longitude_59" value={t.longitude_59 || t.longitude59} isMono />
-                  <InfoField label="shipper_geoloc" value={t.shipper_geoloc || t.shipperGeoloc} />
-                  <InfoField label="receiver_geoloc" value={t.receiver_geoloc || t.receiverGeoloc} />
-                  <InfoField label="city" value={t.city} />
-                  <InfoField label="staging_origin" value={t.staging_origin || t.stagingOrigin} isMono />
-                  <InfoField label="staging_delivery" value={t.staging_delivery || t.stagingDelivery} isMono />
-                </div>
-              </div>
+              ) : (
+                <>
+                  {/* [A. INFORMASI ORDER] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-pink-600">
+                      <FileText className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        A. Informasi Order
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="order_code" value={t.order_code || t.orderCode} isMono />
+                      <InfoField label="waybill" value={t.waybill || t.waybill_no || t.waybillNo} isMono />
+                      <InfoField label="client_code" value={t.client_code || t.clientCode} />
+                      <InfoField label="client_name" value={t.client_name || t.clientName || tasklist.client_name} />
+                      <InfoField label="client_order_code" value={t.client_order_code || t.clientOrderCode || t.source_order_no} isMono />
+                      <InfoField label="client_invoice_number" value={t.client_invoice_number || t.clientInvoiceNumber || t.invoice_no} isMono />
+                      <InfoField label="order_type" value={t.order_type || t.orderType || t.task_type} />
+                      <InfoField label="order_tab_menu" value={t.order_tab_menu || t.orderTabMenu} />
+                      <InfoField label="order_state" value={t.order_state || t.orderState} />
+                      <InfoField label="order_source" value={t.order_source || t.orderSource || tasklist.order_source} />
+                      <InfoField label="service_type" value={t.service_type || t.serviceType || t.product_code} />
+                      <InfoField label="order_status" value={t.order_status || t.orderStatus || t.task_status} />
+                      <InfoField label="payment_status" value={t.payment_status || t.paymentStatus} />
+                      <InfoField label="created_timestamp" value={t.created_timestamp || t.createdTimestamp || t.createdAt || t.created_at} />
+                      <InfoField label="updated_timestamp" value={t.updated_timestamp || t.updatedTimestamp || t.updatedAt || t.updated_at} />
+                    </div>
+                  </div>
+
+                  {/* [B. INFORMASI SHIPPER (PENGIRIM)] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-blue-600">
+                      <User className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        B. Informasi Shipper (Pengirim)
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="shipper_name" value={t.shipper_name || t.shipperName || t.shipper_info?.name} />
+                      <InfoField label="shipper_phone" value={t.shipper_phone || t.shipperPhone || t.shipper_info?.phone} isMono />
+                      <InfoField label="shipper_city" value={t.shipper_city || t.shipperCity || t.shipper_info?.city_name || t.shipper_info?.city} />
+                      <InfoField label="shipper_district_code" value={t.shipper_district_code || t.shipperDistrictCode || t.shipper_info?.district_code} isMono />
+                      <InfoField label="shipper_subdistrict" value={t.shipper_subdistrict || t.shipperSubdistrict || t.shipper_info?.district_name} />
+                      <InfoField label="shipper_postcode" value={t.shipper_postcode || t.shipperPostcode || t.shipper_info?.postcode || t.shipper_info?.zip} isMono />
+                      <InfoField label="shipper_geoloc" value={t.shipper_geoloc || t.shipperGeoloc} />
+                      <InfoField label="shipper_address" value={t.shipper_address || t.shipperAddress || t.shipper_info?.address} fullWidth />
+                    </div>
+                  </div>
+
+                  {/* [C. INFORMASI RECEIVER (PENERIMA)] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-purple-600">
+                      <MapPin className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        C. Informasi Receiver (Penerima)
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="receiver_name" value={t.receiver_name || t.receiverName || t.receiver_info?.name || t.recipientInfo?.name} />
+                      <InfoField label="receiver_phone" value={t.receiver_phone || t.receiverPhone || t.receiver_info?.phone || t.recipientInfo?.phone} isMono />
+                      <InfoField label="receiver_customer_id" value={t.receiver_customer_id || t.receiverCustomerId} isMono />
+                      <InfoField label="receiver_city" value={t.receiver_city || t.receiverCity || t.receiver_info?.city_name || t.receiver_info?.city || t.recipientInfo?.city} />
+                      <InfoField label="receiver_district_code" value={t.receiver_district_code || t.receiverDistrictCode || t.receiver_info?.district_code} isMono />
+                      <InfoField label="receiver_subdistrict" value={t.receiver_subdistrict || t.receiverSubdistrict || t.receiver_info?.district_name} />
+                      <InfoField label="receiver_postcode" value={t.receiver_postcode || t.receiverPostcode || t.receiver_info?.postcode || t.receiver_info?.zip} isMono />
+                      <InfoField label="receiver_geoloc" value={t.receiver_geoloc || t.receiverGeoloc} />
+                      <InfoField label="receiver_label" value={t.receiver_label || t.receiverLabel} />
+                      <InfoField label="receiver_note" value={t.receiver_note || t.receiverNote} />
+                      <InfoField label="receiver_address" value={t.receiver_address || t.receiverAddress || t.receiver_info?.address || t.recipientInfo?.address} fullWidth />
+                    </div>
+                  </div>
+
+                  {/* [D. INFORMASI TOKO / STORE] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-amber-600">
+                      <Store className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        D. Informasi Toko / Ownership
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="store_name" value={t.store_name || t.storeName || tasklist.owner_name} />
+                      <InfoField label="ownership_name" value={t.ownership_name || t.ownershipName || tasklist.owner_name} />
+                      <InfoField label="ownership_phone" value={t.ownership_phone || t.ownershipPhone || tasklist.owner_phone} isMono />
+                      <InfoField label="owner_name" value={tasklist.owner_name || t.owner_name} />
+                      <InfoField label="owner_phone" value={tasklist.owner_phone || t.owner_phone} isMono />
+                    </div>
+                  </div>
+
+                  {/* [E. INFORMASI BIAYA & PEMBAYARAN] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-emerald-600">
+                      <CreditCard className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        E. Informasi Biaya & Pembayaran
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="delivery_price" value={formatPrice(t.delivery_price || t.deliveryPrice)} />
+                      <InfoField label="insurance" value={formatPrice(t.insurance || t.insurance_price)} />
+                      <InfoField label="platform_fee" value={formatPrice(t.platform_fee || t.platformFee)} />
+                      <InfoField label="service_fee" value={formatPrice(t.service_fee || t.serviceFee)} />
+                      <InfoField label="voucher" value={formatPrice(t.voucher)} />
+                      <InfoField label="total_price" value={formatPrice(t.total_price || t.totalPrice || deliveryPrice)} />
+                      <InfoField label="payment_type" value={t.payment_type || t.paymentType} />
+                      <InfoField label="payment_status" value={t.payment_status || t.paymentStatus} />
+                      <InfoField label="transaction_id" value={t.transaction_id || t.transactionId} isMono />
+                      <InfoField label="va_number" value={t.va_number || t.vaNumber} isMono />
+                    </div>
+                  </div>
+
+                  {/* [F. DETAIL BARANG] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-rose-600">
+                      <Package className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        F. Detail Barang ({parsedItems.length} Item)
+                      </h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {parsedItems.map((it: any, idx: number) => {
+                        const itemName = it.item_name || it.itemName || it.name || "-";
+                        const itemDesc = it.item_desc || it.itemDesc || it.desc || "-";
+                        const itemCategory = it.item_category || it.itemCategory || it.category || "-";
+                        const declaredVal = it.declared_value || it.declaredValue || it.price || 0;
+                        const weightVal = it.weight ? `${it.weight} kg` : "-";
+                        const widthVal = it.width ? `${it.width} cm` : "-";
+                        const heightVal = it.height ? `${it.height} cm` : "-";
+                        const lengthVal = it.length ? `${it.length} cm` : "-";
+                        const fragileVal = it.fragile ? "Ya" : "Tidak";
+
+                        return (
+                          <div key={idx} className="p-4 bg-gray-50/70 rounded-xl border border-gray-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-gray-800">Item #{idx + 1}</span>
+                              {it.fragile && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md">
+                                  Fragile
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                              <InfoField label="item_name" value={itemName} />
+                              <InfoField label="item_desc" value={itemDesc} />
+                              <InfoField label="item_category" value={itemCategory} />
+                              <InfoField label="declared_value" value={declaredVal > 0 ? formatPrice(declaredVal) : "-"} />
+                              <InfoField label="weight" value={weightVal} />
+                              <InfoField label="width" value={widthVal} />
+                              <InfoField label="height" value={heightVal} />
+                              <InfoField label="length" value={lengthVal} />
+                              <InfoField label="fragile" value={fragileVal} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* [G. INFORMASI OPERASIONAL & TRACKING] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-indigo-600">
+                      <Truck className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        G. Informasi Operasional & Tracking
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="pickup" value={t.pickup} />
+                      <InfoField label="pickup_sla" value={t.pickup_sla || t.pickupSla} />
+                      <InfoField label="delivery_sla" value={t.delivery_sla || t.deliverySla} />
+                      <InfoField label="jabatan_54" value={t.jabatan_54 || t.jabatan54} />
+                      <InfoField label="54_id" value={t["54_id"] || t["54Id"]} isMono />
+                      <InfoField label="52_tm" value={t["52_tm"] || t["52Tm"]} />
+                      <InfoField label="56_tm" value={t["56_tm"] || t["56Tm"]} />
+                      <InfoField label="59_tm" value={t["59_tm"] || t["59Tm"]} />
+                      <InfoField label="order_time" value={t.order_time || t.orderTime} />
+                      <InfoField label="expect_finish_tm" value={t.expect_finish_tm || t.expectFinishTm} />
+                      <InfoField label="staging_origin" value={t.staging_origin || t.stagingOrigin} isMono />
+                      <InfoField label="staging_delivery" value={t.staging_delivery || t.stagingDelivery} isMono />
+                      <InfoField label="flag_drop_off" value={t.flag_drop_off || t.flagDropOff} />
+                      <InfoField label="exception_remark" value={t.exception_remark || t.exceptionRemark} />
+                      <InfoField label="exception_info" value={t.exception_info || t.exceptionInfo} />
+                      <InfoField label="retrieval_code" value={t.retrieval_code || t.retrievalCode} isMono />
+                      <InfoField label="op80" value={t.op80} />
+                      <InfoField label="op90" value={t.op90} />
+                    </div>
+                  </div>
+
+                  {/* [H. LOKASI & TRACKING TAMBAHAN] */}
+                  <div className="bg-white rounded-2xl p-5 border border-gray-200/90 shadow-2xs">
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 text-cyan-600">
+                      <Compass className="w-4 h-4" />
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
+                        H. Lokasi & Tracking Tambahan
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                      <InfoField label="latitude_59" value={t.latitude_59 || t.latitude59} isMono />
+                      <InfoField label="longitude_59" value={t.longitude_59 || t.longitude59} isMono />
+                      <InfoField label="shipper_geoloc" value={t.shipper_geoloc || t.shipperGeoloc} />
+                      <InfoField label="receiver_geoloc" value={t.receiver_geoloc || t.receiverGeoloc} />
+                      <InfoField label="city" value={t.city} />
+                      <InfoField label="staging_origin" value={t.staging_origin || t.stagingOrigin} isMono />
+                      <InfoField label="staging_delivery" value={t.staging_delivery || t.stagingDelivery} isMono />
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
 
             {/* Modal Sticky Footer Actions */}
             <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.06)]">
-              <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3">
-                <span className="text-xs text-gray-500">Total Tarif:</span>
-                <span className="text-lg font-bold text-pink-600">
-                  {deliveryPrice > 0 ? formatPrice(deliveryPrice) : "-"}
-                </span>
-              </div>
+              {!isTertunda && (
+                <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3">
+                  <span className="text-xs text-gray-500">Total Tarif:</span>
+                  <span className="text-lg font-bold text-pink-600">
+                    {deliveryPrice > 0 ? formatPrice(deliveryPrice) : "-"}
+                  </span>
+                </div>
+              )}
 
-              <div className="w-full sm:w-auto flex items-center gap-2.5">
-                {isUnpaid ? (
+              <div className={`w-full ${isTertunda ? "flex justify-end" : "sm:w-auto flex items-center gap-2.5"}`}>
+                {isUnpaid && !isTertunda ? (
                   <>
                     <button
                       onClick={handleVoidOrder}

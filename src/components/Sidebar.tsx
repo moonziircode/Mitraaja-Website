@@ -19,6 +19,45 @@ export default function Sidebar({ user = { name: '', nia: '' }, isOpen = false }
   const pathname = usePathname();
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [pendingBadge, setPendingBadge] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const checkPending = async () => {
+      try {
+        const res = await fetch('/api/tasklist?state=TERTUNDA&grouped=true&page=0&size=100');
+        if (res.ok) {
+          const data = await res.json();
+          const content = data.content || [];
+          let total = 0;
+          for (const group of content) {
+            if (group.tasks && Array.isArray(group.tasks)) {
+              const valid = group.tasks.filter((t: any) => {
+                const st = String(t.order_status || t.orderStatus || t.task_status || t.status || '').trim().toUpperCase();
+                const state = String(t.order_state || t.orderState || t.state || 'ACTIVE').trim().toUpperCase();
+                if (st === 'HANDED_OVER_SERAH' || st === 'HANDED_OVER' || st === 'COMPLETED') return false;
+                return st === 'WAITING_FOR_HANDOVER_SERAH' && state === 'ACTIVE';
+              });
+              total += valid.length;
+            } else {
+              const st = String(group.order_status || group.orderStatus || group.task_status || group.status || '').trim().toUpperCase();
+              const state = String(group.order_state || group.orderState || group.state || 'ACTIVE').trim().toUpperCase();
+              if (st === 'WAITING_FOR_HANDOVER_SERAH' && state === 'ACTIVE') total += 1;
+            }
+          }
+          if (isMounted) setPendingBadge(total);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    checkPending();
+    const timer = setInterval(checkPending, 20000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('mitraaja_sidebar_collapsed');
@@ -101,22 +140,38 @@ export default function Sidebar({ user = { name: '', nia: '' }, isOpen = false }
             <Link
               key={item.href}
               href={item.href}
-              title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-0' : 'gap-3 md:gap-4 px-3 md:px-4'} py-2.5 md:py-3 rounded-2xl text-[13px] md:text-[14px] font-bold transition-all duration-300 ${
+              title={isCollapsed ? (item.href === '/tasklist' && pendingBadge > 0 ? `${item.label} (${pendingBadge})` : item.label) : undefined}
+              className={`w-full flex items-center relative ${isCollapsed ? 'justify-center px-0' : 'gap-3 md:gap-4 px-3 md:px-4'} py-2.5 md:py-3 rounded-2xl text-[13px] md:text-[14px] font-bold transition-all duration-300 ${
                 isActive
                   ? 'bg-primary/10 text-primary'
                   : 'text-text-secondary hover:bg-gray-50 hover:text-text-primary hover:scale-[1.02]'
               }`}
             >
-              <span
-                className={`material-symbols-outlined text-[24px] ${
-                  isActive ? 'text-primary' : 'text-text-secondary'
-                }`}
-                style={isActive ? FILL : undefined}
-              >
-                {item.icon}
-              </span>
-              {!isCollapsed && <span className="truncate">{item.label}</span>}
+              <div className="relative flex items-center justify-center">
+                <span
+                  className={`material-symbols-outlined text-[24px] ${
+                    isActive ? 'text-primary' : 'text-text-secondary'
+                  }`}
+                  style={isActive ? FILL : undefined}
+                >
+                  {item.icon}
+                </span>
+                {isCollapsed && item.href === '/tasklist' && pendingBadge > 0 && (
+                  <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-extrabold flex items-center justify-center shadow-xs">
+                    {pendingBadge > 99 ? '99+' : pendingBadge}
+                  </span>
+                )}
+              </div>
+              {!isCollapsed && (
+                <>
+                  <span className="truncate">{item.label}</span>
+                  {item.href === '/tasklist' && pendingBadge > 0 && (
+                    <span className="ml-auto px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
+                      {pendingBadge > 99 ? '99+' : pendingBadge}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}

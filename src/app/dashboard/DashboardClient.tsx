@@ -108,6 +108,48 @@ export default function DashboardClient({ user }: { user: User }) {
     return { total, success, error: total - success };
   }, [history]);
 
+  // ── Pending AWB (Tertunda) Counter ──
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [isLoadingPending, setIsLoadingPending] = useState(false);
+
+  const fetchPendingCount = useCallback(async () => {
+    try {
+      setIsLoadingPending(true);
+      const res = await fetch('/api/tasklist?state=TERTUNDA&grouped=true&page=0&size=100');
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.content || [];
+        let total = 0;
+        for (const group of content) {
+          if (group.tasks && Array.isArray(group.tasks)) {
+            const valid = group.tasks.filter((t: any) => {
+              const st = String(t.order_status || t.orderStatus || t.task_status || t.status || '').trim().toUpperCase();
+              const state = String(t.order_state || t.orderState || t.state || 'ACTIVE').trim().toUpperCase();
+              if (st === 'HANDED_OVER_SERAH' || st === 'HANDED_OVER' || st === 'COMPLETED') return false;
+              return st === 'WAITING_FOR_HANDOVER_SERAH' && state === 'ACTIVE';
+            });
+            total += valid.length;
+          } else {
+            const st = String(group.order_status || group.orderStatus || group.task_status || group.status || '').trim().toUpperCase();
+            const state = String(group.order_state || group.orderState || group.state || 'ACTIVE').trim().toUpperCase();
+            if (st === 'WAITING_FOR_HANDOVER_SERAH' && state === 'ACTIVE') total += 1;
+          }
+        }
+        setPendingCount(total);
+      }
+    } catch (err) {
+      console.warn('[fetchPendingCount] error:', err);
+    } finally {
+      setIsLoadingPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 10000);
+    return () => clearInterval(interval);
+  }, [fetchPendingCount]);
+
   // ── Play Beep ──
   const playBeep = (success = true) => {
     try {
@@ -212,6 +254,9 @@ export default function DashboardClient({ user }: { user: User }) {
           },
           ...prev,
         ]);
+        if (result.status === 'success') {
+          fetchPendingCount();
+        }
       } catch (err) {
         console.error('[performClaim] Network Error:', err);
         setScanResult({
@@ -496,7 +541,7 @@ export default function DashboardClient({ user }: { user: User }) {
             </div>
             
             {/* Stats Dashboard */}
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
               <div className="bg-gradient-to-br from-white to-gray-50/50 rounded-[12px] md:rounded-[20px] border border-gray-100 shadow-sm p-3 md:p-5 relative overflow-hidden group hover:border-gray-200 transition-colors">
                 <div className="absolute -bottom-2 -right-2 md:-bottom-4 md:-right-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
                   <span className="material-symbols-outlined text-[80px] md:text-[120px]">inventory_2</span>
@@ -541,6 +586,32 @@ export default function DashboardClient({ user }: { user: User }) {
                   </div>
                   <div className="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
                     <span className="material-symbols-outlined text-rose-600 text-[16px] md:text-[24px]" style={FILL}>cancel</span>
+                  </div>
+                </div>
+              </div>
+
+              <div 
+                onClick={() => router.push('/tasklist')}
+                className="bg-gradient-to-br from-white to-amber-50/40 rounded-[12px] md:rounded-[20px] border border-gray-100 shadow-sm p-3 md:p-5 relative overflow-hidden group hover:border-amber-300 hover:shadow-md transition-all cursor-pointer"
+                title="Lihat Daftar AWB Tertunda"
+              >
+                <div className="absolute -bottom-2 -right-2 md:-bottom-4 md:-right-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-[80px] md:text-[120px]">pending_actions</span>
+                </div>
+                <div className="flex items-center justify-between relative z-10 h-full">
+                  <div className="flex flex-col justify-center h-full">
+                    <div className="flex items-center gap-1.5 mb-0.5 md:mb-1">
+                      <p className="text-[8px] md:text-[10px] text-amber-700 font-bold uppercase tracking-wider">AWB Tertunda</p>
+                      {isLoadingPending && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>}
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-lg md:text-3xl font-extrabold text-amber-600 tracking-tight leading-none">{pendingCount}</p>
+                      <span className="text-[10px] md:text-xs font-bold text-amber-600">AWB</span>
+                    </div>
+                    <p className="text-[8px] md:text-[11px] text-gray-500 font-medium mt-1 hidden md:block">Menunggu serah terima</p>
+                  </div>
+                  <div className="w-8 h-8 md:w-12 md:h-12 rounded-lg md:rounded-2xl bg-amber-100 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-amber-600 text-[16px] md:text-[24px]" style={FILL}>pending_actions</span>
                   </div>
                 </div>
               </div>
@@ -869,6 +940,10 @@ export default function DashboardClient({ user }: { user: User }) {
                   <div className="flex-1 flex flex-col justify-end items-center group h-full">
                     <div className="w-full max-w-[40px] md:max-w-[60px] bg-rose-200 group-hover:bg-rose-300 rounded-t-lg md:rounded-t-xl transition-all duration-500 ease-out" style={{ height: `${Math.max((stats.error / (Math.max(stats.total, 1))) * 100, 5)}%` }}></div>
                     <span className="text-[9px] md:text-[11px] font-bold text-gray-600 mt-2 md:mt-3">Gagal</span>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-end items-center group h-full cursor-pointer" onClick={() => router.push('/tasklist')}>
+                    <div className="w-full max-w-[40px] md:max-w-[60px] bg-amber-200 group-hover:bg-amber-300 rounded-t-lg md:rounded-t-xl transition-all duration-500 ease-out" style={{ height: `${Math.max((pendingCount / (Math.max(stats.total, pendingCount, 1))) * 100, 5)}%` }}></div>
+                    <span className="text-[9px] md:text-[11px] font-bold text-amber-700 mt-2 md:mt-3">Tertunda</span>
                   </div>
                 </div>
               </div>

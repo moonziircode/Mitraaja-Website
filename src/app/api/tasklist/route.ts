@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import axios from "axios";
 import { getVoidedTaskCodes } from "@/lib/voided-orders-db";
+import { getScanRecordsByAwbs, formatToWibString } from "@/lib/scan-records-db";
 
 export async function GET(request: NextRequest) {
   try {
@@ -181,18 +182,62 @@ export async function GET(request: NextRequest) {
       console.error("[GET Tasklist] Filter voided tasks error:", filterErr);
     }
 
-    // Regroup if requested
+    // Enrich tasks with scan records from Supabase (actual scan timestamp, items, weight, store_name)
+    try {
+      const awbList = allTasks
+        .map(t => (t.waybill || t.waybill_no || t.waybillNo || "").trim())
+        .filter(Boolean);
+
+      if (awbList.length > 0) {
+        const scanRecordsMap = await getScanRecordsByAwbs(awbList);
+        for (const t of allTasks) {
+          const w = (t.waybill || t.waybill_no || t.waybillNo || "").trim();
+          if (w && scanRecordsMap.has(w)) {
+            const sr = scanRecordsMap.get(w);
+            if (sr.scan_time) {
+              t.scan_time = formatToWibString(sr.scan_time);
+              t.scanTime = formatToWibString(sr.scan_time);
+            }
+            if (sr.store_name && !t.store_name) {
+              t.store_name = sr.store_name;
+              t.storeName = sr.store_name;
+            }
+            if (sr.item_name && sr.item_name !== '-' && !t.item_name) {
+              t.item_name = sr.item_name;
+              t.itemName = sr.item_name;
+            }
+            if (sr.weight && !t.parcel_total_weight && !t.weight) {
+              t.parcel_total_weight = Number(sr.weight);
+              t.weight = Number(sr.weight);
+            }
+          }
+
+          // Fallback scan_time formatting if not populated from scan_records
+          if (!t.scan_time) {
+            const rawTime = t.updated_timestamp || t.updated_at || t.created_timestamp || t.created_at || t.order_time;
+            if (rawTime) {
+              t.scan_time = formatToWibString(rawTime);
+              t.scanTime = formatToWibString(rawTime);
+            }
+          }
+        }
+      }
+    } catch (enrichErr) {
+      console.error("[GET Tasklist] Enrich scan records error:", enrichErr);
+    }
+
+    // Regroup by Store Name if requested
     let finalContent: any[] = allTasks;
     if (grouped === "true") {
       const groupedMap = new Map<string, any>();
       for (const task of allTasks) {
-        const storeName = task.store_name || task.storeName || task.ownership_name || task.client_name || "Mitra";
-        const groupKey = task.group || `${task.order_source || "DROPOFF"}-${storeName}`;
+        const storeName = (task.store_name || task.storeName || task.ownership_name || task.client_name || "Mitra").trim();
+        const groupKey = storeName;
         if (!groupedMap.has(groupKey)) {
           groupedMap.set(groupKey, {
-            client_name: task.client_name || storeName,
+            client_name: storeName,
             order_source: task.order_source || "DROPOFF",
-            group: task.group || groupKey,
+            group: groupKey,
             owner_name: storeName,
             owner_phone: task.ownership_phone || task.shipper_phone || "-",
             tasks: []
