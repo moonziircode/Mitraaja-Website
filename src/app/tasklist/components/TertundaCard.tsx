@@ -50,22 +50,39 @@ export default function TertundaCard({
   if (tasks.length === 0) return null;
 
   const firstTask = tasks[0] || {};
-  let rawStoreName = (
-    tasklist.client_name || 
-    tasklist.owner_name || 
-    firstTask.client_name || 
-    firstTask.owner_name || 
-    firstTask.shipper_name || 
-    firstTask.ownership_name || 
-    firstTask.store_name || 
-    firstTask.storeName || 
-    "Mitra"
-  ).trim();
+  const INVALID_NAMES = new Set([
+    "SHPE", "SHOPEE", "TOKOPEDIA", "TKPD", "TIKTOK", "LAZADA", 
+    "BUKALAPAK", "BLP", "DROPOFF", "PENGUSAHA TANDES", "-", "NULL", "UNDEFINED"
+  ]);
 
-  if (rawStoreName === "Pengusaha Tandes") {
-    rawStoreName = "E***********r";
+  const candidates = [
+    tasklist.owner_name,
+    firstTask.owner_name,
+    firstTask.ownership_name,
+    firstTask.shipper_name,
+    firstTask.store_name,
+    firstTask.storeName,
+    (tasklist as any).store_name,
+    (tasklist as any).storeName,
+    tasklist.client_name,
+    firstTask.client_name,
+  ];
+
+  let storeName = "Mitra";
+  for (const c of candidates) {
+    if (c && typeof c === "string") {
+      const trimmed = c.trim();
+      if (trimmed && !INVALID_NAMES.has(trimmed.toUpperCase())) {
+        storeName = trimmed;
+        break;
+      }
+    }
   }
-  const storeName = rawStoreName;
+
+  const firstAwb = (firstTask.waybill || firstTask.waybill_no || firstTask.waybillNo || "").trim();
+  if ((storeName === "Mitra" || storeName === "Pengusaha Tandes") && firstAwb === "11004385407467") {
+    storeName = "E***********r";
+  }
 
   const totalAwb = tasks.length;
 

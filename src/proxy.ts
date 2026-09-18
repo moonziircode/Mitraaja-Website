@@ -1,22 +1,33 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const COOKIE_NAME = process.env.COOKIE_NAME ? `${process.env.COOKIE_NAME}_v2` : 'mitraaja_session_v2';
+const ACTIVE_COOKIE_NAME = 'mitraaja_session_v2';
+const OLD_COOKIES = ['mitraaja_session', 'anteraja_session'];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(COOKIE_NAME);
+  const hasValidSession = request.cookies.has(ACTIVE_COOKIE_NAME);
 
   // Already on /login — redirect authenticated users to home
   if (pathname === '/login') {
-    if (hasSession) {
+    if (hasValidSession) {
       return NextResponse.redirect(new URL('/', request.url));
     }
-    return NextResponse.next();
+    const response = NextResponse.next();
+    OLD_COOKIES.forEach(name => {
+      if (request.cookies.has(name)) {
+        response.cookies.delete(name);
+      }
+    });
+    return response;
   }
 
-  // Any other page — redirect unauthenticated users to /login
-  if (!hasSession) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Any other page — redirect unauthenticated users to /login and wipe old cookies
+  if (!hasValidSession) {
+    const response = NextResponse.redirect(new URL('/login', request.url));
+    OLD_COOKIES.forEach(name => {
+      response.cookies.delete(name);
+    });
+    return response;
   }
 
   return NextResponse.next();

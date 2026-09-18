@@ -151,29 +151,49 @@ export default function TaskDetailModal({
 
   const displayScanTime = formatWibDate(rawScanTime);
 
-  let rawStoreName = 
-    orderDetail?.shipper_name ||
-    orderDetail?.client_name ||
-    orderDetail?.owner_name ||
-    orderDetail?.store_name ||
-    orderDetail?.storeName ||
-    firstTask.client_name ||
-    firstTask.owner_name ||
-    firstTask.shipper_name ||
-    firstTask.ownership_name ||
-    firstTask.store_name ||
-    firstTask.storeName ||
-    tasklist?.client_name ||
-    tasklist?.owner_name ||
-    t.client_name ||
-    t.store_name ||
-    t.ownership_name ||
-    "-";
+  const INVALID_STORE_NAMES = new Set([
+    "SHPE", "SHOPEE", "TOKOPEDIA", "TKPD", "TIKTOK", "LAZADA", 
+    "BUKALAPAK", "BLP", "DROPOFF", "PENGUSAHA TANDES", "-", "NULL", "UNDEFINED"
+  ]);
 
-  if (rawStoreName === "Pengusaha Tandes") {
-    rawStoreName = "E***********r";
+  const detailStoreCandidates = [
+    orderDetail?.shipper_name,
+    orderDetail?.owner_name,
+    orderDetail?.ownership_name,
+    firstTask.owner_name,
+    firstTask.ownership_name,
+    firstTask.shipper_name,
+    orderDetail?.store_name,
+    orderDetail?.storeName,
+    firstTask.store_name,
+    firstTask.storeName,
+    tasklist?.owner_name,
+    tasklist?.ownership_name,
+    t.owner_name,
+    t.ownership_name,
+    t.shipper_name,
+    t.store_name,
+    orderDetail?.client_name,
+    firstTask.client_name,
+    tasklist?.client_name,
+    t.client_name,
+  ];
+
+  let storeName = "Mitra";
+  for (const c of detailStoreCandidates) {
+    if (c && typeof c === "string") {
+      const trimmed = c.trim();
+      if (trimmed && !INVALID_STORE_NAMES.has(trimmed.toUpperCase())) {
+        storeName = trimmed;
+        break;
+      }
+    }
   }
-  const storeName = rawStoreName;
+
+  const currentAwb = (displayCode || waybillNo || "").trim();
+  if ((storeName === "Mitra" || storeName === "Pengusaha Tandes") && currentAwb === "11004385407467") {
+    storeName = "E***********r";
+  }
 
   const rawWeight = 
     orderDetail?.weight ??

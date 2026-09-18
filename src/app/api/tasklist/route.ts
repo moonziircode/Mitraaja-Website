@@ -330,19 +330,35 @@ export async function GET(request: NextRequest) {
     // Regroup by Store Name if requested
     let finalContent: any[] = allTasks;
     if (grouped === "true") {
+      const INVALID_NAMES = new Set([
+        "SHPE", "SHOPEE", "TOKOPEDIA", "TKPD", "TIKTOK", "LAZADA", 
+        "BUKALAPAK", "BLP", "DROPOFF", "PENGUSAHA TANDES", "-", "NULL", "UNDEFINED"
+      ]);
+
       const groupedMap = new Map<string, any>();
       for (const task of allTasks) {
-        let storeName = (
-          task.client_name || 
-          task.owner_name || 
-          task.ownership_name || 
-          task.shipper_name || 
-          task.store_name || 
-          task.storeName || 
-          "Mitra"
-        ).trim();
+        const candidates = [
+          task.owner_name,
+          task.ownership_name,
+          task.shipper_name,
+          task.store_name,
+          task.storeName,
+          task.client_name,
+        ];
 
-        if (storeName === "Pengusaha Tandes") {
+        let storeName = "Mitra";
+        for (const c of candidates) {
+          if (c && typeof c === "string") {
+            const trimmed = c.trim();
+            if (trimmed && !INVALID_NAMES.has(trimmed.toUpperCase())) {
+              storeName = trimmed;
+              break;
+            }
+          }
+        }
+
+        const waybill = (task.waybill || task.waybill_no || task.waybillNo || "").trim();
+        if ((storeName === "Mitra" || storeName === "Pengusaha Tandes") && waybill === "11004385407467") {
           storeName = "E***********r";
         }
 
